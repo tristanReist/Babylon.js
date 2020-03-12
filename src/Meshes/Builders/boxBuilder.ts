@@ -87,7 +87,7 @@ VertexData.CreateBox = function(options: { size?: number, width?: number, height
 
     // Result
     var vertexData = new VertexData();
-
+    
     vertexData.indices = indices;
     vertexData.positions = positions;
     vertexData.normals = normals;

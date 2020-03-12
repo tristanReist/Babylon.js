@@ -113,9 +113,9 @@ export class SphereBuilder {
         sphere._originalBuilderSideOrientation = options.sideOrientation;
 
         var vertexData = VertexData.CreateSphere(options);
-
+        
         vertexData.applyToMesh(sphere, options.updatable);
-
+        
         return sphere;
     }
 }
