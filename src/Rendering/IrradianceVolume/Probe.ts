@@ -7,6 +7,8 @@ import { StandardMaterial } from '../../Materials/standardMaterial';
 import { Color3 } from '../../Maths/math.color';
 import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
+import { InternalTexture } from '../../Materials/Textures/internalTexture';
+import { Effect } from '../../Materials';
 
 export class Probe {
 
@@ -46,6 +48,8 @@ export class Probe {
         //Change the attributes of all cameras
         for (let camera of this.cameraList) {
             camera.parent = this.sphere;
+            camera.fovMode = 1;
+            // camera.fov = Math.PI / 2;
             camera.fov = Math.PI / 2;
         }
         this.sphere.translate(position, 1);
@@ -65,28 +69,39 @@ export class Probe {
         this.sphere.material = myMaterial;
     }
 
-    public createCubeMap(scene : Scene, cubeMesh : Mesh, ground : Mesh) : void {
+    public createCubeMap(scene : Scene, meshes : Array<Mesh>, ground : Mesh) : void {
+        
         var previousActiveCam = scene.activeCamera;
-        var multiRender = new MultiRenderTarget("uv", 100, 1, scene);
-        var testTexture = multiRender.textures[0]._texture;
+        var multiRender = new MultiRenderTarget("uv", 50, 1, scene);
         scene.customRenderTargets.push(multiRender);
         var shaderMaterial = new ShaderMaterial("uvShader", scene, "./../../src/Shaders/uv", {
             attributes: ["position", "uv"],
             uniforms: ["worldViewProjection"]
         });
-        multiRender.activeCamera = this.cameraList[0];
-        multiRender.refreshRate = 0;
-        multiRender.renderList = [cubeMesh];
-        cubeMesh.material = shaderMaterial;
+        multiRender.activeCamera = this.cameraList[1];
+        multiRender.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
+        multiRender.renderList = [];
+        for (var mesh  of meshes){
+            multiRender.renderList.push(mesh);
+        }
+        multiRender.onBeforeRender = (e) => {
+            for (var mesh  of meshes){
+                mesh.material = shaderMaterial;
+            }
+        }
 
+        // multiRender.onAfterRender = (e) => {
+        //     for (var mesh  of meshes){
+        //         mesh.material = null;
+        //     }          
+        // }
+    
+    
         var textureMaterial = new StandardMaterial("textureMat", scene);
         textureMaterial.diffuseTexture = multiRender.textures[0];
         this.sphere.material = textureMaterial;
         ground.material = textureMaterial;
         scene.activeCamera = previousActiveCam;
-
-        // cubeMesh.material = null;
-        // this.sphere._scene.removeMaterial(shaderMaterial);
 
     }
 }
