@@ -404,6 +404,13 @@ declare module BABYLON {
          * @returns the encoded string
          */
         static EncodeArrayBufferToBase64(buffer: ArrayBuffer | ArrayBufferView): string;
+        /**
+        * Converts a number to string and pads with preceeding zeroes until it is of specified length.
+        * @param num the number to convert and pad
+        * @param length the expected length of the string
+        * @returns the padded string
+        */
+        static PadNumber(num: number, length: number): string;
     }
 }
 declare module BABYLON {
@@ -3729,6 +3736,13 @@ declare module BABYLON {
          * @returns a new quaternion
          */
         static FromArray(array: DeepImmutable<ArrayLike<number>>, offset?: number): Quaternion;
+        /**
+         * Updates the given quaternion "result" from the starting index of the given array.
+         * @param array the array to pull values from
+         * @param offset the offset into the array to start at
+         * @param result the quaternion to store the result in
+         */
+        static FromArrayToRef(array: DeepImmutable<ArrayLike<number>>, offset: number, result: Quaternion): void;
         /**
          * Create a quaternion from Euler rotation angles
          * @param x Pitch
@@ -8533,6 +8547,15 @@ declare module BABYLON {
          */
         noRotationConstraint: boolean;
         /**
+         * Reverses mouselook direction to 'natural' panning as opposed to traditional direct
+         * panning
+         */
+        invertRotation: boolean;
+        /**
+         * Speed multiplier for inverse camera panning
+         */
+        inverseRotationSpeed: number;
+        /**
          * Define the current target of the camera as an object or a position.
          */
         lockedTarget: any;
@@ -8731,9 +8754,17 @@ declare module BABYLON {
          */
         keysUp: number[];
         /**
+         * Gets or Set the list of keyboard keys used to control the upward move of the camera.
+         */
+        keysUpward: number[];
+        /**
          * Gets or Set the list of keyboard keys used to control the backward move of the camera.
          */
         keysDown: number[];
+        /**
+         * Gets or Set the list of keyboard keys used to control the downward move of the camera.
+         */
+        keysDownward: number[];
         /**
          * Gets or Set the list of keyboard keys used to control the left strafe move of the camera.
          */
@@ -12816,12 +12847,11 @@ declare module BABYLON {
      * It emits the particles randomly between 2 given directions.
      */
     export class MeshParticleEmitter implements IParticleEmitterType {
-        /** Defines the mesh to use as source */
-        mesh?: AbstractMesh | undefined;
         private _indices;
         private _positions;
         private _normals;
         private _storedNormal;
+        private _mesh;
         /**
          * Random direction of each particle after it has been emitted, between direction1 and direction2 vectors.
          */
@@ -12834,13 +12864,14 @@ declare module BABYLON {
          * Gets or sets a boolean indicating that particle directions must be built from mesh face normals
          */
         useMeshNormalsForDirection: boolean;
+        /** Defines the mesh to use as source */
+        get mesh(): Nullable<AbstractMesh>;
+        set mesh(value: Nullable<AbstractMesh>);
         /**
          * Creates a new instance MeshParticleEmitter
          * @param mesh defines the mesh to use as source
          */
-        constructor(
-        /** Defines the mesh to use as source */
-        mesh?: AbstractMesh | undefined);
+        constructor(mesh?: Nullable<AbstractMesh>);
         /**
          * Called by the particle System when the direction is computed for the created particle.
          * @param worldMatrix is the world matrix of the particle system
@@ -18369,10 +18400,20 @@ declare module BABYLON {
         get keysUp(): number[];
         set keysUp(value: number[]);
         /**
+         * Gets or Set the list of keyboard keys used to control the upward move of the camera.
+         */
+        get keysUpward(): number[];
+        set keysUpward(value: number[]);
+        /**
          * Gets or Set the list of keyboard keys used to control the backward move of the camera.
          */
         get keysDown(): number[];
         set keysDown(value: number[]);
+        /**
+        * Gets or Set the list of keyboard keys used to control the downward move of the camera.
+        */
+        get keysDownward(): number[];
+        set keysDownward(value: number[]);
         /**
          * Gets or Set the list of keyboard keys used to control the left strafe move of the camera.
          */
@@ -20855,6 +20896,23 @@ declare module BABYLON {
          */
         static readonly AllDirtyFlag: number;
         /**
+         * MaterialTransparencyMode: No transparency mode, Alpha channel is not use.
+         */
+        static readonly MATERIAL_OPAQUE: number;
+        /**
+         * MaterialTransparencyMode: Alpha Test mode, pixel are discarded below a certain threshold defined by the alpha cutoff value.
+         */
+        static readonly MATERIAL_ALPHATEST: number;
+        /**
+         * MaterialTransparencyMode: Pixels are blended (according to the alpha mode) with the already drawn pixels in the current frame buffer.
+         */
+        static readonly MATERIAL_ALPHABLEND: number;
+        /**
+         * MaterialTransparencyMode: Pixels are blended (according to the alpha mode) with the already drawn pixels in the current frame buffer.
+         * They are also discarded below the alpha cutoff threshold to improve performances.
+         */
+        static readonly MATERIAL_ALPHATESTANDBLEND: number;
+        /**
          * The ID of the material
          */
         id: string;
@@ -21167,7 +21225,35 @@ declare module BABYLON {
          */
         getScene(): Scene;
         /**
-         * Specifies if the material will require alpha blending
+         * Enforces alpha test in opaque or blend mode in order to improve the performances of some situations.
+         */
+        protected _forceAlphaTest: boolean;
+        /**
+         * The transparency mode of the material.
+         */
+        protected _transparencyMode: Nullable<number>;
+        /**
+         * Gets the current transparency mode.
+         */
+        get transparencyMode(): Nullable<number>;
+        /**
+         * Sets the transparency mode of the material.
+         *
+         * | Value | Type                                | Description |
+         * | ----- | ----------------------------------- | ----------- |
+         * | 0     | OPAQUE                              |             |
+         * | 1     | ALPHATEST                           |             |
+         * | 2     | ALPHABLEND                          |             |
+         * | 3     | ALPHATESTANDBLEND                   |             |
+         *
+         */
+        set transparencyMode(value: Nullable<number>);
+        /**
+         * Returns true if alpha blending should be disabled.
+         */
+        protected get _disableAlphaBlending(): boolean;
+        /**
+         * Specifies whether or not this material should be rendered in alpha blend mode.
          * @returns a boolean specifying if alpha blending is needed
          */
         needAlphaBlending(): boolean;
@@ -21178,10 +21264,15 @@ declare module BABYLON {
          */
         needAlphaBlendingForMesh(mesh: AbstractMesh): boolean;
         /**
-         * Specifies if this material should be rendered in alpha test mode
+         * Specifies whether or not this material should be rendered in alpha test mode.
          * @returns a boolean specifying if an alpha test is needed.
          */
         needAlphaTesting(): boolean;
+        /**
+         * Specifies if material alpha testing should be turned on for the mesh
+         * @param mesh defines the mesh to check
+         */
+        protected _shouldTurnAlphaTestOn(mesh: AbstractMesh): boolean;
         /**
          * Gets the texture used for the alpha test
          * @returns the texture to use for alpha testing
@@ -21227,11 +21318,6 @@ declare module BABYLON {
          * @param effect defines the effect to bind the view projection matrix to
          */
         bindViewProjection(effect: Effect): void;
-        /**
-         * Specifies if material alpha testing should be turned on for the mesh
-         * @param mesh defines the mesh to check
-         */
-        protected _shouldTurnAlphaTestOn(mesh: AbstractMesh): boolean;
         /**
          * Processes to execute after binding the material to a mesh
          * @param mesh defines the rendered mesh
@@ -24789,7 +24875,7 @@ declare module BABYLON {
         /** @hidden */
         _processInstancedBuffers(visibleInstances: InstancedMesh[], renderSelf: boolean): void;
         /** @hidden */
-        _processRendering(subMesh: SubMesh, effect: Effect, fillMode: number, batch: _InstancesBatch, hardwareInstancedRendering: boolean, onBeforeDraw: (isInstance: boolean, world: Matrix, effectiveMaterial?: Material) => void, effectiveMaterial?: Material): Mesh;
+        _processRendering(renderingMesh: AbstractMesh, subMesh: SubMesh, effect: Effect, fillMode: number, batch: _InstancesBatch, hardwareInstancedRendering: boolean, onBeforeDraw: (isInstance: boolean, world: Matrix, effectiveMaterial?: Material) => void, effectiveMaterial?: Material): Mesh;
         /** @hidden */
         _rebuild(): void;
         /** @hidden */
@@ -26388,6 +26474,8 @@ declare module BABYLON {
         NUM_MORPH_INFLUENCERS: number;
         NONUNIFORMSCALING: boolean;
         PREMULTIPLYALPHA: boolean;
+        ALPHATEST_AFTERALLALPHACOMPUTATIONS: boolean;
+        ALPHABLEND: boolean;
         IMAGEPROCESSING: boolean;
         VIGNETTE: boolean;
         VIGNETTEBLENDMODEMULTIPLY: boolean;
@@ -26955,12 +27043,30 @@ declare module BABYLON {
          * Each element of this array is an object `{idx: int, faceId: int}`.
          * `idx` is the picked particle index in the `SPS.particles` array
          * `faceId` is the picked face index counted within this particle.
+         * This array is the first element of the pickedBySubMesh array : sps.pickBySubMesh[0].
+         * It's not pertinent to use it when using a SPS with the support for MultiMaterial enabled.
+         * Use the method SPS.pickedParticle(pickingInfo) instead.
          * Please read : http://doc.babylonjs.com/how_to/Solid_Particle_System#pickable-particles
          */
         pickedParticles: {
             idx: number;
             faceId: number;
         }[];
+        /**
+         * This array is populated when the SPS is set as 'pickable'
+         * Each key of this array is a submesh index.
+         * Each element of this array is a second array defined like this :
+         * Each key of this second array is a `faceId` value that you can get from a pickResult object.
+         * Each element of this second array is an object `{idx: int, faceId: int}`.
+         * `idx` is the picked particle index in the `SPS.particles` array
+         * `faceId` is the picked face index counted within this particle.
+         * It's better to use the method SPS.pickedParticle(pickingInfo) rather than using directly this array.
+         * Please read : http://doc.babylonjs.com/how_to/Solid_Particle_System#pickable-particles
+         */
+        pickedBySubMesh: {
+            idx: number;
+            faceId: number;
+        }[][];
         /**
          * This array is populated when `enableDepthSort` is set to true.
          * Each element of this array is an instance of the class DepthSortedParticle.
@@ -27207,6 +27313,17 @@ declare module BABYLON {
         * Disposes the SPS.
         */
         dispose(): void;
+        /** Returns an object {idx: numbern faceId: number} for the picked particle from the passed pickingInfo object.
+         * idx is the particle index in the SPS
+         * faceId is the picked face index counted within this particle.
+         * Returns null if the pickInfo can't identify a picked particle.
+         * @param pickingInfo (PickingInfo object)
+         * @returns {idx: number, faceId: number} or null
+         */
+        pickedParticle(pickingInfo: PickingInfo): Nullable<{
+            idx: number;
+            faceId: number;
+        }>;
         /**
          * Returns a SolidParticle object from its identifier : particle.id
          * @param id (integer) the particle Id
@@ -27549,6 +27666,10 @@ declare module BABYLON {
          */
         materialIndex: Nullable<number>;
         /**
+         * Custom object or properties.
+         */
+        props: Nullable<any>;
+        /**
          * The culling strategy to use to check whether the solid particle must be culled or not when using isInFrustum().
          * The possible values are :
          * - AbstractMesh.CULLINGSTRATEGY_STANDARD
@@ -27688,6 +27809,10 @@ declare module BABYLON {
      */
     export class DepthSortedParticle {
         /**
+         * Particle index
+         */
+        idx: number;
+        /**
          * Index of the particle in the "indices" array
          */
         ind: number;
@@ -27707,7 +27832,7 @@ declare module BABYLON {
          * Creates a new sorted particle
          * @param materialIndex
          */
-        constructor(ind: number, indLength: number, materialIndex: number);
+        constructor(idx: number, ind: number, indLength: number, materialIndex: number);
     }
 }
 declare module BABYLON {
@@ -27718,6 +27843,7 @@ declare module BABYLON {
         _checkCollisions: boolean;
         _collisionMask: number;
         _collisionGroup: number;
+        _surroundingMeshes: Nullable<AbstractMesh[]>;
         _collider: Nullable<Collider>;
         _oldPositionForCollisions: Vector3;
         _diffPositionForCollisions: Vector3;
@@ -28039,6 +28165,17 @@ declare module BABYLON {
          */
         get collisionGroup(): number;
         set collisionGroup(mask: number);
+        /**
+         * Gets or sets current surrounding meshes (null by default).
+         *
+         * By default collision detection is tested against every mesh in the scene.
+         * It is possible to set surroundingMeshes to a defined list of meshes and then only these specified
+         * meshes will be tested for the collision.
+         *
+         * Note: if set to an empty array no collision will happen when this mesh is moved.
+         */
+        get surroundingMeshes(): Nullable<AbstractMesh[]>;
+        set surroundingMeshes(meshes: Nullable<AbstractMesh[]>);
         /**
          * Defines edge width used when edgesRenderer is enabled
          * @see https://www.babylonjs-playground.com/#10OJSG#13
@@ -31143,9 +31280,8 @@ declare module BABYLON {
         private _nextFreeTextureSlots;
         private _maxSimultaneousTextures;
         private _activeRequests;
-        protected _texturesSupported: string[];
         /** @hidden */
-        _textureFormatInUse: Nullable<string>;
+        _transformTextureUrl: Nullable<(url: string) => string>;
         protected get _supportsHardwareTextureRescaling(): boolean;
         private _framebufferDimensionsObject;
         /**
@@ -31157,14 +31293,6 @@ declare module BABYLON {
             framebufferWidth: number;
             framebufferHeight: number;
         }>);
-        /**
-         * Gets the list of texture formats supported
-         */
-        get texturesSupported(): Array<string>;
-        /**
-         * Gets the list of texture formats in use
-         */
-        get textureFormatInUse(): Nullable<string>;
         /**
          * Gets the current viewport
          */
@@ -31209,7 +31337,7 @@ declare module BABYLON {
          */
         areAllEffectsReady(): boolean;
         protected _rebuildBuffers(): void;
-        private _initGLContext;
+        protected _initGLContext(): void;
         /**
          * Gets version of the current webGL context
          */
@@ -31750,7 +31878,7 @@ declare module BABYLON {
         /**
          * Usually called from Texture.ts.
          * Passed information to create a WebGLTexture
-         * @param urlArg defines a value which contains one of the following:
+         * @param url defines a value which contains one of the following:
          * * A conventional http URL, e.g. 'http://...' or 'file://...'
          * * A base64 string of in-line texture data, e.g. 'data:image/jpg;base64,/...'
          * * An indicator that data being passed using the buffer parameter, e.g. 'data:mytexture.jpg'
@@ -31767,7 +31895,7 @@ declare module BABYLON {
          * @param mimeType defines an optional mime type
          * @returns a InternalTexture for assignment back into BABYLON.Texture
          */
-        createTexture(urlArg: Nullable<string>, noMipmap: boolean, invertY: boolean, scene: Nullable<ISceneLike>, samplingMode?: number, onLoad?: Nullable<() => void>, onError?: Nullable<(message: string, exception: any) => void>, buffer?: Nullable<string | ArrayBuffer | ArrayBufferView | HTMLImageElement | Blob | ImageBitmap>, fallback?: Nullable<InternalTexture>, format?: Nullable<number>, forcedExtension?: Nullable<string>, mimeType?: string): InternalTexture;
+        createTexture(url: Nullable<string>, noMipmap: boolean, invertY: boolean, scene: Nullable<ISceneLike>, samplingMode?: number, onLoad?: Nullable<() => void>, onError?: Nullable<(message: string, exception: any) => void>, buffer?: Nullable<string | ArrayBuffer | ArrayBufferView | HTMLImageElement | Blob | ImageBitmap>, fallback?: Nullable<InternalTexture>, format?: Nullable<number>, forcedExtension?: Nullable<string>, mimeType?: string): InternalTexture;
         /**
          * Loads an image as an HTMLImageElement.
          * @param input url string, ArrayBuffer, or Blob to load
@@ -37493,6 +37621,16 @@ declare module BABYLON {
          */
         getAudioBuffer(): Nullable<AudioBuffer>;
         /**
+         * Gets the WebAudio AudioBufferSourceNode, lets you keep track of and stop instances of this Sound.
+         * @returns the source node
+         */
+        getSoundSource(): Nullable<AudioBufferSourceNode>;
+        /**
+         * Gets the WebAudio GainNode, gives you precise control over the gain of instances of this Sound.
+         * @returns the gain node
+         */
+        getSoundGain(): Nullable<GainNode>;
+        /**
          * Serializes the Sound in a JSON representation
          * @returns the JSON representation of the sound
          */
@@ -39382,6 +39520,7 @@ declare module BABYLON {
         private _pointerObserver;
         private _moving;
         private _startingOrientation;
+        private _attachedElement;
         /**
          * How much faster the object should move when the controller is moving towards it. This is useful to bring objects that are far away from the user to them faster. Set this to 0 to avoid any speed increase. (Default: 3)
          */
@@ -44561,6 +44700,11 @@ declare module BABYLON {
          */
         selectionMeshPickedColor: Color3;
         /**
+         * Optional filter to be used for ray selection.  This predicate shares behavior with
+         * scene.pointerMovePredicate which takes priority if it is also assigned.
+         */
+        raySelectionPredicate: (mesh: AbstractMesh) => boolean;
+        /**
          * constructs a new background remover module
          * @param _xrSessionManager the session manager for this module
          * @param _options read-only options to be used in this module
@@ -47251,6 +47395,50 @@ declare module BABYLON {
         }
 }
 declare module BABYLON {
+        interface Engine {
+            /** @hidden */
+            _excludedCompressedTextures: string[];
+            /** @hidden */
+            _textureFormatInUse: string;
+            /**
+             * Gets the list of texture formats supported
+             */
+            readonly texturesSupported: Array<string>;
+            /**
+             * Gets the texture format in use
+             */
+            readonly textureFormatInUse: Nullable<string>;
+            /**
+             * Set the compressed texture extensions or file names to skip.
+             *
+             * @param skippedFiles defines the list of those texture files you want to skip
+             * Example: [".dds", ".env", "myfile.png"]
+             */
+            setCompressedTextureExclusions(skippedFiles: Array<string>): void;
+            /**
+             * Set the compressed texture format to use, based on the formats you have, and the formats
+             * supported by the hardware / browser.
+             *
+             * Khronos Texture Container (.ktx) files are used to support this.  This format has the
+             * advantage of being specifically designed for OpenGL.  Header elements directly correspond
+             * to API arguments needed to compressed textures.  This puts the burden on the container
+             * generator to house the arcane code for determining these for current & future formats.
+             *
+             * for description see https://www.khronos.org/opengles/sdk/tools/KTX/
+             * for file layout see https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/
+             *
+             * Note: The result of this call is not taken into account when a texture is base64.
+             *
+             * @param formatsAvailable defines the list of those format families you have created
+             * on your server.  Syntax: '-' + format family + '.ktx'.  (Case and order do not matter.)
+             *
+             * Current families are astc, dxt, pvrtc, etc2, & etc1.
+             * @returns The extension selected.
+             */
+            setTextureFormatToUse(formatsAvailable: Array<string>): Nullable<string>;
+        }
+}
+declare module BABYLON {
     /**
      * CubeMap information grouping all the data for each faces as well as the cubemap size.
      */
@@ -48565,8 +48753,9 @@ declare module BABYLON {
         /**
          * Enables/disables scaling
          * @param enable if scaling should be enabled
+         * @param homogeneousScaling defines if scaling should only be homogeneous
          */
-        setEnabledScaling(enable: boolean): void;
+        setEnabledScaling(enable: boolean, homogeneousScaling?: boolean): void;
         private _updateDummy;
         /**
          * Enables a pointer drag behavior on the bounding box of the gizmo
@@ -49891,6 +50080,10 @@ declare module BABYLON {
      */
     export class BRDFTextureTools {
         /**
+         * Prevents texture cache collision
+         */
+        private static _instanceNumber;
+        /**
          * Gets a default environment BRDF for MS-BRDF Height Correlated BRDF
          * @param scene defines the hosting scene
          * @returns the environment BRDF texture
@@ -50339,6 +50532,8 @@ declare module BABYLON {
         SHEEN_TEXTURE: boolean;
         SHEEN_TEXTUREDIRECTUV: number;
         SHEEN_LINKWITHALBEDO: boolean;
+        SHEEN_ROUGHNESS: boolean;
+        SHEEN_ALBEDOSCALING: boolean;
         /** @hidden */
         _areTexturesDirty: boolean;
     }
@@ -50371,6 +50566,20 @@ declare module BABYLON {
          * a is a intensity
          */
         texture: Nullable<BaseTexture>;
+        private _roughness;
+        /**
+         * Defines the sheen roughness.
+         * It is not taken into account if linkSheenWithAlbedo is true.
+         * To stay backward compatible, material roughness is used instead if sheen roughness = null
+         */
+        roughness: Nullable<number>;
+        private _albedoScaling;
+        /**
+         * If true, the sheen effect is layered above the base BRDF with the albedo-scaling technique.
+         * It allows the strength of the sheen effect to not depend on the base color of the material,
+         * making it easier to setup and tweak the effect
+         */
+        albedoScaling: boolean;
         /** @hidden */
         private _internalMarkAllSubMeshesAsTexturesDirty;
         /** @hidden */
@@ -50963,6 +51172,8 @@ declare module BABYLON {
         SHEEN_TEXTURE: boolean;
         SHEEN_TEXTUREDIRECTUV: number;
         SHEEN_LINKWITHALBEDO: boolean;
+        SHEEN_ROUGHNESS: boolean;
+        SHEEN_ALBEDOSCALING: boolean;
         SUBSURFACE: boolean;
         SS_REFRACTION: boolean;
         SS_TRANSLUCENCY: boolean;
@@ -51275,10 +51486,6 @@ declare module BABYLON {
          */
         protected _useLinearAlphaFresnel: boolean;
         /**
-         * The transparency mode of the material.
-         */
-        protected _transparencyMode: Nullable<number>;
-        /**
          * Specifies the environment BRDF texture used to comput the scale and offset roughness values
          * from cos thetav and roughness:
          * http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
@@ -51400,34 +51607,13 @@ declare module BABYLON {
          */
         set useLogarithmicDepth(value: boolean);
         /**
-         * Gets the current transparency mode.
-         */
-        get transparencyMode(): Nullable<number>;
-        /**
-         * Sets the transparency mode of the material.
-         *
-         * | Value | Type                                | Description |
-         * | ----- | ----------------------------------- | ----------- |
-         * | 0     | OPAQUE                              |             |
-         * | 1     | ALPHATEST                           |             |
-         * | 2     | ALPHABLEND                          |             |
-         * | 3     | ALPHATESTANDBLEND                   |             |
-         *
-         */
-        set transparencyMode(value: Nullable<number>);
-        /**
          * Returns true if alpha blending should be disabled.
          */
-        private get _disableAlphaBlending();
+        protected get _disableAlphaBlending(): boolean;
         /**
          * Specifies whether or not this material should be rendered in alpha blend mode.
          */
         needAlphaBlending(): boolean;
-        /**
-         * Specifies if the mesh will require alpha blending.
-         * @param mesh - BJS mesh.
-         */
-        needAlphaBlendingForMesh(mesh: AbstractMesh): boolean;
         /**
          * Specifies whether or not this material should be rendered in alpha test mode.
          */
@@ -57280,6 +57466,11 @@ declare module BABYLON {
          */
         loadFromSerialization(source: any, rootUrl?: string): void;
         /**
+         * Makes a duplicate of the current material.
+         * @param name - name to use for the new material.
+         */
+        clone(name: string): NodeMaterial;
+        /**
          * Creates a node material from parsed material data
          * @param source defines the JSON representation of the material
          * @param scene defines the hosting scene
@@ -60990,6 +61181,9 @@ declare module BABYLON {
             sideOrientation?: number;
             frontUVs?: Vector4;
             backUVs?: Vector4;
+            wrap?: boolean;
+            topBaseAt?: number;
+            bottomBaseAt?: number;
             updatable?: boolean;
         }, scene?: Nullable<Scene>): Mesh;
         /**
@@ -61930,6 +62124,12 @@ declare module BABYLON {
          */
         getClosestPoint(position: Vector3): Vector3;
         /**
+         * Get a navigation mesh constrained position, closest to the parameter position
+         * @param position world position
+         * @param result output the closest point to position constrained by the navigation mesh
+         */
+        getClosestPointToRef(position: Vector3, result: Vector3): void;
+        /**
          * Get a navigation mesh constrained position, within a particular radius
          * @param position world position
          * @param maxRadius the maximum distance to the constrained world position
@@ -61937,12 +62137,26 @@ declare module BABYLON {
          */
         getRandomPointAround(position: Vector3, maxRadius: number): Vector3;
         /**
+         * Get a navigation mesh constrained position, within a particular radius
+         * @param position world position
+         * @param maxRadius the maximum distance to the constrained world position
+         * @param result output the closest point to position constrained by the navigation mesh
+         */
+        getRandomPointAroundToRef(position: Vector3, maxRadius: number, result: Vector3): void;
+        /**
          * Compute the final position from a segment made of destination-position
          * @param position world position
          * @param destination world position
          * @returns the resulting point along the navmesh
          */
         moveAlong(position: Vector3, destination: Vector3): Vector3;
+        /**
+         * Compute the final position from a segment made of destination-position
+         * @param position world position
+         * @param destination world position
+         * @param result output the resulting point along the navmesh
+         */
+        moveAlongToRef(position: Vector3, destination: Vector3, result: Vector3): void;
         /**
          * Compute a navigation path from start to end. Returns an empty array if no path can be computed
          * @param start world position
@@ -61976,6 +62190,21 @@ declare module BABYLON {
          */
         getDefaultQueryExtent(): Vector3;
         /**
+         * build the navmesh from a previously saved state using getNavmeshData
+         * @param data the Uint8Array returned by getNavmeshData
+         */
+        buildFromNavmeshData(data: Uint8Array): void;
+        /**
+         * returns the navmesh data that can be used later. The navmesh must be built before retrieving the data
+         * @returns data the Uint8Array that can be saved and reused
+         */
+        getNavmeshData(): Uint8Array;
+        /**
+         * Get the Bounding box extent result specified by setDefaultQueryExtent
+         * @param result output the box extent values
+         */
+        getDefaultQueryExtentToRef(result: Vector3): void;
+        /**
          * Release all resources
          */
         dispose(): void;
@@ -62000,11 +62229,23 @@ declare module BABYLON {
          */
         getAgentPosition(index: number): Vector3;
         /**
+         * Gets the agent position result in world space
+         * @param index agent index returned by addAgent
+         * @param result output world space position
+         */
+        getAgentPositionToRef(index: number, result: Vector3): void;
+        /**
          * Gets the agent velocity in world space
          * @param index agent index returned by addAgent
          * @returns world space velocity
          */
         getAgentVelocity(index: number): Vector3;
+        /**
+         * Gets the agent velocity result in world space
+         * @param index agent index returned by addAgent
+         * @param result output world space velocity
+         */
+        getAgentVelocityToRef(index: number, result: Vector3): void;
         /**
          * remove a particular agent previously created
          * @param index agent index returned by addAgent
@@ -62050,6 +62291,11 @@ declare module BABYLON {
          * @returns the box extent values
          */
         getDefaultQueryExtent(): Vector3;
+        /**
+         * Get the Bounding box extent result specified by setDefaultQueryExtent
+         * @param result output the box extent values
+         */
+        getDefaultQueryExtentToRef(result: Vector3): void;
         /**
          * Release all resources
          */
@@ -62194,6 +62440,12 @@ declare module BABYLON {
          */
         getClosestPoint(position: Vector3): Vector3;
         /**
+         * Get a navigation mesh constrained position, closest to the parameter position
+         * @param position world position
+         * @param result output the closest point to position constrained by the navigation mesh
+         */
+        getClosestPointToRef(position: Vector3, result: Vector3): void;
+        /**
          * Get a navigation mesh constrained position, within a particular radius
          * @param position world position
          * @param maxRadius the maximum distance to the constrained world position
@@ -62201,12 +62453,26 @@ declare module BABYLON {
          */
         getRandomPointAround(position: Vector3, maxRadius: number): Vector3;
         /**
+         * Get a navigation mesh constrained position, within a particular radius
+         * @param position world position
+         * @param maxRadius the maximum distance to the constrained world position
+         * @param result output the closest point to position constrained by the navigation mesh
+         */
+        getRandomPointAroundToRef(position: Vector3, maxRadius: number, result: Vector3): void;
+        /**
          * Compute the final position from a segment made of destination-position
          * @param position world position
          * @param destination world position
          * @returns the resulting point along the navmesh
          */
         moveAlong(position: Vector3, destination: Vector3): Vector3;
+        /**
+         * Compute the final position from a segment made of destination-position
+         * @param position world position
+         * @param destination world position
+         * @param result output the resulting point along the navmesh
+         */
+        moveAlongToRef(position: Vector3, destination: Vector3, result: Vector3): void;
         /**
          * Compute a navigation path from start to end. Returns an empty array if no path can be computed
          * @param start world position
@@ -62234,6 +62500,21 @@ declare module BABYLON {
          * @returns the box extent values
          */
         getDefaultQueryExtent(): Vector3;
+        /**
+         * build the navmesh from a previously saved state using getNavmeshData
+         * @param data the Uint8Array returned by getNavmeshData
+         */
+        buildFromNavmeshData(data: Uint8Array): void;
+        /**
+         * returns the navmesh data that can be used later. The navmesh must be built before retrieving the data
+         * @returns data the Uint8Array that can be saved and reused
+         */
+        getNavmeshData(): Uint8Array;
+        /**
+         * Get the Bounding box extent result specified by setDefaultQueryExtent
+         * @param result output the box extent values
+         */
+        getDefaultQueryExtentToRef(result: Vector3): void;
         /**
          * Disposes
          */
@@ -62297,11 +62578,23 @@ declare module BABYLON {
          */
         getAgentPosition(index: number): Vector3;
         /**
+         * Returns the agent position result in world space
+         * @param index agent index returned by addAgent
+         * @param result output world space position
+         */
+        getAgentPositionToRef(index: number, result: Vector3): void;
+        /**
          * Returns the agent velocity in world space
          * @param index agent index returned by addAgent
          * @returns world space velocity
          */
         getAgentVelocity(index: number): Vector3;
+        /**
+         * Returns the agent velocity result in world space
+         * @param index agent index returned by addAgent
+         * @param result output world space velocity
+         */
+        getAgentVelocityToRef(index: number, result: Vector3): void;
         /**
          * Asks a particular agent to go to a destination. That destination is constrained by the navigation mesh
          * @param index agent index returned by addAgent
@@ -62347,6 +62640,11 @@ declare module BABYLON {
          * @returns the box extent values
          */
         getDefaultQueryExtent(): Vector3;
+        /**
+         * Get the Bounding box extent result specified by setDefaultQueryExtent
+         * @param result output the box extent values
+         */
+        getDefaultQueryExtentToRef(result: Vector3): void;
         /**
          * Release all resources
          */
