@@ -6,6 +6,6 @@ varying vec2 vUV;
 
 void main( void )
 {
-    vUv = uv;
+    vUV = uv;
     gl_Position = worldViewProjection * vec4(position, 1.0);
 }
