@@ -6,6 +6,7 @@ export * from "./geometryBufferRenderer";
 export * from "./geometryBufferRendererSceneComponent";
 export * from "./IrradianceVolume/Probe";
 export * from "./IrradianceVolume/UniformVolume";
+export * from "./IrradianceVolume/SideCamera";
 export * from "./outlineRenderer";
 export * from "./renderingGroup";
 export * from "./renderingManager";
