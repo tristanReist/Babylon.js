@@ -5776,9 +5776,10 @@ declare module BABYLON {
         set(r: number, g: number, b: number, a: number): Color4;
         /**
          * Compute the Color4 hexadecimal code as a string
+         * @param returnAsColor3 defines if the string should only contains RGB values (off by default)
          * @returns a string containing the hexadecimal representation of the Color4 object
          */
-        toHexString(): string;
+        toHexString(returnAsColor3?: boolean): string;
         /**
          * Computes a new Color4 converted from the current one to linear space
          * @returns a new Color4 object
@@ -10117,7 +10118,26 @@ declare module BABYLON {
         /**
          * Gets or sets second associated color
          */
-        color2?: Color4;
+        color2?: Color4 | undefined;
+        /**
+         * Creates a new color4 gradient
+         * @param gradient gets or sets the gradient value (between 0 and 1)
+         * @param color1 gets or sets first associated color
+         * @param color2 gets or sets first second color
+         */
+        constructor(
+        /**
+         * Gets or sets the gradient value (between 0 and 1)
+         */
+        gradient: number, 
+        /**
+         * Gets or sets first associated color
+         */
+        color1: Color4, 
+        /**
+         * Gets or sets second associated color
+         */
+        color2?: Color4 | undefined);
         /**
          * Will get a color picked randomly between color1 and color2.
          * If color2 is undefined then color1 will be used
@@ -10135,6 +10155,20 @@ declare module BABYLON {
          * Gets or sets the associated color
          */
         color: Color3;
+        /**
+         * Creates a new color3 gradient
+         * @param gradient gets or sets the gradient value (between 0 and 1)
+         * @param color gets or sets associated color
+         */
+        constructor(
+        /**
+         * Gets or sets the gradient value (between 0 and 1)
+         */
+        gradient: number, 
+        /**
+         * Gets or sets the associated color
+         */
+        color: Color3);
     }
     /** Class used to store factor gradient */
     export class FactorGradient implements IValueGradient {
@@ -10149,7 +10183,26 @@ declare module BABYLON {
         /**
          * Gets or sets second associated factor
          */
-        factor2?: number;
+        factor2?: number | undefined;
+        /**
+         * Creates a new factor gradient
+         * @param gradient gets or sets the gradient value (between 0 and 1)
+         * @param factor1 gets or sets first associated factor
+         * @param factor2 gets or sets second associated factor
+         */
+        constructor(
+        /**
+         * Gets or sets the gradient value (between 0 and 1)
+         */
+        gradient: number, 
+        /**
+         * Gets or sets first associated factor
+         */
+        factor1: number, 
+        /**
+         * Gets or sets second associated factor
+         */
+        factor2?: number | undefined);
         /**
          * Will get a number picked randomly between factor1 and factor2.
          * If factor2 is undefined then factor1 will be used
@@ -10787,6 +10840,8 @@ declare module BABYLON {
         _textures: {
             [key: string]: Texture;
         };
+        /** @hidden */
+        protected _fallbackTexture: Nullable<Texture>;
         private _size;
         private _currentRefreshId;
         private _frameId;
@@ -10804,7 +10859,6 @@ declare module BABYLON {
         private _vectors2;
         private _vectors3;
         private _matrices;
-        private _fallbackTexture;
         private _fallbackTextureUsed;
         private _engine;
         private _cachedDefines;
@@ -10989,6 +11043,10 @@ declare module BABYLON {
          * List of animations used by the particle system.
          */
         animations: Animation[];
+        /**
+         * Gets or sets the unique id of the particle system
+         */
+        uniqueId: number;
         /**
          * The id of the Particle system.
          */
@@ -11648,10 +11706,20 @@ declare module BABYLON {
          */
         get particles(): Particle[];
         /**
+         * Gets the number of particles active at the same time.
+         * @returns The number of active particles.
+         */
+        getActiveCount(): number;
+        /**
          * Returns the string "ParticleSystem"
          * @returns a string containing the class name
          */
         getClassName(): string;
+        /**
+         * Gets a boolean indicating that the system is stopping
+         * @returns true if the system is currently stopping
+         */
+        isStopping(): boolean;
         /**
          * Instantiates a particle system.
          * Particles are often small sprites used to simulate hard-to-reproduce phenomena like fire, smoke, water, or abstract visual effects like magic glitter and faery dust.
@@ -13138,6 +13206,11 @@ declare module BABYLON {
          */
         getCapacity(): number;
         /**
+         * Gets the number of particles active at the same time.
+         * @returns The number of active particles.
+         */
+        getActiveCount(): number;
+        /**
          * Gets if the system has been started. (Note: this will still be true after stop is called)
          * @returns True if it has been started, otherwise false.
          */
@@ -13185,6 +13258,11 @@ declare module BABYLON {
          * Remove all active particles
          */
         reset(): void;
+        /**
+         * Gets a boolean indicating that the system is stopping
+         * @returns true if the system is currently stopping
+         */
+        isStopping(): boolean;
         /**
          * Is this system ready to be used/rendered
          * @return true if the system is ready
@@ -14486,6 +14564,10 @@ declare module BABYLON {
          * Gets the actual target of the runtime animation
          */
         get target(): any;
+        /**
+         * Gets the additive state of the runtime animation
+         */
+        get isAdditive(): boolean;
         /** @hidden */
         _onLoop: () => void;
         /**
@@ -14568,6 +14650,8 @@ declare module BABYLON {
         onAnimationEnd?: (() => void) | null | undefined;
         /** defines a callback to call when animation loops */
         onAnimationLoop?: (() => void) | null | undefined;
+        /** defines whether the animation should be evaluated additively */
+        isAdditive: boolean;
         private _localDelayOffset;
         private _pausedDelay;
         private _runtimeAnimations;
@@ -14623,6 +14707,7 @@ declare module BABYLON {
          * @param onAnimationEnd defines a callback to call when animation ends if it is not looping
          * @param animations defines a group of animation to add to the new Animatable
          * @param onAnimationLoop defines a callback to call when animation loops
+         * @param isAdditive defines whether the animation should be evaluated additively
          */
         constructor(scene: Scene, 
         /** defines the target object */
@@ -14636,7 +14721,9 @@ declare module BABYLON {
         /** defines a callback to call when animation ends if it is not looping */
         onAnimationEnd?: (() => void) | null | undefined, animations?: Animation[], 
         /** defines a callback to call when animation loops */
-        onAnimationLoop?: (() => void) | null | undefined);
+        onAnimationLoop?: (() => void) | null | undefined, 
+        /** defines whether the animation should be evaluated additively */
+        isAdditive?: boolean);
         /**
          * Synchronize and normalize current Animatable with a source Animatable
          * This is useful when using animation weights and when animations are not of the same length
@@ -14716,13 +14803,17 @@ declare module BABYLON {
             /** @hidden */
             _processLateAnimationBindingsForMatrices(holder: {
                 totalWeight: number;
+                totalAdditiveWeight: number;
                 animations: RuntimeAnimation[];
+                additiveAnimations: RuntimeAnimation[];
                 originalValue: Matrix;
             }): any;
             /** @hidden */
             _processLateAnimationBindingsForQuaternions(holder: {
                 totalWeight: number;
+                totalAdditiveWeight: number;
                 animations: RuntimeAnimation[];
+                additiveAnimations: RuntimeAnimation[];
                 originalValue: Quaternion;
             }, refQuaternion: Quaternion): Quaternion;
             /** @hidden */
@@ -14739,9 +14830,10 @@ declare module BABYLON {
              * @param animatable defines an animatable object. If not provided a new one will be created from the given params
              * @param targetMask defines if the target should be animated if animations are present (this is called recursively on descendant animatables regardless of return value)
              * @param onAnimationLoop defines the callback to call when an animation loops
+             * @param isAdditive defines whether the animation should be evaluated additively (false by default)
              * @returns the animatable object created for this animation
              */
-            beginWeightedAnimation(target: any, from: number, to: number, weight: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, animatable?: Animatable, targetMask?: (target: any) => boolean, onAnimationLoop?: () => void): Animatable;
+            beginWeightedAnimation(target: any, from: number, to: number, weight: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, animatable?: Animatable, targetMask?: (target: any) => boolean, onAnimationLoop?: () => void, isAdditive?: boolean): Animatable;
             /**
              * Will start the animation sequence of a given target
              * @param target defines the target
@@ -14754,9 +14846,10 @@ declare module BABYLON {
              * @param stopCurrent defines if the current animations must be stopped first (true by default)
              * @param targetMask defines if the target should be animate if animations are present (this is called recursively on descendant animatables regardless of return value)
              * @param onAnimationLoop defines the callback to call when an animation loops
+             * @param isAdditive defines whether the animation should be evaluated additively (false by default)
              * @returns the animatable object created for this animation
              */
-            beginAnimation(target: any, from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, animatable?: Animatable, stopCurrent?: boolean, targetMask?: (target: any) => boolean, onAnimationLoop?: () => void): Animatable;
+            beginAnimation(target: any, from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, animatable?: Animatable, stopCurrent?: boolean, targetMask?: (target: any) => boolean, onAnimationLoop?: () => void, isAdditive?: boolean): Animatable;
             /**
              * Will start the animation sequence of a given target and its hierarchy
              * @param target defines the target
@@ -14770,9 +14863,10 @@ declare module BABYLON {
              * @param stopCurrent defines if the current animations must be stopped first (true by default)
              * @param targetMask defines if the target should be animated if animations are present (this is called recursively on descendant animatables regardless of return value)
              * @param onAnimationLoop defines the callback to call when an animation loops
+             * @param isAdditive defines whether the animation should be evaluated additively (false by default)
              * @returns the list of created animatables
              */
-            beginHierarchyAnimation(target: any, directDescendantsOnly: boolean, from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, animatable?: Animatable, stopCurrent?: boolean, targetMask?: (target: any) => boolean, onAnimationLoop?: () => void): Animatable[];
+            beginHierarchyAnimation(target: any, directDescendantsOnly: boolean, from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, animatable?: Animatable, stopCurrent?: boolean, targetMask?: (target: any) => boolean, onAnimationLoop?: () => void, isAdditive?: boolean): Animatable[];
             /**
              * Begin a new animation on a given node
              * @param target defines the target where the animation will take place
@@ -14783,9 +14877,10 @@ declare module BABYLON {
              * @param speedRatio defines the speed ratio to apply to all animations
              * @param onAnimationEnd defines the callback to call when an animation ends (will be called once per node)
              * @param onAnimationLoop defines the callback to call when an animation loops
+             * @param isAdditive defines whether the animation should be evaluated additively (false by default)
              * @returns the list of created animatables
              */
-            beginDirectAnimation(target: any, animations: Animation[], from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, onAnimationLoop?: () => void): Animatable;
+            beginDirectAnimation(target: any, animations: Animation[], from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, onAnimationLoop?: () => void, isAdditive?: boolean): Animatable;
             /**
              * Begin a new animation on a given node and its hierarchy
              * @param target defines the root node where the animation will take place
@@ -14797,9 +14892,10 @@ declare module BABYLON {
              * @param speedRatio defines the speed ratio to apply to all animations
              * @param onAnimationEnd defines the callback to call when an animation ends (will be called once per node)
              * @param onAnimationLoop defines the callback to call when an animation loops
+             * @param isAdditive defines whether the animation should be evaluated additively (false by default)
              * @returns the list of animatables created for all nodes
              */
-            beginDirectHierarchyAnimation(target: Node, directDescendantsOnly: boolean, animations: Animation[], from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, onAnimationLoop?: () => void): Animatable[];
+            beginDirectHierarchyAnimation(target: Node, directDescendantsOnly: boolean, animations: Animation[], from: number, to: number, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void, onAnimationLoop?: () => void, isAdditive?: boolean): Animatable[];
             /**
              * Gets the animatable associated with a specific target
              * @param target defines the target of the animatable
@@ -15011,6 +15107,14 @@ declare module BABYLON {
          * @returns a new animatable
          */
         beginAnimation(name: string, loop?: boolean, speedRatio?: number, onAnimationEnd?: () => void): Nullable<Animatable>;
+        /**
+         * Convert the keyframes for a range of animation on a skeleton to be relative to a given reference frame.
+         * @param skeleton defines the Skeleton containing the animation range to convert
+         * @param referenceFrame defines the frame that keyframes in the range will be relative to
+         * @param range defines the name of the AnimationRange belonging to the Skeleton to convert
+         * @returns the original skeleton
+         */
+        static MakeAnimationAdditive(skeleton: Skeleton, referenceFrame: number | undefined, range: string): Nullable<Skeleton>;
         /** @hidden */
         _markAsDirty(): void;
         /** @hidden */
@@ -15401,14 +15505,14 @@ declare module BABYLON {
          * @param texture Define the texture to bind to this sampler
          * @return the material itself allowing "fluent" like uniform updates
          */
-        setTexture(name: string, texture: Texture): ShaderMaterial;
+        setTexture(name: string, texture: BaseTexture): ShaderMaterial;
         /**
          * Set a texture array in the shader.
          * @param name Define the name of the uniform sampler array as defined in the shader
          * @param textures Define the list of textures to bind to this sampler
          * @return the material itself allowing "fluent" like uniform updates
          */
-        setTextureArray(name: string, textures: Texture[]): ShaderMaterial;
+        setTextureArray(name: string, textures: BaseTexture[]): ShaderMaterial;
         /**
          * Set a float in the shader.
          * @param name Define the name of the uniform as defined in the shader
@@ -20513,6 +20617,10 @@ declare module BABYLON {
          * Define the camera used to render the texture.
          */
         activeCamera: Nullable<Camera>;
+        /**
+         * Override the mesh isReady function with your own one.
+         */
+        customIsReadyFunction: (mesh: AbstractMesh, refreshRate: number) => boolean;
         /**
          * Override the render function of the texture with your own one.
          */
@@ -26043,6 +26151,56 @@ declare module BABYLON {
 }
 declare module BABYLON {
     /**
+     * Options to be used when creating a FresnelParameters.
+     */
+    export type IFresnelParametersCreationOptions = {
+        /**
+         * Define the color used on edges (grazing angle)
+         */
+        leftColor?: Color3;
+        /**
+         * Define the color used on center
+         */
+        rightColor?: Color3;
+        /**
+         * Define bias applied to computed fresnel term
+         */
+        bias?: number;
+        /**
+         * Defined the power exponent applied to fresnel term
+         */
+        power?: number;
+        /**
+         * Define if the fresnel effect is enable or not.
+         */
+        isEnabled?: boolean;
+    };
+    /**
+     * Serialized format for FresnelParameters.
+     */
+    export type IFresnelParametersSerialized = {
+        /**
+         * Define the color used on edges (grazing angle) [as an array]
+         */
+        leftColor: number[];
+        /**
+         * Define the color used on center [as an array]
+         */
+        rightColor: number[];
+        /**
+         * Define bias applied to computed fresnel term
+         */
+        bias: number;
+        /**
+         * Defined the power exponent applied to fresnel term
+         */
+        power?: number;
+        /**
+         * Define if the fresnel effect is enable or not.
+         */
+        isEnabled: boolean;
+    };
+    /**
      * This represents all the required information to add a fresnel effect on a material:
      * @see http://doc.babylonjs.com/how_to/how_to_use_fresnelparameters
      */
@@ -26070,21 +26228,33 @@ declare module BABYLON {
          */
         power: number;
         /**
+         * Creates a new FresnelParameters object.
+         *
+         * @param options provide your own settings to optionally to override defaults
+         */
+        constructor(options?: IFresnelParametersCreationOptions);
+        /**
          * Clones the current fresnel and its valuues
          * @returns a clone fresnel configuration
          */
         clone(): FresnelParameters;
         /**
+         * Determines equality between FresnelParameters objects
+         * @param otherFresnelParameters defines the second operand
+         * @returns true if the power, bias, leftColor, rightColor and isEnabled values are equal to the given ones
+         */
+        equals(otherFresnelParameters: DeepImmutable<FresnelParameters>): boolean;
+        /**
          * Serializes the current fresnel parameters to a JSON representation.
          * @return the JSON serialization
          */
-        serialize(): any;
+        serialize(): IFresnelParametersSerialized;
         /**
          * Parse a JSON object and deserialize it to a new Fresnel parameter object.
          * @param parsedFresnelParameters Define the JSON representation
          * @returns the parsed parameters
          */
-        static Parse(parsedFresnelParameters: any): FresnelParameters;
+        static Parse(parsedFresnelParameters: IFresnelParametersSerialized): FresnelParameters;
     }
 }
 declare module BABYLON {
@@ -26822,7 +26992,7 @@ declare module BABYLON {
         /**
          * Custom callback helping to override the default shader used in the material.
          */
-        customShaderNameResolve: (shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: StandardMaterialDefines) => string;
+        customShaderNameResolve: (shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: StandardMaterialDefines, attributes?: string[]) => string;
         protected _renderTargets: SmartArray<RenderTargetTexture>;
         protected _worldViewProjectionMatrix: Matrix;
         protected _globalAmbientColor: Color3;
@@ -27843,6 +28013,7 @@ declare module BABYLON {
         _checkCollisions: boolean;
         _collisionMask: number;
         _collisionGroup: number;
+        _surroundingMeshes: Nullable<AbstractMesh[]>;
         _collider: Nullable<Collider>;
         _oldPositionForCollisions: Vector3;
         _diffPositionForCollisions: Vector3;
@@ -28164,6 +28335,17 @@ declare module BABYLON {
          */
         get collisionGroup(): number;
         set collisionGroup(mask: number);
+        /**
+         * Gets or sets current surrounding meshes (null by default).
+         *
+         * By default collision detection is tested against every mesh in the scene.
+         * It is possible to set surroundingMeshes to a defined list of meshes and then only these specified
+         * meshes will be tested for the collision.
+         *
+         * Note: if set to an empty array no collision will happen when this mesh is moved.
+         */
+        get surroundingMeshes(): Nullable<AbstractMesh[]>;
+        set surroundingMeshes(meshes: Nullable<AbstractMesh[]>);
         /**
          * Defines edge width used when edgesRenderer is enabled
          * @see https://www.babylonjs-playground.com/#10OJSG#13
@@ -29343,6 +29525,16 @@ declare module BABYLON {
          * @returns Nullable animation
          */
         static CreateMergeAndStartAnimation(name: string, node: Node, targetProperty: string, framePerSecond: number, totalFrame: number, from: any, to: any, loopMode?: number, easingFunction?: EasingFunction, onAnimationEnd?: () => void): Nullable<Animatable>;
+        /**
+         * Convert the keyframes for all animations belonging to the group to be relative to a given reference frame.
+         * @param sourceAnimation defines the Animation containing keyframes to convert
+         * @param referenceFrame defines the frame that keyframes in the range will be relative to
+         * @param range defines the name of the AnimationRange belonging to the Animation to convert
+         * @param cloneOriginal defines whether or not to clone the animation and convert the clone or convert the original animation (default is false)
+         * @param clonedName defines the name of the resulting cloned Animation if cloneOriginal is true
+         * @returns a new Animation if cloneOriginal is true or the original Animation if cloneOriginal is false
+         */
+        static MakeAnimationAdditive(sourceAnimation: Animation, referenceFrame?: number, range?: string, cloneOriginal?: boolean, clonedName?: string): Animation;
         /**
          * Transition property of an host to the target Value
          * @param property The property to transition
@@ -34988,6 +35180,7 @@ declare module BABYLON {
         private _isPaused;
         private _speedRatio;
         private _loopAnimation;
+        private _isAdditive;
         /**
          * Gets or sets the unique id of the node
          */
@@ -35046,6 +35239,11 @@ declare module BABYLON {
         get loopAnimation(): boolean;
         set loopAnimation(value: boolean);
         /**
+         * Gets or sets if all animations should be evaluated additively
+         */
+        get isAdditive(): boolean;
+        set isAdditive(value: boolean);
+        /**
          * Gets the targeted animations for this animation group
          */
         get targetedAnimations(): Array<TargetedAnimation>;
@@ -35087,9 +35285,10 @@ declare module BABYLON {
          * @param speedRatio defines the ratio to apply to animation speed (1 by default)
          * @param from defines the from key (optional)
          * @param to defines the to key (optional)
+         * @param isAdditive defines the additive state for the resulting animatables (optional)
          * @returns the current animation group
          */
-        start(loop?: boolean, speedRatio?: number, from?: number, to?: number): AnimationGroup;
+        start(loop?: boolean, speedRatio?: number, from?: number, to?: number, isAdditive?: boolean): AnimationGroup;
         /**
          * Pause all animations
          * @returns the animation group
@@ -35161,6 +35360,16 @@ declare module BABYLON {
          * @returns a new AnimationGroup
          */
         static Parse(parsedAnimationGroup: any, scene: Scene): AnimationGroup;
+        /**
+         * Convert the keyframes for all animations belonging to the group to be relative to a given reference frame.
+         * @param sourceAnimationGroup defines the AnimationGroup containing animations to convert
+         * @param referenceFrame defines the frame that keyframes in the range will be relative to
+         * @param range defines the name of the AnimationRange belonging to the animations in the group to convert
+         * @param cloneOriginal defines whether or not to clone the group and convert the clone or convert the original group (default is false)
+         * @param clonedName defines the name of the resulting cloned AnimationGroup if cloneOriginal is true
+         * @returns a new AnimationGroup if cloneOriginal is true or the original AnimationGroup if cloneOriginal is false
+         */
+        static MakeAnimationAdditive(sourceAnimationGroup: AnimationGroup, referenceFrame?: number, range?: string, cloneOriginal?: boolean, clonedName?: string): AnimationGroup;
         /**
          * Returns the string "AnimationGroup"
          * @returns "AnimationGroup"
@@ -48741,8 +48950,9 @@ declare module BABYLON {
         /**
          * Enables/disables scaling
          * @param enable if scaling should be enabled
+         * @param homogeneousScaling defines if scaling should only be homogeneous
          */
-        setEnabledScaling(enable: boolean): void;
+        setEnabledScaling(enable: boolean, homogeneousScaling?: boolean): void;
         private _updateDummy;
         /**
          * Enables a pointer drag behavior on the bounding box of the gizmo
@@ -51568,7 +51778,7 @@ declare module BABYLON {
         /**
          * Custom callback helping to override the default shader used in the material.
          */
-        customShaderNameResolve: (shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: PBRMaterialDefines) => string;
+        customShaderNameResolve: (shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: PBRMaterialDefines, attributes?: string[]) => string;
         protected _rebuildInParallel: boolean;
         /**
          * Instantiates a new PBRMaterial instance.
@@ -54555,6 +54765,10 @@ declare module BABYLON {
         private _computeMatrices;
         private _computeFrustumInWorldSpace;
         private _computeCascadeFrustum;
+        /**
+        *  Support test.
+        */
+        static get IsSupported(): boolean;
         /** @hidden */
         static _SceneComponentInitialization: (scene: Scene) => void;
         /**
@@ -56410,6 +56624,11 @@ declare module BABYLON {
          * @returns a serialized noise procedural texture object
          */
         serialize(): any;
+        /**
+         * Clone the texture.
+         * @returns the cloned texture
+         */
+        clone(): NoiseProceduralTexture;
         /**
          * Creates a NoiseProceduralTexture from parsed noise procedural texture data
          * @param parsedTexture defines parsed texture data
@@ -62835,6 +63054,21 @@ declare module BABYLON {
          */
         isStarted(): boolean;
         /**
+         * Gets if the system has been stopped. (Note: rendering is still happening but the system is frozen)
+         * @returns True if it has been stopped, otherwise false.
+         */
+        isStopped(): boolean;
+        /**
+         * Gets a boolean indicating that the system is stopping
+         * @returns true if the system is currently stopping
+         */
+        isStopping(): boolean;
+        /**
+         * Gets the number of particles active at the same time.
+         * @returns The number of active particles.
+         */
+        getActiveCount(): number;
+        /**
          * Starts the particle system and begins to emit
          * @param delay defines the delay in milliseconds before starting the system (this.startDelay by default)
          */
@@ -62862,6 +63096,9 @@ declare module BABYLON {
          * @returns the current particle system
          */
         addColorGradient(gradient: number, color1: Color4, color2?: Color4): GPUParticleSystem;
+        private _refreshColorGradient;
+        /** Force the system to rebuild all gradients */
+        forceRefreshGradients(): void;
         /**
          * Remove a specific color gradient
          * @param gradient defines the gradient to remove
@@ -62887,6 +63124,7 @@ declare module BABYLON {
          * @returns the current particle system
          */
         removeSizeGradient(gradient: number): GPUParticleSystem;
+        private _refreshFactorGradient;
         /**
          * Adds a new angular speed gradient
          * @param gradient defines the gradient to use (between 0 and 1)
@@ -69041,7 +69279,7 @@ declare module BABYLON {
     /**
      * Options used for hit testing
      */
-    export interface IWebXRHitTestOptions {
+    export interface IWebXRLegacyHitTestOptions {
         /**
          * Only test when user interacted with the scene. Default - hit test every frame
          */
@@ -69054,7 +69292,7 @@ declare module BABYLON {
     /**
      * Interface defining the babylon result of raycasting/hit-test
      */
-    export interface IWebXRHitResult {
+    export interface IWebXRLegacyHitResult {
         /**
          * Transformation matrix that can be applied to a node that will put it in the hit point location
          */
@@ -69062,7 +69300,7 @@ declare module BABYLON {
         /**
          * The native hit test result
          */
-        xrHitResult: XRHitResult;
+        xrHitResult: XRHitResult | XRHitTestResult;
     }
     /**
      * The currently-working hit-test module.
@@ -69073,7 +69311,7 @@ declare module BABYLON {
         /**
          * options to use when constructing this feature
          */
-        readonly options: IWebXRHitTestOptions;
+        readonly options: IWebXRLegacyHitTestOptions;
         private _direction;
         private _mat;
         private _onSelectEnabled;
@@ -69095,7 +69333,7 @@ declare module BABYLON {
         /**
          * Triggered when new babylon (transformed) hit test results are available
          */
-        onHitTestResultObservable: Observable<IWebXRHitResult[]>;
+        onHitTestResultObservable: Observable<IWebXRLegacyHitResult[]>;
         /**
          * Creates a new instance of the (legacy version) hit test feature
          * @param _xrSessionManager an instance of WebXRSessionManager
@@ -69105,7 +69343,7 @@ declare module BABYLON {
         /**
          * options to use when constructing this feature
          */
-        options?: IWebXRHitTestOptions);
+        options?: IWebXRLegacyHitTestOptions);
         /**
          * execute a hit test with an XR Ray
          *
@@ -69592,6 +69830,132 @@ declare module BABYLON {
         }): void;
         protected _onXRFrame(_xrFrame: any): void;
         private _detachController;
+    }
+}
+declare module BABYLON {
+    /**
+     * Options used for hit testing (version 2)
+     */
+    export interface IWebXRHitTestOptions extends IWebXRLegacyHitTestOptions {
+        /**
+         * Do not create a permanent hit test. Will usually be used when only
+         * transient inputs are needed.
+         */
+        disablePermanentHitTest?: boolean;
+        /**
+         * Enable transient (for example touch-based) hit test inspections
+         */
+        enableTransientHitTest?: boolean;
+        /**
+         * Offset ray for the permanent hit test
+         */
+        offsetRay?: Vector3;
+        /**
+         * Offset ray for the transient hit test
+         */
+        transientOffsetRay?: Vector3;
+        /**
+         * Instead of using viewer space for hit tests, use the reference space defined in the session manager
+         */
+        useReferenceSpace?: boolean;
+    }
+    /**
+     * Interface defining the babylon result of hit-test
+     */
+    export interface IWebXRHitResult extends IWebXRLegacyHitResult {
+        /**
+         * The input source that generated this hit test (if transient)
+         */
+        inputSource?: XRInputSource;
+        /**
+         * Is this a transient hit test
+         */
+        isTransient?: boolean;
+        /**
+         * Position of the hit test result
+         */
+        position: Vector3;
+        /**
+         * Rotation of the hit test result
+         */
+        rotationQuaternion: Quaternion;
+    }
+    /**
+     * The currently-working hit-test module.
+     * Hit test (or Ray-casting) is used to interact with the real world.
+     * For further information read here - https://github.com/immersive-web/hit-test
+     *
+     * Tested on chrome (mobile) 80.
+     */
+    export class WebXRHitTest extends WebXRAbstractFeature {
+        /**
+         * options to use when constructing this feature
+         */
+        readonly options: IWebXRHitTestOptions;
+        private _tmpMat;
+        private _tmpPos;
+        private _tmpQuat;
+        private _transientXrHitTestSource;
+        private _xrHitTestSource;
+        private initHitTestSource;
+        /**
+         * The module's name
+         */
+        static readonly Name: string;
+        /**
+         * The (Babylon) version of this module.
+         * This is an integer representing the implementation version.
+         * This number does not correspond to the WebXR specs version
+         */
+        static readonly Version: number;
+        /**
+         * When set to true, each hit test will have its own position/rotation objects
+         * When set to false, position and rotation objects will be reused for each hit test. It is expected that
+         * the developers will clone them or copy them as they see fit.
+         */
+        autoCloneTransformation: boolean;
+        /**
+         * Populated with the last native XR Hit Results
+         */
+        lastNativeXRHitResults: XRHitResult[];
+        /**
+         * Triggered when new babylon (transformed) hit test results are available
+         */
+        onHitTestResultObservable: Observable<IWebXRHitResult[]>;
+        /**
+         * Use this to temporarily pause hit test checks.
+         */
+        paused: boolean;
+        /**
+         * Creates a new instance of the hit test feature
+         * @param _xrSessionManager an instance of WebXRSessionManager
+         * @param options options to use when constructing this feature
+         */
+        constructor(_xrSessionManager: WebXRSessionManager, 
+        /**
+         * options to use when constructing this feature
+         */
+        options?: IWebXRHitTestOptions);
+        /**
+         * attach this feature
+         * Will usually be called by the features manager
+         *
+         * @returns true if successful.
+         */
+        attach(): boolean;
+        /**
+         * detach this feature.
+         * Will usually be called by the features manager
+         *
+         * @returns true if successful.
+         */
+        detach(): boolean;
+        /**
+         * Dispose this feature and all of the resources attached
+         */
+        dispose(): void;
+        protected _onXRFrame(frame: XRFrame): void;
+        private _processWebXRHitTestResult;
     }
 }
 declare module BABYLON {
@@ -70396,9 +70760,14 @@ interface XRSession extends XRAnchorCreator {
     renderState: XRRenderState;
     inputSources: Array<XRInputSource>;
 
-    // AR hit test
+    // hit test
+    requestHitTestSource(options: XRHitTestOptionsInit): Promise<XRHitTestSource>;
+    requestHitTestSourceForTransientInput(options: XRTransientInputHitTestOptionsInit): Promise<XRTransientInputHitTestSource>;
+
+    // legacy AR hit test
     requestHitTest(ray: XRRay, referenceSpace: XRReferenceSpace): Promise<XRHitResult[]>;
 
+    // legacy plane detection
     updateWorldTrackingState(options: {
         planeDetectionState?: { enabled: boolean; }
     }): void;
@@ -70417,6 +70786,9 @@ interface XRFrame {
     getViewerPose(referenceSpace: XRReferenceSpace): XRViewerPose | undefined;
     getPose(space: XRSpace, baseSpace: XRSpace): XRPose | undefined;
 
+    // AR
+    getHitTestResults(hitTestSource: XRHitTestSource): Array<XRHitTestResult> ;
+    getHitTestResultsForTransientInput(hitTestSource: XRTransientInputHitTestSource): Array<XRTransientInputHitTestResult>;
     // Anchors
     trackedAnchors?: XRAnchorSet;
     // Planes
@@ -70487,8 +70859,42 @@ declare class XRRay {
     matrix: Float32Array;
 }
 
+declare enum XRHitTestTrackableType {
+    "point",
+    "plane"
+}
+
 interface XRHitResult {
     hitMatrix: Float32Array;
+}
+
+interface XRTransientInputHitTestResult {
+    readonly inputSource: XRInputSource;
+    readonly results: Array<XRHitTestResult>;
+}
+
+interface XRHitTestResult {
+    getPose(baseSpace: XRSpace): XRPose | undefined;
+}
+
+interface XRHitTestSource {
+    cancel(): void;
+}
+
+interface XRTransientInputHitTestSource {
+    cancel(): void;
+}
+
+interface XRHitTestOptionsInit {
+    space: XRSpace;
+    entityTypes?: Array<XRHitTestTrackableType>;
+    offsetRay?: XRRay;
+}
+
+interface XRTransientInputHitTestOptionsInit {
+    profile: string;
+    entityTypes?: Array<XRHitTestTrackableType>;
+    offsetRay?: XRRay;
 }
 
 interface XRAnchor {
@@ -79144,13 +79550,15 @@ declare module BABYLON {
         _newUniforms: string[];
         _newUniformInstances: any[];
         _newSamplerInstances: BABYLON.Texture[];
+        _customAttributes: string[];
         FragmentShader: string;
         VertexShader: string;
         AttachAfterBind(mesh: BABYLON.Mesh, effect: BABYLON.Effect): void;
         ReviewUniform(name: string, arr: string[]): string[];
-        Builder(shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: BABYLON.StandardMaterialDefines): string;
+        Builder(shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: BABYLON.StandardMaterialDefines, attributes?: string[]): string;
         constructor(name: string, scene: BABYLON.Scene);
         AddUniform(name: string, kind: string, param: any): CustomMaterial;
+        AddAttribute(name: string): CustomMaterial;
         Fragment_Begin(shaderPart: string): CustomMaterial;
         Fragment_Definitions(shaderPart: string): CustomMaterial;
         Fragment_MainBegin(shaderPart: string): CustomMaterial;
@@ -79196,13 +79604,15 @@ declare module BABYLON {
         _newUniforms: string[];
         _newUniformInstances: any[];
         _newSamplerInstances: BABYLON.Texture[];
+        _customAttributes: string[];
         FragmentShader: string;
         VertexShader: string;
         AttachAfterBind(mesh: BABYLON.Mesh, effect: BABYLON.Effect): void;
         ReviewUniform(name: string, arr: string[]): string[];
-        Builder(shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: BABYLON.PBRMaterialDefines): string;
+        Builder(shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: BABYLON.PBRMaterialDefines, attributes?: string[]): string;
         constructor(name: string, scene: BABYLON.Scene);
         AddUniform(name: string, kind: string, param: any): PBRCustomMaterial;
+        AddAttribute(name: string): PBRCustomMaterial;
         Fragment_Begin(shaderPart: string): PBRCustomMaterial;
         Fragment_Definitions(shaderPart: string): PBRCustomMaterial;
         Fragment_MainBegin(shaderPart: string): PBRCustomMaterial;
