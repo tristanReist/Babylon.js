@@ -6,6 +6,7 @@ import { RenderTargetTexture } from "../../Materials/Textures/renderTargetTextur
 import { Constants } from "../../Engines/constants";
 
 import "../../Engines/Extensions/engine.multiRender";
+import { Matrix } from '../../Maths/math.vector';
 
 /**
  * Creation options of the multi render target texture.
@@ -47,6 +48,10 @@ export interface IMultiRenderTargetOptions {
      * Define the default type of the buffers we are creating
      */
     defaultType?: number;
+    /**
+     * Define if we are dealing with a cubeTexture
+     */
+    isCube?: boolean;
 }
 
 /**
@@ -122,8 +127,8 @@ export class MultiRenderTarget extends RenderTargetTexture {
         var generateMipMaps = options && options.generateMipMaps ? options.generateMipMaps : false;
         var generateDepthTexture = options && options.generateDepthTexture ? options.generateDepthTexture : false;
         var doNotChangeAspectRatio = !options || options.doNotChangeAspectRatio === undefined ? true : options.doNotChangeAspectRatio;
-
-        super(name, size, scene, generateMipMaps, doNotChangeAspectRatio);
+        var isCube = options && options.isCube ? options.isCube : false;
+        super(name, size, scene, generateMipMaps, doNotChangeAspectRatio,  Constants.TEXTURETYPE_UNSIGNED_INT, isCube);
 
         this._engine = scene.getEngine();
 
@@ -160,7 +165,8 @@ export class MultiRenderTarget extends RenderTargetTexture {
             generateStencilBuffer: generateStencilBuffer,
             generateDepthTexture: generateDepthTexture,
             types: types,
-            textureCount: count
+            textureCount: count,
+            isCube: isCube
         };
 
         this._createInternalTextures();
@@ -182,7 +188,14 @@ export class MultiRenderTarget extends RenderTargetTexture {
     }
 
     private _createInternalTextures(): void {
-        this._internalTextures = this._engine.createMultipleRenderTarget(this._size, this._multiRenderTargetOptions);
+        if (this.isCube){
+            this._internalTextures = this._engine.createMultipleRenderTargetCube(this._size, this._multiRenderTargetOptions);
+            this.coordinatesMode = Texture.INVCUBIC_MODE;
+            this._textureMatrix = Matrix.Identity();
+        }
+        else{
+            this._internalTextures = this._engine.createMultipleRenderTarget(this._size, this._multiRenderTargetOptions);
+        }
     }
 
     private _createTextures(): void {
@@ -224,9 +237,16 @@ export class MultiRenderTarget extends RenderTargetTexture {
     }
 
     protected unbindFrameBuffer(engine: Engine, faceIndex: number): void {
-        engine.unBindMultiColorAttachmentFramebuffer(this._internalTextures, this.isCube, () => {
-            this.onAfterRenderObservable.notifyObservers(faceIndex);
+        if (!this.isCube)
+            engine.unBindMultiColorAttachmentFramebuffer(this._internalTextures, this.isCube, () => {
+                this.onAfterRenderObservable.notifyObservers(faceIndex);
         });
+        else{
+            engine.unBindMultiColorAttachmentFramebufferCube(this._internalTextures, this.isCube, () => {
+                this.onAfterRenderObservable.notifyObservers(faceIndex);
+        });
+        }
+
     }
 
     /**

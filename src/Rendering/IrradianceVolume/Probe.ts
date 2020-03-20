@@ -28,7 +28,12 @@ export class Probe {
     private _scene : Scene;
     public sphere : Mesh;
     public cameraList : Array<SideCamera>;
+
+    public uvEffect : Effect;
+    public albedo : Texture;
     public cubicMRT : MultiRenderTarget;
+
+    public readyPromise : Promise<void>;
 
     /*
     Création de la sphère et ajout des 6 caméras
@@ -66,6 +71,8 @@ export class Probe {
             cameraSide.camera.fov = Math.PI / 2;
         }
         this.sphere.translate(position, 1);
+
+        this.readyPromise = this._createPromise();
     }
 
     public setParent(parent : Mesh): void {
@@ -82,6 +89,8 @@ export class Probe {
         this.sphere.material = myMaterial;
     }
 
+
+
     public createCubeMap(meshes : Array<Mesh>, ground : Mesh) : void {
         for (var camera of this.cameraList){
             camera.renderSide(meshes);
@@ -94,15 +103,13 @@ export class Probe {
         ground.material = albedo;
     }
 
+    private _testBoite(meshes : Array<Mesh>, ground : Mesh) : void {
 
-
-
-    public testBoite(meshes : Array<Mesh>, ground : Mesh) : void {
-    
         var render = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
-            engine.enableEffect(effect);
+    
             let mesh = subMesh.getRenderingMesh();
-            mesh._bind(subMesh, effect, Material.TriangleFillMode);       
+            mesh._bind(subMesh, effect, Material.TriangleFillMode);   
+
             effect.setMatrix("view", view);
             effect.setMatrix("projection", projection);
 
@@ -112,35 +119,21 @@ export class Probe {
             }
             var hardwareInstanceRendering = (engine.getCaps().instancedArrays) && 
             (batch.visibleInstances[subMesh._id] !== null);
-            mesh._processRendering(subMesh, effect, Material.TriangleFillMode, batch, hardwareInstanceRendering,
+            mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstanceRendering,
                 (isInstance, world) => effect.setMatrix("world", world));
         };
-        
-
-
+    
         let scene = this._scene;
         let engine = scene.getEngine();
         let gl = engine._gl;
         
-        //Creation of mrt
         
-        this.cubicMRT = new MultiRenderTarget("uvAlbedo", 1024, 2, scene);
         this._scene.customRenderTargets.push(this.cubicMRT);
-        //this.cubicMRT.coordinatesMode = MultiRenderTarget.CUBIC_MODE;
-        //this.cubicMRT.isCube = true;
         this.cubicMRT.boundingBoxPosition = this.sphere.position;
         this.cubicMRT.refreshRate = 1;
-        // this.cubicMRT.renderList = meshes;
 
-
+        this.uvEffect.setTexture("albedo", this.albedo);
         
-        
-        var effect = engine.createEffect("uv", [VertexBuffer.PositionKind, VertexBuffer.UVKind],
-         ["world", "projection", "view", "albedo"], [], "");
-        effect.isReady();
-        var texture = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
-        effect.setTexture("albedo", texture);
-
         let uvInternal = <InternalTexture>this.cubicMRT.textures[0]._texture;
         let albedoInternal = <InternalTexture> this.cubicMRT.textures[1]._texture;
 
@@ -158,7 +151,6 @@ export class Probe {
         let projectionMatrix =  Matrix.PerspectiveFovLH(Math.PI / 2, 1, this.cameraList[0].camera.minZ, this.cameraList[0].camera.maxZ);
 
         let cubeSides = [
-            gl.TEXTURE_2D,
             gl.TEXTURE_CUBE_MAP_POSITIVE_X,
             gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
             gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
@@ -167,18 +159,84 @@ export class Probe {
             gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
         ];
 
-        for (let j = 0; j < 1; j++){
+        engine.enableEffect(this.uvEffect);
+
+        for (let j = 0; j < 6; j++){
             engine.setDirectViewport(0, 0, this.cubicMRT.getRenderWidth(), this.cubicMRT.getRenderHeight());
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], uvInternal._webGLTexture, 0);
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, cubeSides[j], albedoInternal._webGLTexture, 0);
 
             engine.clear(new Color4(0, 0, 0, 0), true, true);
             for (let i = 0; i < meshes.length; i++){
-                render(meshes[i].subMeshes[0], effect, viewMatrices[j], projectionMatrix);
+                render(meshes[i].subMeshes[0], this.uvEffect, viewMatrices[j], projectionMatrix);
             }
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
+
+    public render(probe : Probe, meshes : Array<Mesh>, ground : Mesh) : void {
+        if (probe != this){
+            return;
+        }
+        this.readyPromise.then( function () {
+            probe._testBoite(meshes, ground);
+
+            console.log(probe.cubicMRT.isCube);
+            var albedo = new StandardMaterial("albe", probe._scene);
+            albedo.diffuseTexture = probe.cubicMRT.textures[0];
+
+            // meshes[0].material = albedo;
+            // ground.material = albedo;
+        });
+    }
+
+
+    
+
+
+
+
+    private _createPromise() : Promise<void> {
+        return new Promise((resolve, reject) => {
+            let interval = setInterval(() => {
+                let readyStates = [
+                    this._isEffectReady(),
+                    this._isMRTReady(),
+                    this._isTextureReady()
+                ];
+                for (let i = 0 ; i < readyStates.length; i++) {
+                    if (!readyStates[i]) {
+                        return ;
+                    }
+                }
+                console.log("created");
+                clearInterval(interval);
+                resolve();
+            }, 200);
+        });
+    }
+
+    private _isEffectReady() : boolean {
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
+        var uniforms = ["world", "projection", "view", "albedo"];
+
+        this.uvEffect = this._scene.getEngine().createEffect("uv", 
+            attribs,
+            uniforms,
+            [], "");
+
+        return this.uvEffect.isReady();
+    }
+
+    private _isMRTReady() : boolean {
+        this.cubicMRT = new MultiRenderTarget("uvAlbedo", 1024, 2, this._scene, {isCube : true}); //Implémentation isCube option ? 
+        return this.cubicMRT.isReady();
+    }
+
+    private _isTextureReady() : boolean {
+        this.albedo = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
+        return this.albedo.isReady();
+    }
 
 }
