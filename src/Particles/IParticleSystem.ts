@@ -247,6 +247,9 @@ export interface IParticleSystem {
      */
     isLocal: boolean;
 
+    /** Snippet ID if the particle system was created from the snippet server */
+    snippetId: string;
+
     /**
      * Gets the maximum number of particles active at the same time.
      * @returns The max number of active particles.
@@ -287,14 +290,18 @@ export interface IParticleSystem {
      */
     clone(name: string, newEmitter: any): Nullable<IParticleSystem>;
     /**
-     * Serializes the particle system to a JSON object.
+     * Serializes the particle system to a JSON object
+     * @param serializeTexture defines if the texture must be serialized as well
      * @returns the JSON object
      */
-    serialize(): any;
+    serialize(serializeTexture: boolean): any;
     /**
      * Rebuild the particle system
      */
     rebuild(): void;
+
+    /** Force the system to rebuild all gradients that need to be resync */
+    forceRefreshGradients(): void;
 
     /**
      * Starts the particle system and begins to emit

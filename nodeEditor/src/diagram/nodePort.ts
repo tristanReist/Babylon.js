@@ -7,15 +7,18 @@ import { Observer } from 'babylonjs/Misc/observable';
 import { Vector2 } from 'babylonjs/Maths/math.vector';
 import { IDisplayManager } from './display/displayManager';
 import { GraphNode } from './graphNode';
-
+import { NodeLink } from './nodeLink';
+import { GraphFrame } from './graphFrame';
+import { FrameNodePort } from './frameNodePort';
 
 export class NodePort {
-    private _element: HTMLDivElement;
-    private _img: HTMLImageElement;
-    private _globalState: GlobalState;
-    private _onCandidateLinkMovedObserver: Nullable<Observer<Nullable<Vector2>>>;
-
-    public delegatedPort: Nullable<NodePort> = null;
+    protected _element: HTMLDivElement;
+    protected _img: HTMLImageElement;
+    protected _globalState: GlobalState;
+    protected _onCandidateLinkMovedObserver: Nullable<Observer<Nullable<Vector2>>>;
+    protected _onSelectionChangedObserver: Nullable<Observer<Nullable<GraphNode | NodeLink | GraphFrame | NodePort | FrameNodePort>>>;  
+    
+    public delegatedPort: Nullable<FrameNodePort> = null;
 
     public get element(): HTMLDivElement {
         if (this.delegatedPort) {
@@ -51,7 +54,7 @@ export class NodePort {
 
     public constructor(portContainer: HTMLElement, public connectionPoint: NodeMaterialConnectionPoint, public node: GraphNode, globalState: GlobalState) {
         this._element = portContainer.ownerDocument!.createElement("div");
-        this._element.classList.add("port");     
+        this._element.classList.add("port");
         portContainer.appendChild(this._element);
         this._globalState = globalState;
 
@@ -72,7 +75,7 @@ export class NodePort {
             }
 
             this._element.classList.add("selected"); 
-            this._globalState.onCandidatePortSelected.notifyObservers(this);
+            this._globalState.onCandidatePortSelectedObservable.notifyObservers(this);
         });
 
         this.refresh();
@@ -80,6 +83,10 @@ export class NodePort {
 
     public dispose() {
         this._globalState.onCandidateLinkMoved.remove(this._onCandidateLinkMovedObserver);
+
+        if (this._onSelectionChangedObserver) {
+            this._globalState.onSelectionChangedObservable.remove(this._onSelectionChangedObserver);
+        }
     }
 
     public static CreatePortElement(connectionPoint: NodeMaterialConnectionPoint, node: GraphNode, root: HTMLElement, 
@@ -88,6 +95,7 @@ export class NodePort {
         let block = connectionPoint.ownerBlock;
 
         portContainer.classList.add("portLine");
+
         root.appendChild(portContainer);
 
         if (!displayManager || displayManager.shouldDisplayPortLabels(block)) {

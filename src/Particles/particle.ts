@@ -193,7 +193,9 @@ export class Particle {
             var emitterMesh = (<AbstractMesh>subEmitter.particleSystem.emitter);
             emitterMesh.position.copyFrom(this.position);
             if (subEmitter.inheritDirection) {
-                emitterMesh.setDirection(this.direction.normalize(), 0, Math.PI / 2);
+                let temp = TmpVectors.Vector3[0];
+                this.direction.normalizeToRef(temp);
+                emitterMesh.setDirection(temp, 0, Math.PI / 2);
             }
         } else {
             var emitterPosition = (<Vector3>subEmitter.particleSystem.emitter);
@@ -298,7 +300,7 @@ export class Particle {
             other._initialEndSpriteCellID = this._initialEndSpriteCellID;
         }
         if (this.particleSystem.useRampGradients) {
-            if (other.remapData) {
+            if (other.remapData && this.remapData) {
                 other.remapData.copyFrom(this.remapData);
             } else {
                 other.remapData = new Vector4(0, 0, 0, 0);

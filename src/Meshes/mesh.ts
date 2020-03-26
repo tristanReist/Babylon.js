@@ -1113,12 +1113,12 @@ export class Mesh extends AbstractMesh implements IGetSetVerticesData {
                 needToRecreate = true;
             } else {
                 for (var submesh of this.subMeshes) {
-                    if (submesh.indexStart + submesh.indexCount >= totalIndices) {
+                    if (submesh.indexStart + submesh.indexCount > totalIndices) {
                         needToRecreate = true;
                         break;
                     }
 
-                    if (submesh.verticesStart + submesh.verticesCount >= totalVertices) {
+                    if (submesh.verticesStart + submesh.verticesCount > totalVertices) {
                         needToRecreate = true;
                         break;
                     }
@@ -4114,6 +4114,7 @@ export class Mesh extends AbstractMesh implements IGetSetVerticesData {
 
         // Setting properties
         meshSubclass.checkCollisions = source.checkCollisions;
+        meshSubclass.overrideMaterialSideOrientation = source.overrideMaterialSideOrientation;
 
         // Cleaning
         if (disposeSource) {

@@ -31,9 +31,9 @@ export class GraphNode {
     private _mouseStartPointX: Nullable<number> = null;
     private _mouseStartPointY: Nullable<number> = null    
     private _globalState: GlobalState;
-    private _onSelectionChangedObserver: Nullable<Observer<Nullable<GraphNode | NodeLink | GraphFrame>>>;   
+    private _onSelectionChangedObserver: Nullable<Observer<Nullable<GraphNode | NodeLink | GraphFrame | NodePort>>>;   
     private _onSelectionBoxMovedObserver: Nullable<Observer<ClientRect | DOMRect>>;  
-    private _onFrameCreatedObserver: Nullable<Observer<GraphFrame>>;  
+    private _onFrameCreatedObserver: Nullable<Observer<GraphFrame>>; 
     private _onUpdateRequiredObserver: Nullable<Observer<void>>;  
     private _ownerCanvas: GraphCanvasComponent; 
     private _isSelected: boolean;
@@ -183,7 +183,7 @@ export class GraphNode {
             this.isSelected = overlap;
         });
 
-        this._onFrameCreatedObserver = this._globalState.onFrameCreated.add(frame => {      
+        this._onFrameCreatedObserver = this._globalState.onFrameCreatedObservable.add(frame => {      
             if (this._ownerCanvas.frames.some(f => f.nodes.indexOf(this) !== -1)) {
                 return;
             }
@@ -418,6 +418,9 @@ export class GraphNode {
     }
 
     public dispose() {
+        // notify frame observers that this node is being deleted
+        this._globalState.onGraphNodeRemovalObservable.notifyObservers(this);
+
         if (this._onSelectionChangedObserver) {
             this._globalState.onSelectionChangedObservable.remove(this._onSelectionChangedObserver);
         }
@@ -435,7 +438,7 @@ export class GraphNode {
         }
 
         if (this._onFrameCreatedObserver) {
-            this._globalState.onFrameCreated.remove(this._onFrameCreatedObserver);
+            this._globalState.onFrameCreatedObservable.remove(this._onFrameCreatedObserver);
         }
 
         for (var port of this._inputPorts) {

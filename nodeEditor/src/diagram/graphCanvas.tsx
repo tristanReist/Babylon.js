@@ -14,6 +14,7 @@ import { InputBlock } from 'babylonjs/Materials/Node/Blocks/Input/inputBlock';
 import { DataStorage } from 'babylonjs/Misc/dataStorage';
 import { GraphFrame } from './graphFrame';
 import { IEditorData } from '../nodeLocationInfo';
+import { FrameNodePort } from './frameNodePort';
 
 require("./graphCanvas.scss");
 
@@ -45,13 +46,13 @@ export class GraphCanvasComponent extends React.Component<IGraphCanvasComponentP
     private _zoom = 1;
     private _selectedNodes: GraphNode[] = [];
     private _selectedLink: Nullable<NodeLink> = null;
+    private _selectedPort: Nullable<NodePort> = null;
     private _candidateLink: Nullable<NodeLink> = null;
-    private _candidatePort: Nullable<NodePort> = null;
+    private _candidatePort: Nullable<NodePort | FrameNodePort> = null;
     private _gridSize = 20;
     private _selectionBox: Nullable<HTMLDivElement> = null;   
     private _selectedFrame: Nullable<GraphFrame> = null;   
-    private _frameCandidate: Nullable<HTMLDivElement> = null;  
-
+    private _frameCandidate: Nullable<HTMLDivElement> = null;
     private _frames: GraphFrame[] = [];
 
     private _altKeyIsPressed = false;
@@ -132,6 +133,10 @@ export class GraphCanvasComponent extends React.Component<IGraphCanvasComponentP
         return this._selectedFrame;
     }
 
+    public get selectedPort() {
+        return this._selectedPort;
+    }
+
     public get canvasContainer() {
         return this._graphCanvas;
     }
@@ -161,16 +166,19 @@ export class GraphCanvasComponent extends React.Component<IGraphCanvasComponentP
                 this._selectedNodes = [];
                 this._selectedLink = null;
                 this._selectedFrame = null;
+                this._selectedPort = null;
             } else {
                 if (selection instanceof NodeLink) {
                     this._selectedNodes = [];
                     this._selectedFrame = null;
                     this._selectedLink = selection;
+                    this._selectedPort = null;
                 } else if (selection instanceof GraphFrame) {
                     this._selectedNodes = [];
                     this._selectedFrame = selection;
                     this._selectedLink = null;
-                } else{
+                    this._selectedPort = null;
+                } else if (selection instanceof GraphNode){
                     if (this._ctrlKeyIsPressed) {
                         if (this._selectedNodes.indexOf(selection) === -1) {
                             this._selectedNodes.push(selection);
@@ -179,10 +187,16 @@ export class GraphCanvasComponent extends React.Component<IGraphCanvasComponentP
                         this._selectedNodes = [selection];
                     }
                 }
+                else {
+                    this._selectedNodes = [];
+                    this._selectedFrame = null;
+                    this._selectedLink = null;
+                    this._selectedPort = selection;
+                }
             }
         });
 
-        props.globalState.onCandidatePortSelected.add(port => {
+        props.globalState.onCandidatePortSelectedObservable.add(port => {
             this._candidatePort = port;
         });
 
@@ -380,7 +394,7 @@ export class GraphCanvasComponent extends React.Component<IGraphCanvasComponentP
 
         // Update graph
         let dagreNodes = graph.nodes().map(node => graph.node(node));
-        dagreNodes.forEach(dagreNode => {
+        dagreNodes.forEach((dagreNode: any) => {
             if (dagreNode.type === "node") {
                 for (var node of this._nodes) {
                     if (node.id === dagreNode.id) {
@@ -584,6 +598,10 @@ export class GraphCanvasComponent extends React.Component<IGraphCanvasComponentP
             if (this._candidateLinkedHasMoved) {
                 this.processCandidatePort();          
                 this.props.globalState.onCandidateLinkMoved.notifyObservers(null);
+            } else { // is a click event on NodePort
+                if(this._candidateLink.portA instanceof FrameNodePort) { //only on Frame Ports
+                    this.props.globalState.onSelectionChangedObservable.notifyObservers(this._candidateLink.portA);
+                }
             }
             this._candidateLink.dispose();
             this._candidateLink = null;
