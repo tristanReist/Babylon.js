@@ -4,7 +4,6 @@ import { MeshBuilder } from '../../Meshes/meshBuilder';
 import { Scene } from '../../scene';
 import { StandardMaterial } from '../../Materials/standardMaterial';
 import { Color3, Color4 } from '../../Maths/math.color';
-import { SideCamera } from './SideCamera';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
 import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { SubMesh } from '../../Meshes/subMesh';
@@ -15,6 +14,8 @@ import { Effect } from '../../Materials/effect';
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
 import { Texture } from '../../Materials/Textures/texture';
+import { SmartArray } from '../../Misc';
+import { UniversalCamera } from '../../Cameras/universalCamera';
 
 export class Probe {
 
@@ -27,7 +28,7 @@ export class Probe {
 
     private _scene : Scene;
     public sphere : Mesh;
-    public cameraList : Array<SideCamera>;
+    public cameraList : Array<UniversalCamera>;
 
     public uvEffect : Effect;
     public albedo : Texture;
@@ -36,49 +37,67 @@ export class Probe {
     public readyPromise : Promise<void>;
 
     /*
-    Création de la sphère et ajout des 6 caméras
+    Create the probe which is a combination of a sphere and 6 cameras
     */
     constructor(position : Vector3, scene : Scene) {
         this._scene = scene;
         this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 0.25 }, scene);
         this.sphere.visibility = 0;
-        this.cameraList = new Array<SideCamera>();
+        this.cameraList = new Array<UniversalCamera>();
 
         
         //First Camera ( x axis )
-        this.cameraList.push(new SideCamera("px", scene, new Vector3(0, Math.PI / 2, 0)));
+        let cameraPX = new UniversalCamera("px", position, scene);
+        cameraPX.rotation = new Vector3(0, Math.PI / 2, 0);
+        this.cameraList.push(cameraPX);
 
         //Second Camera ( - x  axis )
-        this.cameraList.push(new SideCamera("nx", scene, new Vector3(0, - Math.PI / 2, 0)));
+        let cameraNX = new UniversalCamera("nx", position, scene);
+        cameraPX.rotation = new Vector3(0, - Math.PI / 2, 0);
+        this.cameraList.push(cameraNX);
 
         //Third Camera ( y axis )
-        this.cameraList.push(new SideCamera("py", scene, new Vector3( - Math.PI / 2, 0, 0)));
-
+        let cameraPY = new UniversalCamera("py", position, scene);
+        cameraPY.rotation = new Vector3( - Math.PI / 2, 0, 0);
+        this.cameraList.push(cameraPY);
+    
         //Fourth Camera ( - y axis )
-        this.cameraList.push(new SideCamera("ny", scene, new Vector3( Math.PI / 2, 0, 0)));
+        let cameraNY = new UniversalCamera("ny", position, scene);
+        cameraNY.rotation = new Vector3(  Math.PI / 2, 0, 0);
+        this.cameraList.push(cameraNY);
 
         //Fifth Camera ( z axis )
-        this.cameraList.push(new SideCamera("pz", scene, new Vector3(0 , 0, 0)));
+        let cameraPZ = new UniversalCamera("pz", position, scene);
+        cameraPZ.rotation = new Vector3( 0, 0, 0);
+        this.cameraList.push(cameraPZ);
 
         //Sixth Camera ( - z axis )
-        this.cameraList.push(new SideCamera("nz", scene, new Vector3(0 , Math.PI, 0)));
+        let cameraNZ = new UniversalCamera("nz", position, scene);
+        cameraNZ.rotation = new Vector3( 0, Math.PI, 0);
+        this.cameraList.push(cameraNZ);
 
         //Change the attributes of all cameras
-        for (let cameraSide of this.cameraList) {
-            cameraSide.camera.parent = this.sphere;
-            cameraSide.camera.fovMode = 0;
-            // camera.fov = Math.PI / 2;
-            cameraSide.camera.fov = Math.PI / 2;
+        for (let camera of this.cameraList) {
+            camera.parent = this.sphere;
         }
+
         this.sphere.translate(position, 1);
 
         this.readyPromise = this._createPromise();
     }
 
+    /**
+     * Add a parent to the probe
+     * @param parent The parent to be added
+     */
     public setParent(parent : Mesh): void {
         this.sphere.parent = parent;
     }
 
+    /**
+     * Set the visibility of the probe
+     * @param visisble 
+     */
     public setVisibility(visisble : number) : void {
         this.sphere.visibility = visisble;
     }
@@ -89,26 +108,16 @@ export class Probe {
         this.sphere.material = myMaterial;
     }
 
-
-
-    public createCubeMap(meshes : Array<Mesh>, ground : Mesh) : void {
-        for (var camera of this.cameraList){
-            camera.renderSide(meshes);
-        }
-        var textureMaterial = new StandardMaterial("textureMat", this._scene);
-        textureMaterial.diffuseTexture = this.cameraList[0].getUVTexture();
-        var albedo = new StandardMaterial("textureMat", this._scene);
-        albedo.diffuseTexture = this.cameraList[5].getUVTexture();
-        this.sphere.material = textureMaterial;
-        ground.material = albedo;
-    }
-
-    private _testBoite(meshes : Array<Mesh>, ground : Mesh) : void {
+    private _testBoite(subMeshes : SmartArray<SubMesh>, ground : Mesh) : void {
 
         var render = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
     
             let mesh = subMesh.getRenderingMesh();
             mesh._bind(subMesh, effect, Material.TriangleFillMode);   
+
+            if ( subMesh.verticesCount === 0) {
+                return;
+            }
 
             effect.setMatrix("view", view);
             effect.setMatrix("projection", projection);
@@ -127,10 +136,7 @@ export class Probe {
         let engine = scene.getEngine();
         let gl = engine._gl;
         
-        
-        this._scene.customRenderTargets.push(this.cubicMRT);
-        this.cubicMRT.boundingBoxPosition = this.sphere.position;
-        this.cubicMRT.refreshRate = 1;
+
 
         this.uvEffect.setTexture("albedo", this.albedo);
         
@@ -140,15 +146,15 @@ export class Probe {
         gl.bindFramebuffer(gl.FRAMEBUFFER, uvInternal._framebuffer);
         engine.setState(false, 0, true, scene.useRightHandedSystem);
 
-        let viewMatrices = [ this.cameraList[Probe.PX].camera.getViewMatrix(),
-            this.cameraList[Probe.NX].camera.getViewMatrix(),
-            this.cameraList[Probe.PY].camera.getViewMatrix(),
-            this.cameraList[Probe.NY].camera.getViewMatrix(),
-            this.cameraList[Probe.PZ].camera.getViewMatrix(),
-            this.cameraList[Probe.NZ].camera.getViewMatrix()
+        let viewMatrices = [ this.cameraList[Probe.PX].getViewMatrix(),
+            this.cameraList[Probe.NX].getViewMatrix(),
+            this.cameraList[Probe.PY].getViewMatrix(),
+            this.cameraList[Probe.NY].getViewMatrix(),
+            this.cameraList[Probe.PZ].getViewMatrix(),
+            this.cameraList[Probe.NZ].getViewMatrix()
         ];
 
-        let projectionMatrix =  Matrix.PerspectiveFovLH(Math.PI / 2, 1, this.cameraList[0].camera.minZ, this.cameraList[0].camera.maxZ);
+        let projectionMatrix =  Matrix.PerspectiveFovLH(Math.PI / 2, 1, this.cameraList[0].minZ, this.cameraList[0].maxZ);
 
         let cubeSides = [
             gl.TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -166,35 +172,36 @@ export class Probe {
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, cubeSides[j], albedoInternal._webGLTexture, 0);
 
             engine.clear(new Color4(0, 0, 0, 0), true, true);
-            for (let i = 0; i < meshes.length; i++){
-                render(meshes[i].subMeshes[0], this.uvEffect, viewMatrices[j], projectionMatrix);
+            for (let i = 0; i < subMeshes.length; i++){
+
+                render(subMeshes.data[i], this.uvEffect, viewMatrices[j], projectionMatrix);
             }
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
 
-    public render(probe : Probe, meshes : Array<Mesh>, ground : Mesh) : void {
-        if (probe != this){
-            return;
-        }
+    /**
+     * Render the 6 cameras of the probes with different effect to create the cube map we need
+     * @param meshes The meshes we want to render
+     * @param ground 
+     */
+    public render(meshes : Array<Mesh>, ground : Mesh) : void {
+        let probe = this;
         this.readyPromise.then( function () {
-            probe._testBoite(meshes, ground);
-
-            console.log(probe.cubicMRT.isCube);
-            var albedo = new StandardMaterial("albe", probe._scene);
-            albedo.diffuseTexture = probe.cubicMRT.textures[0];
-
-            // meshes[0].material = albedo;
-            // ground.material = albedo;
+            probe.cubicMRT.renderList = meshes;
+            probe._scene.customRenderTargets.push(probe.cubicMRT);
+            probe.cubicMRT.boundingBoxPosition = probe.sphere.position;
+            probe.cubicMRT.refreshRate = 0;
+            probe.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
+                probe._testBoite(opaqueSubMeshes, ground);
+            
+            }
         });
     }
 
 
     
-
-
-
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
@@ -231,7 +238,7 @@ export class Probe {
     }
 
     private _isMRTReady() : boolean {
- 
+        
         return this.cubicMRT.isReady();
     }
 
