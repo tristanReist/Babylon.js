@@ -2,20 +2,20 @@ import { Mesh } from "../../Meshes/mesh";
 import { Vector3, Matrix } from '../../Maths/math.vector';
 import { MeshBuilder } from '../../Meshes/meshBuilder';
 import { Scene } from '../../scene';
-import { StandardMaterial } from '../../Materials/standardMaterial';
-import { Color3, Color4 } from '../../Maths/math.color';
+import { Color4 } from '../../Maths/math.color';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
 import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { SubMesh } from '../../Meshes/subMesh';
 import { VertexBuffer } from '../../Meshes/buffer'
 import { Material } from '../../Materials/material';
 import { Effect } from '../../Materials/effect';
-
-import "../../Shaders/uv.fragment"
-import "../../Shaders/uv.vertex"
 import { Texture } from '../../Materials/Textures/texture';
 import { SmartArray } from '../../Misc';
 import { UniversalCamera } from '../../Cameras/universalCamera';
+
+import "../../Shaders/uv.fragment"
+import "../../Shaders/uv.vertex"
+
 
 export class Probe {
 
@@ -34,7 +34,7 @@ export class Probe {
     public albedo : Texture;
     public cubicMRT : MultiRenderTarget;
 
-    public readyPromise : Promise<void>;
+    public promise : Promise<void>;
 
     /*
     Create the probe which is a combination of a sphere and 6 cameras
@@ -83,7 +83,7 @@ export class Probe {
 
         this.sphere.translate(position, 1);
 
-        this.readyPromise = this._createPromise();
+        this.promise = this._createPromise();
     }
 
     /**
@@ -102,15 +102,10 @@ export class Probe {
         this.sphere.visibility = visisble;
     }
 
-    public addColor() : void {
-        var myMaterial = new StandardMaterial("myMaterial", this.sphere._scene);
-        myMaterial.emissiveColor = new Color3(0.23, 0.98, 0.53);
-        this.sphere.material = myMaterial;
-    }
 
-    private _testBoite(subMeshes : SmartArray<SubMesh>, ground : Mesh) : void {
+    private _renderCubeTexture(subMeshes : SmartArray<SubMesh>, ground : Mesh) : void {
 
-        var render = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
+        var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
     
             let mesh = subMesh.getRenderingMesh();
             mesh._bind(subMesh, effect, Material.TriangleFillMode);   
@@ -174,7 +169,7 @@ export class Probe {
             engine.clear(new Color4(0, 0, 0, 0), true, true);
             for (let i = 0; i < subMeshes.length; i++){
 
-                render(subMeshes.data[i], this.uvEffect, viewMatrices[j], projectionMatrix);
+                renderSubMesh(subMeshes.data[i], this.uvEffect, viewMatrices[j], projectionMatrix);
             }
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -188,20 +183,21 @@ export class Probe {
      */
     public render(meshes : Array<Mesh>, ground : Mesh) : void {
         let probe = this;
-        this.readyPromise.then( function () {
+        this.promise.then( function () {
+
             probe.cubicMRT.renderList = meshes;
             probe._scene.customRenderTargets.push(probe.cubicMRT);
             probe.cubicMRT.boundingBoxPosition = probe.sphere.position;
-            probe.cubicMRT.refreshRate = 0;
+            probe.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONEVERYFRAME;
+
             probe.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-                probe._testBoite(opaqueSubMeshes, ground);
+                probe._renderCubeTexture(opaqueSubMeshes, ground);
             
             }
         });
     }
 
 
-    
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
@@ -218,7 +214,6 @@ export class Probe {
                         return ;
                     }
                 }
-                console.log("created");
                 clearInterval(interval);
                 resolve();
             }, 200);

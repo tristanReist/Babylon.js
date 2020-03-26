@@ -98,9 +98,6 @@ export class UniformVolume {
             }
         }
 
-        for (let index of selectedProbeIndexList) {
-            this.probeList[index].addColor();
-        }
     }
 
     public setProbeVisibility(visible : number) : void {
