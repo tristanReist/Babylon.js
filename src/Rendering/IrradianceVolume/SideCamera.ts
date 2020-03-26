@@ -7,7 +7,6 @@ import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { Texture } from '../../Materials/Textures/texture';
 import { Material } from '../../Materials/material';
 import { Nullable } from '../../types';
-import { Effect } from '../../Materials';
 
 export class SideCamera {
 
@@ -22,10 +21,10 @@ export class SideCamera {
     }
 
     public renderSide(meshes : Array<Mesh>) : void {
-        this.mrt = new MultiRenderTarget("uvAlbedo", 1000, 2, this._scene);
+        this.mrt = new MultiRenderTarget("uvAlbedo", 1024, 2, this._scene);
         this._scene.customRenderTargets.push(this.mrt);
         this.mrt.activeCamera = this.camera;
-        this.mrt.refreshRate = 1;//MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
+        this.mrt.refreshRate = 0;//MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
         this.mrt.renderList = meshes;
         var previousMaterials = new Array<Nullable<Material>>();
 

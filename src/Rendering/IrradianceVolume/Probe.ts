@@ -98,7 +98,7 @@ export class Probe {
         var textureMaterial = new StandardMaterial("textureMat", this._scene);
         textureMaterial.diffuseTexture = this.cameraList[0].getUVTexture();
         var albedo = new StandardMaterial("textureMat", this._scene);
-        albedo.diffuseTexture = this.cameraList[0].getAlbedoTexture();
+        albedo.diffuseTexture = this.cameraList[5].getUVTexture();
         this.sphere.material = textureMaterial;
         ground.material = albedo;
     }
@@ -160,7 +160,6 @@ export class Probe {
         ];
 
         engine.enableEffect(this.uvEffect);
-
         for (let j = 0; j < 6; j++){
             engine.setDirectViewport(0, 0, this.cubicMRT.getRenderWidth(), this.cubicMRT.getRenderHeight());
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], uvInternal._webGLTexture, 0);
@@ -199,6 +198,8 @@ export class Probe {
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
+            this.cubicMRT = new MultiRenderTarget("uvAlbedo", 1024, 2, this._scene, {isCube : true});
+            this.albedo = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isEffectReady(),
@@ -230,12 +231,12 @@ export class Probe {
     }
 
     private _isMRTReady() : boolean {
-        this.cubicMRT = new MultiRenderTarget("uvAlbedo", 1024, 2, this._scene, {isCube : true}); //Implémentation isCube option ? 
+ 
         return this.cubicMRT.isReady();
     }
 
     private _isTextureReady() : boolean {
-        this.albedo = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
+       
         return this.albedo.isReady();
     }
 
