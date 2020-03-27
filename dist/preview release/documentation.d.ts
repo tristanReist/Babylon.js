@@ -10446,7 +10446,7 @@ declare module BABYLON {
          * @param invertY defines the direction for the Y axis (default is true - y increases downwards)
          * @param update defines whether texture is immediately update (default is true)
          */
-        drawText(text: string, x: number | null | undefined, y: number | null | undefined, font: string, color: string, clearColor: string, invertY?: boolean, update?: boolean): void;
+        drawText(text: string, x: number | null | undefined, y: number | null | undefined, font: string, color: string | null, clearColor: string, invertY?: boolean, update?: boolean): void;
         /**
          * Clones the texture
          * @returns the clone of the texture.
@@ -53978,6 +53978,11 @@ declare module BABYLON {
          */
         protected _shouldRenderMesh(mesh: Mesh): boolean;
         /**
+         * Adds specific effects defines.
+         * @param defines The defines to add specifics to.
+         */
+        protected _addCustomEffectDefines(defines: string[]): void;
+        /**
          * Sets the required values for both the emissive texture and and the main color.
          */
         protected _setEmissiveTextureAndColor(mesh: Mesh, subMesh: SubMesh, material: Material): void;
@@ -57584,6 +57589,8 @@ declare module BABYLON {
         static EditorURL: string;
         /** Define the Url to load snippets */
         static SnippetUrl: string;
+        /** Gets or sets a boolean indicating that node materials should not deserialize textures from json / snippet content */
+        static IgnoreTexturesAtLoadTime: boolean;
         private BJSNODEMATERIALEDITOR;
         /** Get the inspector from bundle or global */
         private _getGlobalNodeMaterialEditor;
@@ -60691,17 +60698,15 @@ declare module BABYLON {
         indices?: number[];
     }
     /**
-     * Helper class to render one or more effects
+     * Helper class to render one or more effects.
+     * You can access the previous rendering in your shader by declaring a sampler named textureSampler
      */
     export class EffectRenderer {
         private engine;
         private static _DefaultOptions;
         private _vertexBuffers;
         private _indexBuffer;
-        private _ringBufferIndex;
-        private _ringScreenBuffer;
         private _fullscreenViewport;
-        private _getNextFrameBuffer;
         /**
          * Creates an effect renderer
          * @param engine the engine to use for rendering
@@ -60729,12 +60734,13 @@ declare module BABYLON {
          * Draws a full screen quad.
          */
         draw(): void;
+        private isRenderTargetTexture;
         /**
          * renders one or more effects to a specified texture
-         * @param effectWrappers list of effects to renderer
-         * @param outputTexture texture to draw to, if null it will render to the screen
+         * @param effectWrapper the effect to renderer
+         * @param outputTexture texture to draw to, if null it will render to the screen.
          */
-        render(effectWrappers: Array<EffectWrapper> | EffectWrapper, outputTexture?: Nullable<Texture>): void;
+        render(effectWrapper: EffectWrapper, outputTexture?: Nullable<InternalTexture | RenderTargetTexture>): void;
         /**
          * Disposes of the effect renderer
          */
@@ -64057,28 +64063,6 @@ declare module BABYLON {
          * @hidden
          */
         constructor(id: number, posFunction: Nullable<(particle: CloudPoint, i?: number, s?: number) => void>);
-    }
-}
-declare module BABYLON {
-    /**
-     * Represents a set of particle systems working together to create a specific effect
-     */
-    export class ParticleSystemDebugger implements IDisposable {
-        /**
-         * Defines the particle system to debug
-         */
-        system: IParticleSystem;
-        /**
-         * Creates a new particle system debugger
-         * @param system defines the particle system to debug
-         */
-        constructor(
-        /**
-         * Defines the particle system to debug
-         */
-        system: IParticleSystem);
-        /** Clear all the resources */
-        dispose(): void;
     }
 }
 declare module BABYLON {
