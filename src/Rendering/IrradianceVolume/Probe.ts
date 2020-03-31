@@ -15,6 +15,9 @@ import { UniversalCamera } from '../../Cameras/universalCamera';
 
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
+import { RawTexture } from '../../Materials/Textures/rawTexture';
+import { StandardMaterial } from '../../Materials/standardMaterial';
+import { CubeTexture } from '../../Materials/Textures/cubeTexture';
 
 
 export class Probe {
@@ -53,17 +56,17 @@ export class Probe {
 
         //Second Camera ( - x  axis )
         let cameraNX = new UniversalCamera("nx", position, scene);
-        cameraPX.rotation = new Vector3(0, - Math.PI / 2, 0);
+        cameraNX.rotation = new Vector3(0, - Math.PI / 2, 0);
         this.cameraList.push(cameraNX);
 
         //Third Camera ( y axis )
         let cameraPY = new UniversalCamera("py", position, scene);
-        cameraPY.rotation = new Vector3( - Math.PI / 2, 0, 0);
+        cameraPY.rotation = new Vector3( Math.PI / 2, 0, 0);
         this.cameraList.push(cameraPY);
     
         //Fourth Camera ( - y axis )
         let cameraNY = new UniversalCamera("ny", position, scene);
-        cameraNY.rotation = new Vector3(  Math.PI / 2, 0, 0);
+        cameraNY.rotation = new Vector3( - Math.PI / 2, 0, 0);
         this.cameraList.push(cameraNY);
 
         //Fifth Camera ( z axis )
@@ -103,7 +106,7 @@ export class Probe {
     }
 
 
-    private _renderCubeTexture(subMeshes : SmartArray<SubMesh>, ground : Mesh) : void {
+    private _renderCubeTexture(subMeshes : SmartArray<SubMesh>) : void {
 
         var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
     
@@ -131,8 +134,6 @@ export class Probe {
         let engine = scene.getEngine();
         let gl = engine._gl;
         
-
-
         this.uvEffect.setTexture("albedo", this.albedo);
         
         let uvInternal = <InternalTexture>this.cubicMRT.textures[0]._texture;
@@ -181,18 +182,15 @@ export class Probe {
      * @param meshes The meshes we want to render
      * @param ground 
      */
-    public render(meshes : Array<Mesh>, ground : Mesh) : void {
+    public render(meshes : Array<Mesh>) : void {
         let probe = this;
         this.promise.then( function () {
-
             probe.cubicMRT.renderList = meshes;
             probe._scene.customRenderTargets.push(probe.cubicMRT);
             probe.cubicMRT.boundingBoxPosition = probe.sphere.position;
-            probe.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONEVERYFRAME;
-
+            probe.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
             probe.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-                probe._renderCubeTexture(opaqueSubMeshes, ground);
-            
+                probe._renderCubeTexture(opaqueSubMeshes);          
             }
         });
     }
@@ -201,7 +199,7 @@ export class Probe {
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
-            this.cubicMRT = new MultiRenderTarget("uvAlbedo", 1024, 2, this._scene, {isCube : true});
+            this.cubicMRT = new MultiRenderTarget("uvAlbedo", 512, 2, this._scene, {isCube : true});
             this.albedo = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
@@ -241,5 +239,6 @@ export class Probe {
        
         return this.albedo.isReady();
     }
+
 
 }
