@@ -12,13 +12,9 @@ import { Effect } from '../../Materials/effect';
 import { Texture } from '../../Materials/Textures/texture';
 import { SmartArray } from '../../Misc';
 import { UniversalCamera } from '../../Cameras/universalCamera';
-import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
-import { ShaderMaterial } from '../../Materials/shaderMaterial';
 
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
-import { VertexData } from '../../Meshes/mesh.vertexData';
-import { GroundBuilder } from '../../Meshes';
 
 
 
@@ -32,14 +28,14 @@ export class Probe {
     public static readonly NZ : number = 5;
 
     private _scene : Scene;
+    private _resolution : number;
     public sphere : Mesh;
     public cameraList : Array<UniversalCamera>;
+
 
     public uvEffect : Effect;
     public albedo : Texture;
     public cubicMRT : MultiRenderTarget;
-
-    public shCoeff : RenderTargetTexture;
 
     public promise : Promise<void>;
 
@@ -51,6 +47,7 @@ export class Probe {
         this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 0.25 }, scene);
         this.sphere.visibility = 0;
         this.cameraList = new Array<UniversalCamera>();
+        
 
         
         //First Camera ( x axis )
@@ -90,9 +87,10 @@ export class Probe {
 
         this.sphere.translate(position, 1);
 
+    }
 
-        // Promise
-
+    public setResolution(resolution : number) : void {
+        this._resolution = resolution;
         this.promise = this._createPromise();
     }
 
@@ -199,8 +197,6 @@ export class Probe {
             probe.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
                 probe._renderCubeTexture(opaqueSubMeshes);          
             }
-
-            probe.computeSHCoefficients();
         });
     }
 
@@ -208,15 +204,14 @@ export class Probe {
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
-            this.cubicMRT = new MultiRenderTarget("uvAlbedo", 16, 2, this._scene, {isCube : true});
+            let size = this._resolution;
+            this.cubicMRT = new MultiRenderTarget("uvAlbedo", size, 2, this._scene, {isCube : true});
             this.albedo = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
-            this.shCoeff = new RenderTargetTexture("shCoef", {width : 6, height : 1}, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isEffectReady(),
                     this._isMRTReady(),
-                    this._isTextureReady(),
-                    this._isSHReady()
+                    this._isTextureReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -250,47 +245,4 @@ export class Probe {
        
         return this.albedo.isReady();
     }
-
-    private _isSHReady() : boolean {
-        
-        return this.shCoeff.isReady();
-    }
-
-
-
-    public computeSHCoefficients() : void {
-
-        var shMaterial = new ShaderMaterial("shCoef", this._scene, "./../../src/Shaders/shCoef", {
-            attributes : ["position"]
-        });
-        shMaterial.backFaceCulling = false;
-
-        
-        // let ground = MeshBuilder.CreateGround("sol", {width : 1, height : 1}, this._scene);
-        // ground.translate(new Vector3(0.5, 0, 0.5), 1);
-
-        // ground.material = shMaterial;
-        // ground.visibility = 0;
-
-        let customMesh = new Mesh("custom", this._scene);
-        let position = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0];
-        let indices = [0, 1, 2, 3, 4, 5];
-        let vertexData = new VertexData();
-        customMesh.visibility = 0;
-        vertexData.positions = position;
-        vertexData.indices = indices;
-
-        vertexData.applyToMesh(customMesh);
-
-        customMesh.material = shMaterial;
-
-        
-
-        this.shCoeff.renderList = [customMesh];
-        this._scene.customRenderTargets.push(this.shCoeff);
-        this.shCoeff.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
-       
-
-    }
-
 }

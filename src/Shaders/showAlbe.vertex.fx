@@ -1,8 +1,9 @@
 attribute vec3 position;
 attribute vec2 uv;
 
-uniform mat4 worldViewProjection;
 varying vec2 vUV;
+
+uniform mat4 worldViewProjection;
 
 void main( void )
 {

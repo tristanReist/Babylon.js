@@ -1,4 +1,3 @@
-varying vec2 vUV;
 varying vec3 vPosition;
 
 uniform samplerCube albedo;
