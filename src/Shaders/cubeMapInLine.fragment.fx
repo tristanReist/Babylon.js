@@ -23,6 +23,7 @@ void main() {
     const int maxValue = 10;
 
     for (int i = 0 ; i < 1; i++){
+
         if (i == currentCube){
             if ( face == 0 ){           //Positive_X
                 color =  vec4(textureCube(cubeMapArray[0], vec3(1., y, - x)).rgb, 1); 
@@ -30,10 +31,10 @@ void main() {
             else if ( face == 2 ){      //Negative_X
                 color =  vec4(textureCube(cubeMapArray[0], vec3(-1., y, x)).rgb, 1); 
             }
-            else if ( face == 4 ) {     //Positive_Y
+            else if ( face == 4 ) {     //Negative_Y
                 color =  vec4(textureCube(cubeMapArray[0], vec3(x, - 1., y)).rgb, 1);
             }
-            else if ( face == 5 ) {     //Negative_Y
+            else if ( face == 5 ) {     //Positive_Y
                 color =  vec4(textureCube(cubeMapArray[0], vec3(x, 1., - y)).rgb, 1);
             }
             else if ( face == 3 ){      //Positive_Z

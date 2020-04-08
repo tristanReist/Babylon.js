@@ -35,8 +35,8 @@ export class Irradiance {
     public render() : void {
         let irradiance = this;
         this._promise.then( function () {
-            irradiance._computeSHCoeff();
             irradiance._computeCubeMapLines();
+            irradiance._computeSHCoeff();
         });
     }
 
@@ -49,7 +49,7 @@ export class Irradiance {
             },
             this._scene
             );
-            this.shCoeff = new RenderTargetTexture("shCoef", {width : 6, height : 1}, this._scene);
+            this.shCoeff = new RenderTargetTexture("shCoef", {width : 9*16, height : 16}, this._scene);
 
             let interval = setInterval(() => {
                 let readyStates = [
@@ -93,6 +93,9 @@ export class Irradiance {
         var shMaterial = new ShaderMaterial("shCoef", this._scene, "./../../src/Shaders/shCoef", {
             attributes : ["position"]
         });
+        shMaterial.setInt("numberCube", this.probeList.length);
+        shMaterial.setInt("resolution", this.resolution);
+        shMaterial.setTexture("cubeMapLine", this.cubeMapLine);
         shMaterial.backFaceCulling = false;
 
             
@@ -113,7 +116,7 @@ export class Irradiance {
         
         let textureArray = new Array<Texture>();
         for (let probe of this.probeList) {
-            textureArray.push(probe.cubicMRT.textures[0]);
+            textureArray.push(probe.cubicMRT.textures[1]);
         }
         cubeMapMaterial.setTextureArray("cubeMapArray", textureArray);
         cubeMapMaterial.setInt("resolution", this.resolution);
