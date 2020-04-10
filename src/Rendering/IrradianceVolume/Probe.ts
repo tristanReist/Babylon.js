@@ -12,9 +12,15 @@ import { Effect } from '../../Materials/effect';
 import { Texture } from '../../Materials/Textures/texture';
 import { SmartArray } from '../../Misc';
 import { UniversalCamera } from '../../Cameras/universalCamera';
+import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
+import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
+
 
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
+import "../../Shaders/uvCube.fragment"
+import "../../Shaders/uvCube.vertex"
+import { ShaderMaterial } from '../../Materials/shaderMaterial';
 
 
 
@@ -29,9 +35,11 @@ export class Probe {
 
     private _scene : Scene;
     private _resolution : number;
+    private _sphericalHarmonic : SphericalHarmonics; 
+
     public sphere : Mesh;
     public cameraList : Array<UniversalCamera>;
-
+    public isCube : boolean;
 
     public uvEffect : Effect;
     public albedo : Texture;
@@ -41,42 +49,45 @@ export class Probe {
 
     /*
     Create the probe which is a combination of a sphere and 6 cameras
+    IsCube is for debug
     */
-    constructor(position : Vector3, scene : Scene) {
+    constructor(position : Vector3, scene : Scene, albedo : Texture) {
         this._scene = scene;
-        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 0.25 }, scene);
+        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
         this.sphere.visibility = 0;
         this.cameraList = new Array<UniversalCamera>();
+
+        this.isCube = albedo.isCube;
+        this.albedo = albedo;
         
 
-        
         //First Camera ( x axis )
-        let cameraPX = new UniversalCamera("px", position, scene);
+        let cameraPX = new UniversalCamera("px", Vector3.Zero(), scene);
         cameraPX.rotation = new Vector3(0, Math.PI / 2, 0);
         this.cameraList.push(cameraPX);
 
         //Second Camera ( - x  axis )
-        let cameraNX = new UniversalCamera("nx", position, scene);
+        let cameraNX = new UniversalCamera("nx", Vector3.Zero(), scene);
         cameraNX.rotation = new Vector3(0, - Math.PI / 2, 0);
         this.cameraList.push(cameraNX);
 
         //Third Camera ( y axis )
-        let cameraPY = new UniversalCamera("py", position, scene);
+        let cameraPY = new UniversalCamera("py", Vector3.Zero(), scene);
         cameraPY.rotation = new Vector3( Math.PI / 2, 0, 0);
         this.cameraList.push(cameraPY);
     
         //Fourth Camera ( - y axis )
-        let cameraNY = new UniversalCamera("ny", position, scene);
+        let cameraNY = new UniversalCamera("ny", Vector3.Zero(), scene);
         cameraNY.rotation = new Vector3( - Math.PI / 2, 0, 0);
         this.cameraList.push(cameraNY);
 
         //Fifth Camera ( z axis )
-        let cameraPZ = new UniversalCamera("pz", position, scene);
+        let cameraPZ = new UniversalCamera("pz", Vector3.Zero(), scene);
         cameraPZ.rotation = new Vector3( 0, 0, 0);
         this.cameraList.push(cameraPZ);
 
         //Sixth Camera ( - z axis )
-        let cameraNZ = new UniversalCamera("nz", position, scene);
+        let cameraNZ = new UniversalCamera("nz", Vector3.Zero(), scene);
         cameraNZ.rotation = new Vector3( 0, Math.PI, 0);
         this.cameraList.push(cameraNZ);
 
@@ -155,7 +166,7 @@ export class Probe {
             this.cameraList[Probe.NZ].getViewMatrix()
         ];
 
-        let projectionMatrix =  Matrix.PerspectiveFovLH(Math.PI / 2, 1, this.cameraList[0].minZ, this.cameraList[0].maxZ);
+        let projectionMatrix =  Matrix.PerspectiveFovLH(Math.PI / 2, 1, 0.1, this.cameraList[0].maxZ);
 
         let cubeSides = [
             gl.TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -190,6 +201,11 @@ export class Probe {
     public render(meshes : Array<Mesh>) : void {
         let probe = this;
         this.promise.then( function () {
+            //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
+            //We need it for the computation of the spherical harmonics
+            for (let texture of probe.cubicMRT.textures){
+                texture.isRenderTarget = true;
+            }
             probe.cubicMRT.renderList = meshes;
             probe._scene.customRenderTargets.push(probe.cubicMRT);
             probe.cubicMRT.boundingBoxPosition = probe.sphere.position;
@@ -197,6 +213,12 @@ export class Probe {
             probe.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
                 probe._renderCubeTexture(opaqueSubMeshes);          
             }
+            probe.cubicMRT.onAfterRenderObservable.add(() => {
+
+                probe._CPUcomputeSHCoeff();
+
+
+            });
         });
     }
 
@@ -210,8 +232,8 @@ export class Probe {
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isEffectReady(),
-                    this._isMRTReady(),
-                    this._isTextureReady()
+                    // this._isTextureReady(),
+                    this._isMRTReady()    
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -227,12 +249,18 @@ export class Probe {
     private _isEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
         var uniforms = ["world", "projection", "view", "albedo"];
-
-        this.uvEffect = this._scene.getEngine().createEffect("uv", 
+        if (!this.isCube){
+            this.uvEffect = this._scene.getEngine().createEffect("uv", 
+                attribs,
+                uniforms,
+                [], "");
+        }
+        else {
+            this.uvEffect = this._scene.getEngine().createEffect("uvCube", 
             attribs,
             uniforms,
-            [], "");
-
+            [], "");           
+        }
         return this.uvEffect.isReady();
     }
 
@@ -245,4 +273,40 @@ export class Probe {
        
         return this.albedo.isReady();
     }
+
+
+    private _CPUcomputeSHCoeff() : void {
+        //Possible problem, y can be inverted
+        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.cubicMRT.textures[1 ]);
+        if (sp != null){
+            this._sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
+        }
+        // let spBis = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalHarmonics(this.cubicMRT.textures[1]);
+        this._computeProbeIrradiance();
+
+    }
+
+    private _computeProbeIrradiance() : void {
+        //We use a shader to add this texture to the probe
+        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/computeIrradiance", {
+            attributes : ["position", "normal"],
+            uniforms : ["worldViewProjection"]
+        })
+        shaderMaterial.setVector3("L00", this._sphericalHarmonic.l00);
+        
+        shaderMaterial.setVector3("L10", this._sphericalHarmonic.l10);
+        shaderMaterial.setVector3("L11", this._sphericalHarmonic.l11);
+        shaderMaterial.setVector3("L1m1", this._sphericalHarmonic.l1_1);
+
+        shaderMaterial.setVector3("L20", this._sphericalHarmonic.l20);
+        shaderMaterial.setVector3("L21", this._sphericalHarmonic.l21);
+        shaderMaterial.setVector3("L22", this._sphericalHarmonic.l22);
+        shaderMaterial.setVector3("L2m1", this._sphericalHarmonic.l2_1);     
+        shaderMaterial.setVector3("L2m2", this._sphericalHarmonic.l2_2);   
+
+        this.sphere.material = shaderMaterial;
+   
+    }
+
+
 }

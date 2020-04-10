@@ -5,6 +5,8 @@ import { Mesh } from '../../Meshes/mesh';
 import { VertexData } from '../../Meshes/mesh.vertexData';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { Texture } from '../../Materials';
+import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
+import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
 
 export class Irradiance {
 
@@ -36,7 +38,8 @@ export class Irradiance {
         let irradiance = this;
         this._promise.then( function () {
             irradiance._computeCubeMapLines();
-            irradiance._computeSHCoeff();
+
+            // irradiance._CPUcomputeSHCoeff();
         });
     }
 
@@ -49,7 +52,7 @@ export class Irradiance {
             },
             this._scene
             );
-            this.shCoeff = new RenderTargetTexture("shCoef", {width : 9*16, height : 16}, this._scene);
+            this.shCoeff = new RenderTargetTexture("shCoef", {width : 9, height : 1}, this._scene);
 
             let interval = setInterval(() => {
                 let readyStates = [
@@ -89,7 +92,15 @@ export class Irradiance {
         vertexData.applyToMesh(this._groundForRender);
     }
 
-    private _computeSHCoeff() : void {
+    private _CPUcomputeSHCoeff() : void {
+
+        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.probeList[0].cubicMRT.textures[0]);
+        let sh;
+        if (sp != null)
+        sh = SphericalHarmonics.FromPolynomial(sp);
+    }
+
+    private _GPUcomputeSHCoeff() : void {
         var shMaterial = new ShaderMaterial("shCoef", this._scene, "./../../src/Shaders/shCoef", {
             attributes : ["position"]
         });
@@ -103,6 +114,9 @@ export class Irradiance {
             this._groundForRender.material = shMaterial;
         });
 
+        this.shCoeff.onAfterRenderObservable.add(() => {
+            let pixels = this.shCoeff.readPixels();
+        });
  
         this.shCoeff.renderList = [this._groundForRender];
         this._scene.customRenderTargets.push(this.shCoeff);

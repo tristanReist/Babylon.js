@@ -63,41 +63,39 @@ float computeWeight(int sh, vec3 tempPos, mat3 transformMatrix) {
     else if ( sh == 7 ){    //L2-1
         return 1.092548 * position.y * position.z;
     }
-    else{                   //L2-2
+    else if (sh == 8 ){                   //L2-2
         return 1.092548 * position.x * position.y;
     }
 }
 
 vec4 computeSHCoef(int sh, int currentCube) {
     vec4 color;
-    vec4 sum = vec4(0., 0., 0., 1.);
+    vec3 sum = vec3(0., 0., 0.);
     float divider = 0.;
     for (int i = 0; i < 6; i++){
         //Mat3 to map on cube
-        mat3 transformation = computeTransformationMatrix(i); 
+        mat3 transformation = computeTransformationMatrix(i); //OK
 
-        //Make all on one side of the cube
         for (int x = 0; x < resolution; x++ ){
             float uvX = float(i * resolution + x) / float(resolution * 6); 
-            uvX = 2. * uvX - 1.;
+            uvX = 2. * uvX - 1.; // Coordonée x entre -1 et 1 de toute la texture
             for (int y = 0; y < resolution; y++ ){
-
-                //Cube 0 == cube le plus 
+ 
                 float uvY = float(  currentCube * resolution + y ) / float(resolution * numberCube);
                 uvY = 2. * uvY - 1.;
-                vec4 textColor = vec4(texture2D(cubeMapLine, vec2(uvX, uvY)));
+                vec3 textColor = texture2D(cubeMapLine, vec2(uvX, uvY)).rgb; //Semble ok
                 
-                vec3 tempPos = vec3( -1. + float(x) / float(resolution),
-                  -1. + float(y) / float(resolution), 1.);
+                vec3 tempPos = vec3( -1. + float(x) / (float(resolution) / 2.),
+                  -1. + float(y) / (float(resolution)/2.), -1.); // semble OK
+                tempPos = normalize(tempPos);
                 float weight = computeWeight(sh, tempPos, transformation);
-                sum += vec4(textColor.rgb, 0.) * weight;
-                divider += weight; 
+                sum += textColor * weight;
+                divider += -tempPos.z; 
             }
         }
     }
-
-    color = sum / divider;
-    color.w = 1.;
+    // divider = 1.;
+    color = vec4(sum / divider , 1.);
     return color;
 
 }
@@ -106,9 +104,9 @@ vec4 computeSHCoef(int sh, int currentCube) {
 
 void main(){
     vec2 uv = ( vUV + 1. ) * 0.5;   
-    int cas = int(uv.x * 9.);
-    int currentCube = int(uv.y * float(numberCube));
+    int cas = int(uv.x * 9.);  //OK
+    int currentCube = int(uv.y * float(numberCube));  //OK Attention, c'est en partant du bas 
     currentCube = 0;
-    vec4 color = computeSHCoef(cas, currentCube);
-    gl_FragColor = color;
+    vec4 color = computeSHCoef(cas, currentCube);   // Problème
+    gl_FragColor = color; //OK
 }
