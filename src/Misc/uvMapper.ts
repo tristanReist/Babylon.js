@@ -1436,6 +1436,7 @@ export class UvMapper {
         const USER_SHARE_SPACE = true;
 
         let collectedIslandList: Island[] = [];
+        let collectedIslandMesh: Mesh[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
         let worldToUVRatio = 0;
@@ -1603,14 +1604,27 @@ export class UvMapper {
             if (USER_SHARE_SPACE) {
                 let islandList = this.getUvIslands(faceProjectionGroupList, deletedFaces);
                 collectedIslandList = collectedIslandList.concat(islandList);
+
+                // Add copy of the island mesh for each island
+                // It will used to deduct the margin from island size the texture space
+                const meshArray = new Array(islandList.length);
+                meshArray.fill(m);
+                collectedIslandMesh = collectedIslandMesh.concat(meshArray);
+
             } else {
                 collectedIslandList = this.getUvIslands(faceProjectionGroupList, deletedFaces);
-                worldToUVRatio = this.packIslands(collectedIslandList);
+
+                // Add copy of the island mesh for each island
+                // It will used to deduct the margin from island size the texture space
+                collectedIslandMesh = new Array(collectedIslandList.length);
+                collectedIslandMesh.fill(m);
+
+                worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
             }
         }
 
         if (USER_SHARE_SPACE) {
-            worldToUVRatio = this.packIslands(collectedIslandList);
+            worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
         }
 
         let newUvs: FloatArray[] = [];
@@ -1707,12 +1721,12 @@ export class UvMapper {
             newUvs[meshIndex] = verticesData.uvs2;
         }
 
-        // this.debugUvs(newUvs, indices);
+        this.debugUvs(newUvs, indices);
 
         return worldToUVRatio;
     }
 
-    private packIslands(islandList: Island[]) : number {
+    private packIslands(islandList: Island[], islandMeshes: Mesh[]) : number {
         if (USER_FILL_HOLES) {
             this.mergeUvIslands(islandList);
         }
@@ -1724,14 +1738,28 @@ export class UvMapper {
         while (islandIdx < islandList.length) {
             let [minx, miny, maxx, maxy] = this.boundsIslands(islandList[islandIdx]);
 
+            // Expect the mesh to use 256 pixels width and height by default
+            let texelWidth = 256;
+            let texelHeight = 256;
+
+            if (islandMeshes[islandIdx].radiosityInfo) {
+                texelWidth = islandMeshes[islandIdx].radiosityInfo.lightmapSize.width;
+                texelHeight = islandMeshes[islandIdx].radiosityInfo.lightmapSize.height;
+            }
+
             let w = maxx - minx;
             let h = maxy - miny;
 
             if (USER_ISLAND_MARGIN) {
-                minx -= USER_ISLAND_MARGIN * w / 2;
-                miny -= USER_ISLAND_MARGIN * h / 2;
-                maxx += USER_ISLAND_MARGIN * w / 2;
-                maxy += USER_ISLAND_MARGIN * h / 2;
+                // User margin as a texel number
+                // Convert the margin in texel unit to texture space unit
+                const heightMargin = USER_ISLAND_MARGIN * (h / texelHeight);
+                const widthMargin = USER_ISLAND_MARGIN * (w / texelWidth);
+
+                minx -= widthMargin;
+                miny -= heightMargin;
+                maxx += widthMargin;
+                maxy += heightMargin;
 
                 w = maxx - minx;
                 h = maxy - miny;
