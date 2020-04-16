@@ -539,6 +539,9 @@ function projectMat(vector: Vector3) {
 const USER_FILL_HOLES = 0;
 const USER_FILL_HOLES_QUALITY = 1;
 const USER_ISLAND_MARGIN = 0;
+const USE_PACK_BIAS: boolean = true;
+const USE_FREE_STRIP: boolean = true;
+const USE_MERGE: boolean = true;
 const SMALL_NUM = 1e-12;
 
 /**
@@ -1607,8 +1610,10 @@ export class UvMapper {
 
                 // Add copy of the island mesh for each island
                 // It will used to deduct the margin from island size the texture space
-                const meshArray = new Array(islandList.length);
-                meshArray.fill(m);
+                const meshArray : Array<Mesh> = new Array<Mesh>(islandList.length);
+                for (let meshIndex = 0; meshIndex < meshArray.length; meshIndex++) {
+                    meshArray[meshIndex] = m;
+                }
                 collectedIslandMesh = collectedIslandMesh.concat(meshArray);
 
             } else {
@@ -1617,7 +1622,9 @@ export class UvMapper {
                 // Add copy of the island mesh for each island
                 // It will used to deduct the margin from island size the texture space
                 collectedIslandMesh = new Array(collectedIslandList.length);
-                collectedIslandMesh.fill(m);
+                for (let meshIndex = 0; meshIndex < collectedIslandMesh.length; meshIndex++) {
+                    collectedIslandMesh[meshIndex] = m;
+                }
 
                 worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
             }
@@ -1963,12 +1970,7 @@ class BoxVert {
 
     /* Store last intersecting boxes here
      * speedup intersection testing */
-    intersection_cache: BoxBlender[] = [
-        null,
-        null,
-        null,
-        null,
-    ];
+    intersection_cache: BoxBlender[] = [];
 
 // #ifdef USE_PACK_BIAS
     bias : number = 0;
@@ -2090,7 +2092,7 @@ class BoxPacker {
      * Pack boxes to the lower left hand corner
      * TODO : use must be fixed
      */
-    static BoxPack2dBlender(boxes: BoxBlender[], usePackBias: boolean = true, useFreeStrip: boolean = true, useMerge: boolean = false) {
+    static BoxPack2dBlender(boxes: BoxBlender[]) {
         // Sort boxes by area
         boxes.sort((a, b) => (b.w * b.h) - (a.w * a.h));
 
@@ -2155,7 +2157,7 @@ class BoxPacker {
         for (const boxVertex of firstBox.v) {
             boxVertex.used = true;
 
-            if (usePackBias) {
+            if (USE_PACK_BIAS) {
                 boxVertex.updateBias();
             }
         }
@@ -2169,12 +2171,12 @@ class BoxPacker {
         for (let boxIndex = 1; boxIndex < boxes.length; boxIndex++) {
             const box = boxes[boxIndex];
 
-            const vertexSort = (index1, index2) => {
+            const sortVertices = (index1: number, index2: number) => {
                 const v1 = vertices[index1];
                 const v2 = vertices[index2];
                 let a1, a2;
 
-                if (useFreeStrip) {
+                if (USE_FREE_STRIP) {
                     /* push free verts to the end so we can strip */
                     if (v1.free == 0 && v2.free == 0) {
                         return  0;
@@ -2188,7 +2190,7 @@ class BoxPacker {
                 a1 = Math.max(v1.x + box.w, v1.y + box.h);
                 a2 = Math.max(v2.x + box.w, v2.y + box.h);
 
-                if (usePackBias) {
+                if (USE_PACK_BIAS) {
                     a1 += v1.bias;
                     a2 += v2.bias;
                 }
@@ -2200,12 +2202,12 @@ class BoxPacker {
                     return -1;
                 }
                 return 0;
-            };
+            }
 
-            vertexPackIndices.sort(vertexSort);
+            vertexPackIndices.sort(sortVertices);
 
             // Find vertices fully used and remove them from the vertex pack to speed up vertices loop
-            if (useFreeStrip) {
+            if (USE_FREE_STRIP) {
                 let index = vertexPackIndices.length - 1;
 
                 while(index != 0 && vertices[vertexPackIndices[index]].free == 0) {
@@ -2255,8 +2257,8 @@ class BoxPacker {
                          * Assume no intersection...
                          */
                         intersection = false;
-                        if (box.xmin_get() < 0 || box.ymin_get() < 0
-                            || (vertex.intersection_cache[quadrantIndex] && box.intersect(vertex.intersection_cache[quadrantIndex]))) {
+                        // Assume boxes positions are positive (box.xmin_get() < 0 || box.ymin_get() < 0
+                        if (vertex.intersection_cache[quadrantIndex] && box.intersect(vertex.intersection_cache[quadrantIndex])) {
                             /**
                              * Here we check that the last intersected
                              * firstBox will intersect with this one using
@@ -2338,13 +2340,8 @@ class BoxPacker {
                              */
                             if (vertex.trb && vertex.tlb && (box === vertex.trb || box === vertex.tlb)) {
                                 if (Math.abs(vertex.tlb.h - vertex.trb.h) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.BLF | CORNERFLAGS.BRF;
-
-                                        if (vertex.trb.v[CORNERINDEX.TL].used != vertex.tlb.v[CORNERINDEX.TR].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.trb.v[CORNERINDEX.TL].used) {
                                             vertex.trb.v[CORNERINDEX.TL].free &= vertex.tlb.v[CORNERINDEX.TR].free & ~mask;
@@ -2366,13 +2363,8 @@ class BoxPacker {
 
                             else if (vertex.brb && vertex.blb && (box === vertex.brb || box === vertex.blb)) {
                                 if (Math.abs(vertex.blb.h - vertex.brb.h) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.TLF | CORNERFLAGS.TRF;
-
-                                        if (vertex.brb.v[CORNERINDEX.BL].used != vertex.blb.v[CORNERINDEX.BR].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.blb.v[CORNERINDEX.BR].used) {
                                             vertex.blb.v[CORNERINDEX.BR].free &= vertex.brb.v[CORNERINDEX.BL].free & ~mask;
@@ -2395,13 +2387,8 @@ class BoxPacker {
                             // Horizontally
                             else if (vertex.tlb && vertex.blb && (box === vertex.tlb || box === vertex.blb)) {
                                 if (Math.abs(vertex.tlb.w - vertex.blb.w) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.TRF | CORNERFLAGS.BRF;
-
-                                        if (vertex.tlb.v[CORNERINDEX.TL].used != vertex.blb.v[CORNERINDEX.BL].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.blb.v[CORNERINDEX.TL].used) {
                                             vertex.blb.v[CORNERINDEX.TL].free &= vertex.tlb.v[CORNERINDEX.BL].free & ~mask;
@@ -2422,13 +2409,8 @@ class BoxPacker {
                             }
                             else if (vertex.trb && vertex.brb && (box === vertex.trb || box === vertex.brb)) {
                                 if (Math.abs(vertex.trb.w - vertex.brb.w) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.TLF | CORNERFLAGS.BLF;
-
-                                        if (vertex.trb.v[CORNERINDEX.TR].used != vertex.brb.v[CORNERINDEX.BR].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.brb.v[CORNERINDEX.TR].used) {
                                             vertex.brb.v[CORNERINDEX.TR].free &= vertex.trb.v[CORNERINDEX.BR].free & ~mask;
@@ -2452,7 +2434,7 @@ class BoxPacker {
                                 if (!boxVertex.used) {
                                     boxVertex.used = true;
 
-                                    if (usePackBias) {
+                                    if (USE_PACK_BIAS) {
                                         boxVertex.updateBias();
                                     }
 
