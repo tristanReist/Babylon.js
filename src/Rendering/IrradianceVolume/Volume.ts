@@ -31,7 +31,7 @@ export class Volume {
         }
         this.renderResolution = probeRes;
 
-        this.irradiance = new Irradiance(this._scene, this.probeList, this.renderResolution);
+        this.irradiance = new Irradiance(this._scene, this.probeList, this.renderResolution, this.meshList);
     }
 
     public addProbe(probe : Probe) : void {
@@ -47,9 +47,6 @@ export class Volume {
     }
 
     public render() : void {
-        for (let probe of this.probeList){
-            probe.render(this.meshList);
-        }
         this.irradiance.render();
     }
 

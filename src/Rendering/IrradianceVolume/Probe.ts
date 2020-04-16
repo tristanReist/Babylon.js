@@ -14,14 +14,16 @@ import { SmartArray } from '../../Misc';
 import { UniversalCamera } from '../../Cameras/universalCamera';
 import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
 import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
-
+import { ShaderMaterial } from '../../Materials/shaderMaterial';
+import { CubeTexture} from '../../Materials/Textures/cubeTexture';
+import { BaseTexture } from '../../Materials/Textures/baseTexture';
 
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
 import "../../Shaders/uvCube.fragment"
 import "../../Shaders/uvCube.vertex"
-import { ShaderMaterial } from '../../Materials/shaderMaterial';
 
+import { Nullable } from '../../types';
 
 
 export class Probe {
@@ -35,31 +37,30 @@ export class Probe {
 
     private _scene : Scene;
     private _resolution : number;
-    private _sphericalHarmonic : SphericalHarmonics; 
 
     public sphere : Mesh;
     public cameraList : Array<UniversalCamera>;
     public isCube : boolean;
 
     public uvEffect : Effect;
-    public albedo : Texture;
+    public albedoStr : string;
+    public albedo : BaseTexture;
     public cubicMRT : MultiRenderTarget;
-
-    public promise : Promise<void>;
+    public sphericalHarmonic : SphericalHarmonics; 
 
     /*
     Create the probe which is a combination of a sphere and 6 cameras
     IsCube is for debug
     */
-    constructor(position : Vector3, scene : Scene, albedo : Texture) {
+    constructor(position : Vector3, scene : Scene, albedo : string, isCube = false) {
         this._scene = scene;
         this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
         this.sphere.visibility = 0;
         this.cameraList = new Array<UniversalCamera>();
 
-        this.isCube = albedo.isCube;
-        this.albedo = albedo;
-        
+        this.isCube = isCube;
+        this.albedoStr = albedo;
+        // this.sphericalHarmonic = new SphericalHarmonics();
 
         //First Camera ( x axis )
         let cameraPX = new UniversalCamera("px", Vector3.Zero(), scene);
@@ -102,7 +103,6 @@ export class Probe {
 
     public setResolution(resolution : number) : void {
         this._resolution = resolution;
-        this.promise = this._createPromise();
     }
 
     /**
@@ -127,14 +127,18 @@ export class Probe {
         var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
     
             let mesh = subMesh.getRenderingMesh();
+
+            effect.setMatrix("view", view);
+            effect.setMatrix("projection", projection);
+            effect.setTexture("albedo", this.albedo);
+
             mesh._bind(subMesh, effect, Material.TriangleFillMode);   
 
             if ( subMesh.verticesCount === 0) {
                 return;
             }
 
-            effect.setMatrix("view", view);
-            effect.setMatrix("projection", projection);
+    
 
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
@@ -150,13 +154,16 @@ export class Probe {
         let engine = scene.getEngine();
         let gl = engine._gl;
         
-        this.uvEffect.setTexture("albedo", this.albedo);
-        
+
+
         let uvInternal = <InternalTexture>this.cubicMRT.textures[0]._texture;
         let albedoInternal = <InternalTexture> this.cubicMRT.textures[1]._texture;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, uvInternal._framebuffer);
         engine.setState(false, 0, true, scene.useRightHandedSystem);
+
+
+
 
         let viewMatrices = [ this.cameraList[Probe.PX].getViewMatrix(),
             this.cameraList[Probe.NX].getViewMatrix(),
@@ -177,7 +184,8 @@ export class Probe {
             gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
         ];
 
-        engine.enableEffect(this.uvEffect);
+
+        // engine.enableEffect(this.uvEffect);
         for (let j = 0; j < 6; j++){
             engine.setDirectViewport(0, 0, this.cubicMRT.getRenderWidth(), this.cubicMRT.getRenderHeight());
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], uvInternal._webGLTexture, 0);
@@ -199,61 +207,71 @@ export class Probe {
      * @param ground 
      */
     public render(meshes : Array<Mesh>) : void {
-        let probe = this;
-        this.promise.then( function () {
-            //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
-            //We need it for the computation of the spherical harmonics
-            for (let texture of probe.cubicMRT.textures){
-                texture.isRenderTarget = true;
-            }
-            probe.cubicMRT.renderList = meshes;
-            probe._scene.customRenderTargets.push(probe.cubicMRT);
-            probe.cubicMRT.boundingBoxPosition = probe.sphere.position;
-            probe.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
-            probe.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-                probe._renderCubeTexture(opaqueSubMeshes);          
-            }
-            probe.cubicMRT.onAfterRenderObservable.add(() => {
-
-                probe._CPUcomputeSHCoeff();
+        //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
+        // //We need it for the computation of the spherical harmonics
+        for (let texture of this.cubicMRT.textures){
+            texture.isRenderTarget = true;
+        }
+        this.cubicMRT.renderList = meshes;
+        this._scene.customRenderTargets.push(this.cubicMRT);
+        this.cubicMRT.boundingBoxPosition = this.sphere.position;
+        this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
 
 
-            });
+
+        this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
+            this._renderCubeTexture(opaqueSubMeshes);          
+        }
+
+        let previousMaterial = new Array<Nullable<Material>>();
+
+        let testMaterial = new ShaderMaterial("uvTest", this._scene, "./../../src/Shaders/uv", {
+            attributes: ["position", "uv"],
+            uniforms: ["world"]
         });
+        testMaterial.setTexture("albedo", this.albedo);
+
+        this.cubicMRT.onBeforeRenderObservable.add(() => {
+            // previousMaterial = [];
+            // for (let mesh of meshes){
+            //     previousMaterial.push(mesh.material);
+            //     mesh.material = testMaterial;
+            // }
+        });
+
+        this.cubicMRT.onAfterRenderObservable.add(() => {
+            // for (let i = 0; i < previousMaterial.length; i++){
+            //     meshes[i].material = previousMaterial[i];
+            // }
+            this._CPUcomputeSHCoeff();
+        });
+
     }
 
 
+    public initPromise() : void {
+        this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
+        if( ! this.isCube){
+            this.albedo = new Texture(this.albedoStr, this._scene);
+        }
+        else{
+            this.albedo = new CubeTexture(this.albedoStr, this._scene);
+        }
+    }
 
-    private _createPromise() : Promise<void> {
-        return new Promise((resolve, reject) => {
-            let size = this._resolution;
-            this.cubicMRT = new MultiRenderTarget("uvAlbedo", size, 2, this._scene, {isCube : true});
-            this.albedo = new Texture("./../../Playground/textures/bloc.jpg", this._scene);
-            let interval = setInterval(() => {
-                let readyStates = [
-                    this._isEffectReady(),
-                    // this._isTextureReady(),
-                    this._isMRTReady()    
-                ];
-                for (let i = 0 ; i < readyStates.length; i++) {
-                    if (!readyStates[i]) {
-                        return ;
-                    }
-                }
-                clearInterval(interval);
-                resolve();
-            }, 200);
-        });
+    public isProbeReady() : boolean {
+        return this._isEffectReady() && this._isMRTReady() && this._isTextureReady();
     }
 
     private _isEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var uniforms = ["world", "projection", "view", "albedo"];
+        var uniforms = ["world", "projection", "view", "test"];
+        var samplers = ["albedo"];
         if (!this.isCube){
             this.uvEffect = this._scene.getEngine().createEffect("uv", 
                 attribs,
                 uniforms,
-                [], "");
+                samplers);
         }
         else {
             this.uvEffect = this._scene.getEngine().createEffect("uvCube", 
@@ -270,18 +288,16 @@ export class Probe {
     }
 
     private _isTextureReady() : boolean {
-       
         return this.albedo.isReady();
     }
 
 
     private _CPUcomputeSHCoeff() : void {
         //Possible problem, y can be inverted
-        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.cubicMRT.textures[1 ]);
+        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.cubicMRT.textures[1]);
         if (sp != null){
-            this._sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
+            this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
         }
-        // let spBis = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalHarmonics(this.cubicMRT.textures[1]);
         this._computeProbeIrradiance();
 
     }
@@ -292,17 +308,17 @@ export class Probe {
             attributes : ["position", "normal"],
             uniforms : ["worldViewProjection"]
         })
-        shaderMaterial.setVector3("L00", this._sphericalHarmonic.l00);
+        shaderMaterial.setVector3("L00", this.sphericalHarmonic.l00);
         
-        shaderMaterial.setVector3("L10", this._sphericalHarmonic.l10);
-        shaderMaterial.setVector3("L11", this._sphericalHarmonic.l11);
-        shaderMaterial.setVector3("L1m1", this._sphericalHarmonic.l1_1);
+        shaderMaterial.setVector3("L10", this.sphericalHarmonic.l10);
+        shaderMaterial.setVector3("L11", this.sphericalHarmonic.l11);
+        shaderMaterial.setVector3("L1m1", this.sphericalHarmonic.l1_1);
 
-        shaderMaterial.setVector3("L20", this._sphericalHarmonic.l20);
-        shaderMaterial.setVector3("L21", this._sphericalHarmonic.l21);
-        shaderMaterial.setVector3("L22", this._sphericalHarmonic.l22);
-        shaderMaterial.setVector3("L2m1", this._sphericalHarmonic.l2_1);     
-        shaderMaterial.setVector3("L2m2", this._sphericalHarmonic.l2_2);   
+        shaderMaterial.setVector3("L20", this.sphericalHarmonic.l20);
+        shaderMaterial.setVector3("L21", this.sphericalHarmonic.l21);
+        shaderMaterial.setVector3("L22", this.sphericalHarmonic.l22);
+        shaderMaterial.setVector3("L2m1", this.sphericalHarmonic.l2_1);     
+        shaderMaterial.setVector3("L2m2", this.sphericalHarmonic.l2_2);   
 
         this.sphere.material = shaderMaterial;
    

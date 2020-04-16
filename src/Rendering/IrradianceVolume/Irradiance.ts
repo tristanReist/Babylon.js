@@ -2,11 +2,10 @@ import { Scene } from '../../scene';
 import { Probe } from './Probe';
 import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
 import { Mesh } from '../../Meshes/mesh';
-import { VertexData } from '../../Meshes/mesh.vertexData';
+import { Material } from '../../Materials/material';
+import { Nullable } from '../../types';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
-import { Texture } from '../../Materials';
-import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
-import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
+
 
 export class Irradiance {
 
@@ -14,50 +13,65 @@ export class Irradiance {
     
     public probeList : Array<Probe>;
     public resolution : number;
-    
-    public cubeMapLine : RenderTargetTexture;
-    public shCoeff : RenderTargetTexture;
-     
-    private _groundForRender : Mesh;
+    public meshes : Array<Mesh>;
+
+    public irradianceLightmap : RenderTargetTexture; 
+
     private _promise : Promise<void>;
 
-    constructor(scene : Scene, probes : Array<Probe>, resolution : number){
+
+    constructor(scene : Scene, probes : Array<Probe>, resolution : number, meshes : Array<Mesh>){
         this._scene = scene;
         this.probeList = probes;
         this.resolution = resolution;
-        this._createGround();
+        this.meshes = meshes;
         this._promise = this._createPromise();
     }
+
 
     public addProbe(probe : Probe) {
         this.probeList.push(probe);
         this._promise = this._createPromise();
     }   
 
+
     public render() : void {
         let irradiance = this;
         this._promise.then( function () {
-            irradiance._computeCubeMapLines();
+            for (let probe of irradiance.probeList){
+                probe.render(irradiance.meshes);
+            }
 
-            // irradiance._CPUcomputeSHCoeff();
+            let shCoefPromise = new Promise((resolve, reject) => {
+                let interval = setInterval(() => {
+                    let readyStates = [
+                        irradiance._areShCoeffReady()
+                    ];
+                    for (let i = 0 ; i < readyStates.length; i++) {
+                        if (!readyStates[i]) {
+                            return ;
+                        }
+                    }                   
+                    clearInterval(interval);
+                    resolve();
+                }, 200);
+            });
+
+            shCoefPromise.then( function (){
+                irradiance._fillLightMap();
+            });
+            // irradiance._fillLightMap();
         });
     }
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
-            this.cubeMapLine = new RenderTargetTexture("cubeMapLine",
-            {
-                width : this.resolution * 6,
-                height : this.resolution * this.probeList.length
-            },
-            this._scene
-            );
-            this.shCoeff = new RenderTargetTexture("shCoef", {width : 9, height : 1}, this._scene);
-
+            this._initProbesPromise();
+            this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 1024, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
-                    this._isSHReady(),
-                    this._isCubeMapLineReady()
+                    this._isIrradianceLightMapReady(),
+                    this._areProbesReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -70,79 +84,114 @@ export class Irradiance {
         });
     }
 
-    private _isSHReady() : boolean {
-        
-        return this.shCoeff.isReady();
-    }
-
-    private _isCubeMapLineReady() : boolean {
-        
-        return this.cubeMapLine.isReady();
-    }
-
-    private _createGround() : void {
-        this._groundForRender= new Mesh("custom", this._scene);
-        let position = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0];
-        let indices = [0, 1, 2, 3, 4, 5];
-        let vertexData = new VertexData();
-        this._groundForRender.visibility = 0;
-        vertexData.positions = position;
-        vertexData.indices = indices;
-
-        vertexData.applyToMesh(this._groundForRender);
-    }
-
-    private _CPUcomputeSHCoeff() : void {
-
-        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.probeList[0].cubicMRT.textures[0]);
-        let sh;
-        if (sp != null)
-        sh = SphericalHarmonics.FromPolynomial(sp);
-    }
-
-    private _GPUcomputeSHCoeff() : void {
-        var shMaterial = new ShaderMaterial("shCoef", this._scene, "./../../src/Shaders/shCoef", {
-            attributes : ["position"]
-        });
-        shMaterial.setInt("numberCube", this.probeList.length);
-        shMaterial.setInt("resolution", this.resolution);
-        shMaterial.setTexture("cubeMapLine", this.cubeMapLine);
-        shMaterial.backFaceCulling = false;
-
-            
-        this.shCoeff.onBeforeRenderObservable.add(() => {
-            this._groundForRender.material = shMaterial;
-        });
-
-        this.shCoeff.onAfterRenderObservable.add(() => {
-            let pixels = this.shCoeff.readPixels();
-        });
- 
-        this.shCoeff.renderList = [this._groundForRender];
-        this._scene.customRenderTargets.push(this.shCoeff);
-        this.shCoeff.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
-    }
-
-    private _computeCubeMapLines() : void {
-        var cubeMapMaterial = new ShaderMaterial("cubeMap", this._scene, "./../../src/Shaders/cubeMapInLine", {
-            attributes : ["position"]
-        });
-        
-        let textureArray = new Array<Texture>();
-        for (let probe of this.probeList) {
-            textureArray.push(probe.cubicMRT.textures[1]);
+    private _initProbesPromise() : void {
+        for (let probe of this.probeList){
+            probe.initPromise();
         }
-        cubeMapMaterial.setTextureArray("cubeMapArray", textureArray);
-        cubeMapMaterial.setInt("resolution", this.resolution);
-        cubeMapMaterial.setInt("numberCube", this.probeList.length);
-        cubeMapMaterial.backFaceCulling = false;
+    }
+
+    private _areProbesReady() : boolean {
+        let ready = true;
+        for (let probe of this.probeList){
+            ready = probe.isProbeReady() && ready;
+            if (!ready){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private _isIrradianceLightMapReady() : boolean {
         
-        this.cubeMapLine.onBeforeRenderObservable.add(() => {
-            this._groundForRender.material = cubeMapMaterial;
+        return this.irradianceLightmap.isReady();
+    }
+
+    private _areShCoeffReady() : boolean {
+        for (let probe of this.probeList) {
+            if (probe.sphericalHarmonic == null){
+                return false;
+            }
+        }
+        return true;
+    };
+
+    private _fillLightMap() : void {
+        this.irradianceLightmap.renderList = this.meshes;
+        this._scene.customRenderTargets.push(this.irradianceLightmap);
+        this.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
+       
+        let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene, 
+            "./../../src/Shaders/irradianceLightmap", {
+                attributes : ["position", "normal", "uv"],
+                uniforms : ["world"],
+                defines : ["#define NUM_PROBES " + this.probeList.length]
         });
 
-        this.cubeMapLine.renderList = [this._groundForRender];
-        this._scene.customRenderTargets.push(this.cubeMapLine);
-        this.cubeMapLine.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
+        let probePosition = [];
+        let shCoef = [];
+        for (let probe of  this.probeList){
+            probePosition.push(probe.sphere.position.x);
+            probePosition.push(probe.sphere.position.y);
+            probePosition.push(probe.sphere.position.z);
+
+            //We need to put float instead of vector3
+            shCoef.push(probe.sphericalHarmonic.l00.x);
+            shCoef.push(probe.sphericalHarmonic.l00.y);
+            shCoef.push(probe.sphericalHarmonic.l00.z);
+
+            shCoef.push(probe.sphericalHarmonic.l11.x);
+            shCoef.push(probe.sphericalHarmonic.l11.y);
+            shCoef.push(probe.sphericalHarmonic.l11.z);
+
+            shCoef.push(probe.sphericalHarmonic.l10.x);
+            shCoef.push(probe.sphericalHarmonic.l10.y);
+            shCoef.push(probe.sphericalHarmonic.l10.z);
+
+            shCoef.push(probe.sphericalHarmonic.l1_1.x);
+            shCoef.push(probe.sphericalHarmonic.l1_1.y);
+            shCoef.push(probe.sphericalHarmonic.l1_1.z);
+
+            shCoef.push(probe.sphericalHarmonic.l22.x);
+            shCoef.push(probe.sphericalHarmonic.l22.y);
+            shCoef.push(probe.sphericalHarmonic.l22.z);
+
+            shCoef.push(probe.sphericalHarmonic.l21.x);
+            shCoef.push(probe.sphericalHarmonic.l21.y);
+            shCoef.push(probe.sphericalHarmonic.l21.z);
+
+            shCoef.push(probe.sphericalHarmonic.l20.x);
+            shCoef.push(probe.sphericalHarmonic.l20.y);
+            shCoef.push(probe.sphericalHarmonic.l20.z);
+
+            shCoef.push(probe.sphericalHarmonic.l2_1.x);
+            shCoef.push(probe.sphericalHarmonic.l2_1.y);
+            shCoef.push(probe.sphericalHarmonic.l2_1.z);
+
+            shCoef.push(probe.sphericalHarmonic.l2_2.x);
+            shCoef.push(probe.sphericalHarmonic.l2_2.y);
+            shCoef.push(probe.sphericalHarmonic.l2_2.z);
+        }
+        irradianceMaterial.setArray3("probePosition", probePosition);
+        irradianceMaterial.setArray3("shCoef", shCoef);
+
+        irradianceMaterial.backFaceCulling = false;
+
+        let previousMaterial = new Array<Nullable<Material>>();
+        
+        this.irradianceLightmap.onBeforeRenderObservable.add(() => {
+            //Add the right material to the meshes
+            for ( let mesh of this.meshes ){
+                previousMaterial.push(mesh.material);
+                mesh.material = irradianceMaterial;
+            }
+        });
+
+        this.irradianceLightmap.onAfterRenderObservable.add(() => {
+            //Put the previous material on the meshes
+            for ( let i =  0; i < this.meshes.length; i++ ) {
+                this.meshes[i].material = previousMaterial[i];
+            }
+        });
     }
+
 }

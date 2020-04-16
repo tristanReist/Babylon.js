@@ -2,11 +2,11 @@ varying vec2 vUV;
 
 uniform int numberCube;
 uniform int resolution;
-uniform samplerCube cubeMapArray[10];
-
-#define MAXVALUE 10
+// uniform samplerCube cubeMapArray[10];
+uniform samplerCube cubeMapArray[NUM_PROBES];
 
 void main() {
+
     vec4 color = vec4(1., 1., 1., 1.);
 
     vec2 uv = (vUV + 1.) * 0.5;
@@ -19,11 +19,9 @@ void main() {
     int face = int(uv.x * 6.);
     int pixelInFace = int((uv.x * 6. - float(face)) * float(resolution) );
     float x = -1. + float(pixelInFace) / (float(resolution) / 2.);
-    
-    const int maxValue = 10;
 
-    for (int i = 0 ; i < 1; i++){
-
+ 
+    for ( int i = 0 ; i < NUM_PROBES; i++ ){
         if (i == currentCube){
             if ( face == 0 ){           //Positive_X
                 color =  vec4(textureCube(cubeMapArray[0], vec3(1., y, - x)).rgb, 1); 

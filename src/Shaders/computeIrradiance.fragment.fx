@@ -40,7 +40,5 @@ void main( void ) {
     float vC = vNormal.x * vNormal.x - vNormal.y * vNormal.y;
     x3 = L22.rgb * vC;
 
-
-
     gl_FragColor = vec4(x1 + x2 + x3, 1.);
 }
