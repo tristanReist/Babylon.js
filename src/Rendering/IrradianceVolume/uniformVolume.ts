@@ -34,7 +34,7 @@ export class UniformVolume extends Volume{
         this._depth = depth;
         this._spaceBetweenProbes = space;
         this._createProbeList();
-        this.irradiance =  = new Irradiance(this._scene, this.probeList, this.meshList);
+        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList);
     }
 
 
