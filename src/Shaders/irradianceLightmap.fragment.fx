@@ -61,8 +61,8 @@ vec4 probeContribution(int probe, vec4 position, vec4 normal) {
 
 
 void main(){
-    vec4 wPosistion =  world * vec4(vPosition, 1.); 
-    vec4 normalizeNormal = vec4(normalize(vNormal), 0.);
+    vec4 wPosistion =  world *  vec4(vPosition, 1.); 
+    vec4 normalizeNormal = normalize(world * vec4(vNormal, 0.));
 
     vec4 color = vec4(0., 0., 0., 0.);
     for ( int i = 0; i < NUM_PROBES; i++ ) {
@@ -70,6 +70,7 @@ void main(){
     }
 
     color /= color.w;
+
 
 
     gl_FragColor = color;

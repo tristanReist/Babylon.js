@@ -139,8 +139,7 @@ export class Probe {
             effect.setMatrix("view", view);
             effect.setMatrix("projection", projection);
             effect.setTexture("albedo", this.albedo);
-            effect.setInt("test", 5);
-
+            
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
                 return ;
@@ -243,7 +242,7 @@ export class Probe {
 
     private _isEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var uniforms = ["world", "projection", "view", "test"];
+        var uniforms = ["world", "projection", "view"];
         var samplers = ["albedo"];
         if (!this.isCube){
             this.uvEffect = this._scene.getEngine().createEffect("uv", 
