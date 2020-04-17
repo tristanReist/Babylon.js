@@ -23,11 +23,17 @@ import "../../Shaders/uv.vertex"
 import "../../Shaders/uvCube.fragment"
 import "../../Shaders/uvCube.vertex"
 
-import { Nullable } from '../../types';
 
-
+/**
+ * The probe is what is used for irradiance volume
+ * It aims to sample the irradiance at  a certain point of the scene
+ * For that, it create a cube map of its environment that will be used to compute the irradiance at that point
+ */
 export class Probe {
 
+    /**
+     * Static number to access to the cameras with their direction
+     */
     public static readonly PX : number = 0;
     public static readonly NX : number = 1;
     public static readonly PY : number = 2;
@@ -38,28 +44,64 @@ export class Probe {
     private _scene : Scene;
     private _resolution : number;
 
+    /**
+     * The sphere that we choose to be visible or not,
+     * that keep the information of irradiance
+     */
     public sphere : Mesh;
+
+    /**
+     * The list of camera that are attached to the probe,
+     * used to render the cube map
+     */
     public cameraList : Array<UniversalCamera>;
+
+    /**
+     * Boolean use to know if the texture we are using for rendering is cubic or not
+     */
     public isCube : boolean;
 
+    /**
+     * The effect used for rendering the cube map
+     */
     public uvEffect : Effect;
+
+    /**
+     * The string representing the path to the texture that is used
+     */
     public albedoStr : string;
+
+    /**
+     * The texture used to render the cube map
+     */
     public albedo : BaseTexture;
+
+    /**
+     * The multirendertarget that is use to redner the scene from the probe
+     */
     public cubicMRT : MultiRenderTarget;
+
+    /**
+     * The spherical harmonic coefficients that represent the irradiance capture by the probe
+     */
     public sphericalHarmonic : SphericalHarmonics; 
 
-    /*
-    Create the probe which is a combination of a sphere and 6 cameras
-    IsCube is for debug
-    */
-    constructor(position : Vector3, scene : Scene, albedo : string, isCube = false) {
+
+    /**
+     * Create the probe used to capture the irradiance at a point 
+     * @param position The position at which the probe is set
+     * @param scene the scene in which the probe is place
+     * @param albedoName the path to the albedo
+     * @param isCube Is the texture we want to use a cube or not ?
+     */
+    constructor(position : Vector3, scene : Scene, albedoName : string, isCube = false) {
         this._scene = scene;
         this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
         this.sphere.visibility = 0;
         this.cameraList = new Array<UniversalCamera>();
 
         this.isCube = isCube;
-        this.albedoStr = albedo;
+        this.albedoStr = albedoName;
         // this.sphericalHarmonic = new SphericalHarmonics();
 
         //First Camera ( x axis )
@@ -101,6 +143,10 @@ export class Probe {
 
     }
 
+    /**
+     * Set the resolution used by the probe to render its surrounding
+     * @param resolution The resolution to use
+     */
     public setResolution(resolution : number) : void {
         this._resolution = resolution;
     }
@@ -115,7 +161,7 @@ export class Probe {
 
     /**
      * Set the visibility of the probe
-     * @param visisble 
+     * @param visisble The visibility of the probe
      */
     public setVisibility(visisble : number) : void {
         this.sphere.visibility = visisble;
@@ -202,7 +248,6 @@ export class Probe {
     /**
      * Render the 6 cameras of the probes with different effect to create the cube map we need
      * @param meshes The meshes we want to render
-     * @param ground 
      */
     public render(meshes : Array<Mesh>) : void {
         //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
@@ -225,7 +270,10 @@ export class Probe {
 
     }
 
-
+    /**
+     * Initialise what need time to be ready
+     * Is called in irradiance for the creation of the promise
+     */
     public initPromise() : void {
         this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
         if( ! this.isCube){
@@ -236,6 +284,9 @@ export class Probe {
         }
     }
 
+    /**
+     * Return if the probe is ready to be render
+     */
     public isProbeReady() : boolean {
         return this._isEffectReady() && this._isMRTReady() && this._isTextureReady();
     }

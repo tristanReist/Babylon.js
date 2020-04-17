@@ -6,42 +6,70 @@ import { Material } from '../../Materials/material';
 import { Nullable } from '../../types';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 
-
+/**
+ * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
+ */
 export class Irradiance {
 
     private _scene : Scene;
     
+    /**
+     * The list of probes that are part of this irradiance volume
+     */
     public probeList : Array<Probe>;
-    public resolution : number;
+
+    /**
+     * The meshes that are render by the probes
+     */
     public meshes : Array<Mesh>;
 
+    /**
+     * Texture that conntains the light map of the irradiance of the scene
+     */
     public irradianceLightmap : RenderTargetTexture; 
 
     private _promise : Promise<void>;
 
 
-    constructor(scene : Scene, probes : Array<Probe>, resolution : number, meshes : Array<Mesh>){
+    /**
+     * Initiate a new Iradiance
+     * @param scene The scene the irradiance is
+     * @param probes The probes that are used to render the irradiance
+     * @param meshes The meshes that are rendered by the probes
+     */
+    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>){
         this._scene = scene;
         this.probeList = probes;
-        this.resolution = resolution;
         this.meshes = meshes;
         this._promise = this._createPromise();
     }
 
 
+    /**
+     * Add a probe to the list of probes after initialisation
+     * @param probe The probe to be added
+     */
     public addProbe(probe : Probe) {
         this.probeList.push(probe);
+        //We have to recreate the promise because the values have changed
         this._promise = this._createPromise();
     }   
 
 
+    /**
+     * Function that launch all the render needed to create the final light map of irradiance that contains
+     * global illumination
+     */
     public render() : void {
         let irradiance = this;
+        // When all we need is ready 
         this._promise.then( function () {
             for (let probe of irradiance.probeList){
                 probe.render(irradiance.meshes);
             }
 
+            //Creation of a promise to know when the shCoeff are modified => probe has been rendered
+            // we can then compute the light map of irradiance
             let shCoefPromise = new Promise((resolve, reject) => {
                 let interval = setInterval(() => {
                     let readyStates = [
@@ -60,7 +88,6 @@ export class Irradiance {
             shCoefPromise.then( function (){
                 irradiance._fillLightMap();
             });
-            // irradiance._fillLightMap();
         });
     }
 
