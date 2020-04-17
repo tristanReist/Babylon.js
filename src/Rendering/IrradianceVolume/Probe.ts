@@ -128,9 +128,7 @@ export class Probe {
     
             let mesh = subMesh.getRenderingMesh();
 
-            effect.setMatrix("view", view);
-            effect.setMatrix("projection", projection);
-            effect.setTexture("albedo", this.albedo);
+
 
             mesh._bind(subMesh, effect, Material.TriangleFillMode);   
 
@@ -138,7 +136,10 @@ export class Probe {
                 return;
             }
 
-    
+            effect.setMatrix("view", view);
+            effect.setMatrix("projection", projection);
+            effect.setTexture("albedo", this.albedo);
+            effect.setInt("test", 5);
 
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
@@ -163,8 +164,6 @@ export class Probe {
         engine.setState(false, 0, true, scene.useRightHandedSystem);
 
 
-
-
         let viewMatrices = [ this.cameraList[Probe.PX].getViewMatrix(),
             this.cameraList[Probe.NX].getViewMatrix(),
             this.cameraList[Probe.PY].getViewMatrix(),
@@ -185,7 +184,7 @@ export class Probe {
         ];
 
 
-        // engine.enableEffect(this.uvEffect);
+        engine.enableEffect(this.uvEffect);
         for (let j = 0; j < 6; j++){
             engine.setDirectViewport(0, 0, this.cubicMRT.getRenderWidth(), this.cubicMRT.getRenderHeight());
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], uvInternal._webGLTexture, 0);
@@ -217,32 +216,11 @@ export class Probe {
         this.cubicMRT.boundingBoxPosition = this.sphere.position;
         this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
 
-
-
         this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(opaqueSubMeshes);          
         }
 
-        let previousMaterial = new Array<Nullable<Material>>();
-
-        let testMaterial = new ShaderMaterial("uvTest", this._scene, "./../../src/Shaders/uv", {
-            attributes: ["position", "uv"],
-            uniforms: ["world"]
-        });
-        testMaterial.setTexture("albedo", this.albedo);
-
-        this.cubicMRT.onBeforeRenderObservable.add(() => {
-            // previousMaterial = [];
-            // for (let mesh of meshes){
-            //     previousMaterial.push(mesh.material);
-            //     mesh.material = testMaterial;
-            // }
-        });
-
         this.cubicMRT.onAfterRenderObservable.add(() => {
-            // for (let i = 0; i < previousMaterial.length; i++){
-            //     meshes[i].material = previousMaterial[i];
-            // }
             this._CPUcomputeSHCoeff();
         });
 
@@ -277,7 +255,7 @@ export class Probe {
             this.uvEffect = this._scene.getEngine().createEffect("uvCube", 
             attribs,
             uniforms,
-            [], "");           
+            samplers);           
         }
         return this.uvEffect.isReady();
     }
