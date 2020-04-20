@@ -69,6 +69,10 @@ void main(){
         color += probeContribution(i, wPosistion, normalizeNormal);
     }
 
+    if (color.w == 0.){
+        color.w = 1.;
+    }
+    
     color /= color.w;
 
 

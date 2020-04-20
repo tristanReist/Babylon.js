@@ -1,9 +1,7 @@
 import { Scene } from '../../scene';
-import { Probe } from './Probe';
 import { Mesh } from '../../Meshes/mesh';
 import { Irradiance } from './Irradiance';
 import { Volume } from './Volume';
-import { Vector3 } from '../../Maths';
 
 /**
  * Class that represent the irradiance volume
