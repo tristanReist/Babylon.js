@@ -32,6 +32,8 @@ export abstract class Volume {
     public renderResolution : number;
 
 
+    public strAlbedo : string;
+
     /**
      * Instanciate a new volume for the scene
      * @param meshes List of 
@@ -39,10 +41,11 @@ export abstract class Volume {
      * @param probeRes The resolution with which the probes will render
      * @param probes The list of probes that will be render
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, probeRes = 16){
+    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, probeRes = 16){
         this._scene = scene;
         this.meshList = meshes;
         this.renderResolution = probeRes;
+        this.strAlbedo = strAlbedo;
     }
 
     protected _initProbeIrradiance( probes? : Array<Probe>) : void {
@@ -51,12 +54,13 @@ export abstract class Volume {
             this.probeList = probes;
             for (let probe of this.probeList){
                 probe.setResolution(this.renderResolution);
+                probe.setVisibility(1);
             }
         }
         else {
             this.probeList = new Array<Probe>();
         }
-        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList);   
+        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList, this.strAlbedo);   
     }
 
 

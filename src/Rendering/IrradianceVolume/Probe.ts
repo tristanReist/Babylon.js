@@ -15,13 +15,10 @@ import { UniversalCamera } from '../../Cameras/universalCamera';
 import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
 import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
-import { CubeTexture} from '../../Materials/Textures/cubeTexture';
 import { BaseTexture } from '../../Materials/Textures/baseTexture';
 
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
-import "../../Shaders/uvCube.fragment"
-import "../../Shaders/uvCube.vertex"
 
 
 /**
@@ -94,15 +91,12 @@ export class Probe {
      * @param albedoName the path to the albedo
      * @param isCube Is the texture we want to use a cube or not ?
      */
-    constructor(position : Vector3, scene : Scene, albedoName : string, isCube = false) {
+    constructor(position : Vector3, scene : Scene) {
         this._scene = scene;
         this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
         this.sphere.visibility = 0;
         this.cameraList = new Array<UniversalCamera>();
 
-        this.isCube = isCube;
-        this.albedoStr = albedoName;
-        // this.sphericalHarmonic = new SphericalHarmonics();
 
         //First Camera ( x axis )
         let cameraPX = new UniversalCamera("px", Vector3.Zero(), scene);
@@ -249,9 +243,11 @@ export class Probe {
      * Render the 6 cameras of the probes with different effect to create the cube map we need
      * @param meshes The meshes we want to render
      */
-    public render(meshes : Array<Mesh>) : void {
+    public render(meshes : Array<Mesh>, albedo : Texture, uvEffet : Effect) : void {
         //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
         // //We need it for the computation of the spherical harmonics
+        this.albedo = albedo;
+        this.uvEffect = uvEffet;
         for (let texture of this.cubicMRT.textures){
             texture.isRenderTarget = true;
         }
@@ -276,47 +272,20 @@ export class Probe {
      */
     public initPromise() : void {
         this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
-        if( ! this.isCube){
-            this.albedo = new Texture(this.albedoStr, this._scene);
-        }
-        else{
-            this.albedo = new CubeTexture(this.albedoStr, this._scene);
-        }
     }
 
     /**
      * Return if the probe is ready to be render
      */
     public isProbeReady() : boolean {
-        return this._isEffectReady() && this._isMRTReady() && this._isTextureReady();
+        return this._isMRTReady();
     }
 
-    private _isEffectReady() : boolean {
-        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var uniforms = ["world", "projection", "view"];
-        var samplers = ["albedo"];
-        if (!this.isCube){
-            this.uvEffect = this._scene.getEngine().createEffect("uv", 
-                attribs,
-                uniforms,
-                samplers);
-        }
-        else {
-            this.uvEffect = this._scene.getEngine().createEffect("uvCube", 
-            attribs,
-            uniforms,
-            samplers);           
-        }
-        return this.uvEffect.isReady();
-    }
+
 
     private _isMRTReady() : boolean {
         
         return this.cubicMRT.isReady();
-    }
-
-    private _isTextureReady() : boolean {
-        return this.albedo.isReady();
     }
 
 

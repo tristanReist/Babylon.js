@@ -5,6 +5,9 @@ import { Mesh } from '../../Meshes/mesh';
 import { Material } from '../../Materials/material';
 import { Nullable } from '../../types';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
+import { Texture } from '../../Materials/Textures/texture';
+import { VertexBuffer } from '../../Meshes/buffer';
+import { Effect } from '../../Materials/effect';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -29,7 +32,10 @@ export class Irradiance {
     public irradianceLightmap : RenderTargetTexture; 
 
     private _promise : Promise<void>;
-
+    
+    private _strAlbedo : string;
+    public uvEffect : Effect;
+    public albedo : Texture;
 
     /**
      * Initiate a new Iradiance
@@ -37,10 +43,11 @@ export class Irradiance {
      * @param probes The probes that are used to render the irradiance
      * @param meshes The meshes that are rendered by the probes
      */
-    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>){
+    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, strAlbedo : string){
         this._scene = scene;
         this.probeList = probes;
         this.meshes = meshes;
+        this._strAlbedo = strAlbedo;
         this._promise = this._createPromise();
     }
 
@@ -65,7 +72,7 @@ export class Irradiance {
         // When all we need is ready 
         this._promise.then( function () {
             for (let probe of irradiance.probeList){
-                probe.render(irradiance.meshes);
+                probe.render(irradiance.meshes, irradiance.albedo, irradiance.uvEffect);
             }
 
             //Creation of a promise to know when the shCoeff are modified => probe has been rendered
@@ -95,10 +102,13 @@ export class Irradiance {
         return new Promise((resolve, reject) => {
             this._initProbesPromise();
             this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 1024, this._scene);
+            this.albedo = new Texture(this._strAlbedo, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isIrradianceLightMapReady(),
-                    this._areProbesReady()
+                    this._isTextureReady(),
+                    this._areProbesReady(),
+                    this._isEffectReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -128,8 +138,23 @@ export class Irradiance {
         return true;
     }
 
-    private _isIrradianceLightMapReady() : boolean {
-        
+    private _isTextureReady() : boolean {
+        return this.albedo.isReady();
+    }
+
+    private _isEffectReady() : boolean {
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
+        var uniforms = ["world", "projection", "view"];
+        var samplers = ["albedo"];
+        this.uvEffect = this._scene.getEngine().createEffect("uv", 
+            attribs,
+            uniforms,
+            samplers);
+    
+        return this.uvEffect.isReady();
+    }
+
+    private _isIrradianceLightMapReady() : boolean {    
         return this.irradianceLightmap.isReady();
     }
 
@@ -145,7 +170,7 @@ export class Irradiance {
     private _fillLightMap() : void {
         this.irradianceLightmap.renderList = this.meshes;
         this._scene.customRenderTargets.push(this.irradianceLightmap);
-        this.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
+        this.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
        
         let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene, 
             "./../../src/Shaders/irradianceLightmap", {
