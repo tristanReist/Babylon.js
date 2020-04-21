@@ -6,7 +6,74 @@ uniform mat4 world;
 uniform vec3 probePosition[NUM_PROBES];
 uniform vec3 shCoef[NUM_PROBES * 9];
 
+uniform vec3 numberProbesInSpace;
+uniform vec3 boxSize;
+uniform vec3 bottomLeft;
+uniform int isUniform;
 
+
+int[8] responsibleProbesUniform( vec4 position ) {
+    int responsibleProbes[] = int[](-1, -1, -1, -1, -1, -1, -1, -1);
+    //Chercher les meilleurs trucs
+    int number = 0;
+    // Recherche du Z :
+    int indexZ = int((position.z - bottomLeft.z) / (boxSize.z / (numberProbesInSpace.z + 1.)) ) ;
+    int multiplier = int(numberProbesInSpace.x * numberProbesInSpace.y);
+    if (indexZ == 0){
+        responsibleProbes[0] = 0;
+        number += 1;
+    } 
+    else if (indexZ == int(numberProbesInSpace.z)){
+        responsibleProbes[0] = (indexZ - 1) * multiplier ;
+        number =+ 1;
+    }
+    else {
+        responsibleProbes[1] = indexZ * multiplier;
+        responsibleProbes[0]= (indexZ - 1) * multiplier;
+        number += 2;
+    }
+
+    // Recherche de la position y
+    int indexY =  int((position.y - bottomLeft.y) / (boxSize.y / (numberProbesInSpace.y + 1.)));
+    multiplier = int(numberProbesInSpace.x);
+    if (indexY == 0){
+    }
+    else if (indexY == int(numberProbesInSpace.y)){
+        for (int i = 0; i < number; i++){
+            responsibleProbes[i] += (indexY - 1) * multiplier;
+        }
+    }
+    else {
+        for (int i = 0; i < number; i++){
+            responsibleProbes[i + number] = responsibleProbes[i];
+            responsibleProbes[i] += (indexY - 1) * multiplier;
+            responsibleProbes[i + number] += indexY * multiplier;
+        }
+        number *= 2;
+    }
+
+
+    //Recherche de la position x
+    int indexX =  int((position.x - bottomLeft.x) / (boxSize.x / (numberProbesInSpace.x + 1.)));
+    multiplier = 1;
+    if (indexX == 0){
+    }
+    else if (indexX == int(numberProbesInSpace.x)){
+        for (int i = 0; i < number; i++){
+            responsibleProbes[i] += (indexX - 1 ) * multiplier;
+        }
+    }
+    else {
+        for (int i = 0; i < number; i++){
+            responsibleProbes[i + number] = responsibleProbes[i];
+            responsibleProbes[i] += (indexX - 1) * multiplier;
+            responsibleProbes[i + number] += indexX * multiplier;
+        }
+        number *= 2;
+    }
+
+    return responsibleProbes;
+}
 
 vec4 probeContribution(int probe, vec4 position, vec4 normal) {
     vec3 L00 = shCoef[probe * 9];
@@ -61,14 +128,25 @@ vec4 probeContribution(int probe, vec4 position, vec4 normal) {
 
 
 void main(){
-    vec4 wPosistion =  world *  vec4(vPosition, 1.); 
+    vec4 wPosition =  world *  vec4(vPosition, 1.); 
     vec4 normalizeNormal = normalize(world * vec4(vNormal, 0.));
 
-    vec4 color = vec4(0., 0., 0., 0.);
-    for ( int i = 0; i < NUM_PROBES; i++ ) {
-        color += probeContribution(i, wPosistion, normalizeNormal);
+    vec4 color = vec4(1., 0., 0., 0.);
+    if (isUniform == 1){
+        int probeIndices[] = responsibleProbesUniform(wPosition);
+        for (int i = 0; i < 8; i++){
+            if (probeIndices[i] == 14 + 9){
+                color = vec4(1., 1., 1., 1.);
+            }
+        }
+
     }
 
+    else {
+        for ( int i = 0; i < NUM_PROBES; i++ ) {
+            color += probeContribution(i, wPosition, normalizeNormal);
+        }
+    }
     if (color.w == 0.){
         color.w = 1.;
     }

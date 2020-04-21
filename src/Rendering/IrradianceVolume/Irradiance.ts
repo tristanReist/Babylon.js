@@ -8,6 +8,7 @@ import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { Texture } from '../../Materials/Textures/texture';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
+import { Vector3 } from '../../Maths/math.vector';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -15,6 +16,10 @@ import { Effect } from '../../Materials/effect';
 export class Irradiance {
 
     private _scene : Scene;
+    
+    private _uniformNumberProbes: Vector3;  // Only need to use when the box is uniform
+    private _uniformBottomLeft : Vector3;   //Only need to use when the box is uniform
+    private _uniformBoxSize : Vector3;  //Only need to use when the box is uniform
     
     /**
      * The list of probes that are part of this irradiance volume
@@ -62,6 +67,11 @@ export class Irradiance {
         this._promise = this._createPromise();
     }   
 
+    public setUniform(numberProbes : Vector3, bottomLeft : Vector3, size : Vector3) : void {
+        this._uniformNumberProbes = numberProbes;
+        this._uniformBottomLeft = bottomLeft;
+        this._uniformBoxSize = size;
+    }
 
     /**
      * Function that launch all the render needed to create the final light map of irradiance that contains
@@ -225,6 +235,13 @@ export class Irradiance {
         }
         irradianceMaterial.setArray3("probePosition", probePosition);
         irradianceMaterial.setArray3("shCoef", shCoef);
+
+        if (this._uniformBottomLeft != null){
+            irradianceMaterial.setInt("isUniform", 1);
+            irradianceMaterial.setVector3("numberProbesInSpace", this._uniformNumberProbes);
+            irradianceMaterial.setVector3("boxSize", this._uniformBoxSize);
+            irradianceMaterial.setVector3("bottomLeft", this._uniformBottomLeft);
+        }
 
         irradianceMaterial.backFaceCulling = false;
 

@@ -20,7 +20,6 @@ export class UniformVolume extends Volume {
     private _numberY : number;
     private _numberZ : number;
     private _lowerLeft : Vector3;
-    private _albedoName : string;
 
     /**
      * Creation of a volume where the probes are equireparted in the scene
@@ -40,6 +39,8 @@ export class UniformVolume extends Volume {
         this._numberZ = numberProbeZ;
         this._createProbeList();
         this._initProbeIrradiance(this.probeList);
+        this.irradiance.setUniform(new Vector3(this._numberX, this._numberY, this._numberZ), 
+                    this._lowerLeft, new Vector3(this._width, this._height, this._depth));
     }
 
 
@@ -90,16 +91,16 @@ export class UniformVolume extends Volume {
 
 
         this._lowerLeft = new Vector3();
-        this._lowerLeft.x = minVec.x +  this._width / (this._numberX + 2.);
-        this._lowerLeft.y = minVec.y +  this._height / (this._numberY + 2.);
-        this._lowerLeft.z = minVec.z +  this._depth / (this._numberZ + 2.);
+        this._lowerLeft.x = minVec.x;
+        this._lowerLeft.y = minVec.y;
+        this._lowerLeft.z = minVec.z;
 
-        for (let z = 0; z < this._numberZ; z+=1){
-            for (let y = 0; y <  this._numberY; y+=1){
-                for (let x = 0; x <  this._numberX; x+=1){
-                    this.probeList.push(new Probe(new Vector3(this._lowerLeft.x + x * this._width / (this._numberX), 
-                    this._lowerLeft.y + y * this._height / (this._numberY), 
-                    this._lowerLeft.z + z * this._depth / (this._numberZ)), this._scene));
+        for (let z = 1; z <= this._numberZ; z+=1){
+            for (let y = 1; y <=  this._numberY; y+=1){
+                for (let x = 1; x <=  this._numberX; x+=1){
+                    this.probeList.push(new Probe(new Vector3(this._lowerLeft.x + x * this._width / (this._numberX + 1.), 
+                    this._lowerLeft.y + y * this._height / (this._numberY + 1. ), 
+                    this._lowerLeft.z + z * this._depth / (this._numberZ + 1. )), this._scene));
                 }
             }
         }
