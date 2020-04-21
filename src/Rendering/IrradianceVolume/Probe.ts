@@ -6,7 +6,6 @@ import { Color4 } from '../../Maths/math.color';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
 import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { SubMesh } from '../../Meshes/subMesh';
-import { VertexBuffer } from '../../Meshes/buffer'
 import { Material } from '../../Materials/material';
 import { Effect } from '../../Materials/effect';
 import { Texture } from '../../Materials/Textures/texture';

@@ -131,15 +131,14 @@ void main(){
     vec4 wPosition =  world *  vec4(vPosition, 1.); 
     vec4 normalizeNormal = normalize(world * vec4(vNormal, 0.));
 
-    vec4 color = vec4(1., 0., 0., 0.);
+    vec4 color = vec4(0., 0., 0., 0.);
     if (isUniform == 1){
         int probeIndices[] = responsibleProbesUniform(wPosition);
-        for (int i = 0; i < 8; i++){
-            if (probeIndices[i] == 14 + 9){
-                color = vec4(1., 1., 1., 1.);
+        for (int i = 0 ; i < 8 ; i++){
+            if (probeIndices[i] != -1){
+                color += probeContribution(probeIndices[i], wPosition, normalizeNormal);
             }
         }
-
     }
 
     else {
