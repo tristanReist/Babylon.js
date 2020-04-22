@@ -39,7 +39,7 @@ export class UniformVolume extends Volume {
         this._numberZ = numberProbeZ;
         this._createProbeList();
         this._initProbeIrradiance(this.probeList);
-        this.irradiance.setUniform(new Vector3(this._numberX, this._numberY, this._numberZ), 
+        this.irradiance.setUniform(new Vector3(this._numberX + 2 , this._numberY + 2, this._numberZ + 2), 
                     this._lowerLeft, new Vector3(this._width, this._height, this._depth));
     }
 
@@ -79,28 +79,25 @@ export class UniformVolume extends Volume {
             else if (vertex.z >= maxVec.z){
                 maxVec.z = vertex.z;
             }
-        }
-
-        // maxVec et minVec contiennent les points des deux extrémités de notre scène. 
-        // Le but est de subdiviser ces cubes
-        // Il faut tester à quelle distance mettre les probes du bord afin d'avoir un résultat correct
-        // Premier test : à 1  => distance avec le bord comprise entre 1.5 et 1 
+        }        
+        
         this._width = maxVec.x - minVec.x;
         this._height = maxVec.y - minVec.y;
         this._depth = maxVec.z - minVec.z;
 
 
         this._lowerLeft = new Vector3();
-        this._lowerLeft.x = minVec.x;
-        this._lowerLeft.y = minVec.y;
-        this._lowerLeft.z = minVec.z;
+        this._lowerLeft.x = minVec.x - this._width / ( 2 * this._numberX );
+        this._lowerLeft.y = minVec.y - this._height / ( 2 * this._numberY );
+        this._lowerLeft.z = minVec.z - this._depth / ( 2 * this._numberZ );
 
-        for (let z = 1; z <= this._numberZ; z+=1){
-            for (let y = 1; y <=  this._numberY; y+=1){
-                for (let x = 1; x <=  this._numberX; x+=1){
-                    this.probeList.push(new Probe(new Vector3(this._lowerLeft.x + x * this._width / (this._numberX + 1.), 
-                    this._lowerLeft.y + y * this._height / (this._numberY + 1. ), 
-                    this._lowerLeft.z + z * this._depth / (this._numberZ + 1. )), this._scene));
+
+        for (let z = 0; z <= this._numberZ + 1 ; z+=1){
+            for (let y = 0; y <=  this._numberY + 1; y+=1){
+                for (let x = 0; x <=  this._numberX + 1; x+=1){
+                    this.probeList.push(new Probe(new Vector3(this._lowerLeft.x + x * this._width / this._numberX , 
+                    this._lowerLeft.y + y * this._height / this._numberY, 
+                    this._lowerLeft.z + z * this._depth / this._numberZ), this._scene));
                 }
             }
         }
