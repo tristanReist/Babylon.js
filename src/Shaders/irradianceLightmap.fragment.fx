@@ -14,8 +14,7 @@ uniform int isUniform;
 
 vec2[8] responsibleProbesUniform( vec4 position ) {
     vec2 responsibleProbes[8];
-    //Chercher les meilleurs trucs
-    int number = 0;
+
     // Recherche du Z :
 
     float distProbesZ = (boxSize.z / (numberProbesInSpace.z));
@@ -30,14 +29,11 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
     else if (indexZ == int(numberProbesInSpace.z) - 1){
         responsibleProbes[0] = vec2(indexZ * multiplier, 0.);
         responsibleProbes[1] = vec2(-1, 0.);
-
     }
     else {
         responsibleProbes[0]= vec2(indexZ * multiplier, 0.);
         responsibleProbes[1] = vec2((indexZ + 1) * multiplier, 0.);
-
     }
-    number = 2;
 
 
     // Recherche de la position y
@@ -47,13 +43,13 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
 
     multiplier = int(numberProbesInSpace.x);
     if (indexY < 0){
-        for (int i = 0; i < number; i++){
+        for (int i = 0; i < 2; i++){
             responsibleProbes[i + 2 ] = responsibleProbes[i];
             responsibleProbes[i].x = -1.; 
         }
     }
     else if (indexY == int(numberProbesInSpace.y) - 1){
-        for (int i = 0; i < number; i++){
+        for (int i = 0; i < 2; i++){
             responsibleProbes[i + 2 ] = vec2(-1, 0.);
             if (responsibleProbes[i].x != -1. ){
                 responsibleProbes[i].x += float(indexY * multiplier);
@@ -61,17 +57,14 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
         }
     }
     else{
-        for (int i = 0; i < number; i++){
-            responsibleProbes[i + number] = responsibleProbes[i];
+        for (int i = 0; i < 2; i++){
+            responsibleProbes[i + 2] = responsibleProbes[i];
             if (responsibleProbes[i].x != -1.){
                 responsibleProbes[i].x += float(indexY * multiplier);
-                responsibleProbes[i + number].x += float((indexY + 1) * multiplier);
+                responsibleProbes[i + 2].x += float((indexY + 1) * multiplier);
             }
         }
     }
-    number = 4;
-
-
 
     //Recherche de la position x
     float distProbesX = (boxSize.x / (numberProbesInSpace.x ));
@@ -80,14 +73,14 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
 
     multiplier = 1;
     if (indexX < 0){
-        for (int i = 0; i < number; i++){
+        for (int i = 0; i < 4; i++){
             responsibleProbes[i + 4 ] = responsibleProbes[i];
             responsibleProbes[i].x = -1.; 
         }
     }
 
     else if (indexX == int(numberProbesInSpace.x) - 1){
-        for (int i = 0; i < number; i++){
+        for (int i = 0; i < 4; i++){
             responsibleProbes[i + 4 ] = vec2(-1, 0.);
             if (responsibleProbes[i].x != -1.){
                 responsibleProbes[i].x += float(indexX * multiplier);
@@ -96,27 +89,25 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
     }
 
     else{
-        for (int i = 0; i < number; i++){
-            responsibleProbes[i + number] = responsibleProbes[i];
+        for (int i = 0; i < 4; i++){
+            responsibleProbes[i + 4] = responsibleProbes[i];
             if (responsibleProbes[i].x != -1. ){
                 responsibleProbes[i].x += float(indexX * multiplier);
-                responsibleProbes[i + number].x += float((indexX + 1)* multiplier);
+                responsibleProbes[i + 4].x += float((indexX + 1)* multiplier);
             }
         }
     }
 
+     //Works in alll casees because everything simplify itself, if it is negative
+        responsibleProbes[0].y = (1. - xd) * (1. - yd) * (1. - zd);
+        responsibleProbes[1].y = (1. - xd) * (1. - yd) * (zd);   
+        responsibleProbes[2].y = (1. - xd) * (yd) * (1. - zd);
+        responsibleProbes[3].y = (1. - xd) * (yd) * (zd);
+        responsibleProbes[4].y = (xd) * (1. - yd) * (1. - zd);
+        responsibleProbes[5].y = (xd) * (1. - yd) * (zd);
+        responsibleProbes[6].y = (xd) * (yd) * (1. - zd);
+        responsibleProbes[7].y = (xd) * (yd) * (zd);
 
-    number = 8;
-    
-
-    responsibleProbes[0].y = (1. - xd) * (1. - yd) * (1. - zd);
-    responsibleProbes[1].y = (1. - xd) * (1. - yd) * (zd);   
-    responsibleProbes[2].y = (1. - xd) * (yd) * (1. - zd);
-    responsibleProbes[3].y = (1. - xd) * (yd) * (zd);
-    responsibleProbes[4].y = (xd) * (1. - yd) * (1. - zd);
-    responsibleProbes[5].y = (xd) * (1. - yd) * (zd);
-    responsibleProbes[6].y = (xd) * (yd) * (1. - zd);
-    responsibleProbes[7].y = (xd) * (yd) * (zd);
     return responsibleProbes;
 }
 
