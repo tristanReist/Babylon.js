@@ -15,7 +15,7 @@ uniform vec3 L2m2;
 void main( void ) {
     
     vec3 x1, x2, x3;
-    vec4 normal = vNormal.xzyw;
+    vec4 normal = vec4(-vNormal.x, vNormal.z, -vNormal.y, vNormal.w);
     vec4 cAr = vec4(L11.r, L10.r, L1m1.r, L00.r);
     vec4 cAg = vec4(L11.g, L10.g, L1m1.g, L00.g);
     vec4 cAb = vec4(L11.b, L10.b, L1m1.b, L00.b);
