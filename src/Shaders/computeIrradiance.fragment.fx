@@ -15,7 +15,7 @@ uniform vec3 L2m2;
 void main( void ) {
     
     vec3 x1, x2, x3;
-
+    vec4 normal = vNormal.xzyw;
     vec4 cAr = vec4(L11.r, L10.r, L1m1.r, L00.r);
     vec4 cAg = vec4(L11.g, L10.g, L1m1.g, L00.g);
     vec4 cAb = vec4(L11.b, L10.b, L1m1.b, L00.b);
@@ -25,19 +25,19 @@ void main( void ) {
     vec4 cBb = vec4(L2m2.b, L2m1.b, L20.b, L21.b);
 
     // Linear + constant polynomial terms
-    x1.r = dot(cAr, vNormal);
-    x1.g = dot(cAg, vNormal);
-    x1.b = dot(cAb, vNormal);
+    x1.r = dot(cAr, normal);
+    x1.g = dot(cAg, normal);
+    x1.b = dot(cAb, normal);
 
     // 4 of the quadratic polynomial terms
-    vec4 vB = vNormal.xyzz * vNormal.yzzx;
+    vec4 vB = normal.xyzz * normal.yzzx;
 
     x2.r = dot(cBr, vB);
     x2.g = dot(cBg, vB);
     x2.b = dot(cBb, vB);
 
     // Final quadratic polynomial
-    float vC = vNormal.x * vNormal.x - vNormal.y * vNormal.y;
+    float vC = normal.x * normal.x - normal.y * normal.y;
     x3 = L22.rgb * vC;
 
     gl_FragColor = vec4(x1 + x2 + x3, 1.);

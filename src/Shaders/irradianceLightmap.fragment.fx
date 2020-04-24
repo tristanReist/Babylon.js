@@ -130,6 +130,7 @@ vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
     }
 
     direction = vec4(normalize(direction.xyz), 1.);
+    direction.xyz = -direction.xzy;
 // ____________________________________________
     vec3 x1, x2, x3;
 
