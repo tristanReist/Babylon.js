@@ -4,5 +4,6 @@ uniform sampler2D albedo;
 
 void main (void) 
 {
-    gl_FragColor = vec4(texture2D(albedo, vUV).rgb, 1);
+    vec2 uv = vec2(vUV.x, 1. - vUV.y);
+    gl_FragColor = vec4(texture2D(albedo, uv).rgb, 1);
 }
