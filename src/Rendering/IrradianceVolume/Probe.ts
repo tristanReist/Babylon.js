@@ -15,9 +15,11 @@ import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/c
 import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { BaseTexture } from '../../Materials/Textures/baseTexture';
-
+import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture'
+;
 import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
+
 
 
 /**
@@ -82,6 +84,8 @@ export class Probe {
      */
     public sphericalHarmonic : SphericalHarmonics; 
 
+    public envCubeMapRendered = false;
+    public tempBounce : RenderTargetTexture;
 
     /**
      * Create the probe used to capture the irradiance at a point 
@@ -260,9 +264,28 @@ export class Probe {
         }
 
         this.cubicMRT.onAfterRenderObservable.add(() => {
-            this._CPUcomputeSHCoeff();
+            this.envCubeMapRendered = true;
+            // this._CPUcomputeSHCoeff();
         });
 
+    }
+
+    public renderBounce( irradianceLightMap : RenderTargetTexture ) : void {
+        let box = MeshBuilder.CreateBox("test", {size : 1}, this._scene);
+        this.tempBounce.renderList?.push(box);
+        box.visibility = 0;
+
+        this._scene.customRenderTargets.push(this.tempBounce);
+
+        this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
+
+        let shaderMaterial = new ShaderMaterial("transfCubeMap", this._scene, "./../../src/Shaders/addGlobalIllumination", {
+            uniforms : ["position"]
+        });
+        shaderMaterial.setTexture("envMap", this.cubicMRT.textures[1]);
+        shaderMaterial.setTexture("envMapUV", this.cubicMRT.textures[0]);
+        shaderMaterial.setTexture("irradianceMap", irradianceLightMap);
+        box.material = shaderMaterial;
     }
 
     /**
@@ -271,22 +294,26 @@ export class Probe {
      */
     public initPromise() : void {
         this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
+        this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
     }
 
     /**
      * Return if the probe is ready to be render
      */
     public isProbeReady() : boolean {
-        return this._isMRTReady();
+        return this._isMRTReady() && this._isTempBounceReady();
     }
 
 
 
     private _isMRTReady() : boolean {
-        
         return this.cubicMRT.isReady();
     }
 
+    private _isTempBounceReady() : boolean {
+        
+        return this.tempBounce.isReady();
+    }
 
     private _CPUcomputeSHCoeff() : void {
         //Possible problem, y can be inverted

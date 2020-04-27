@@ -9,6 +9,7 @@ import { Texture } from '../../Materials/Textures/texture';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
 import { Vector3 } from '../../Maths/math.vector';
+import { PostProcessRenderPipelineManagerSceneComponent } from '../../PostProcesses';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -84,9 +85,26 @@ export class Irradiance {
             for (let probe of irradiance.probeList){
                 probe.render(irradiance.meshes, irradiance.albedo, irradiance.uvEffect);
             }
-
+            let envCubeMapProbesRendered = new Promise((resolve, reject) => {
+                let interval = setInterval(() => {
+                    let readyStates = [
+                        irradiance._areProbesEnvMapReady()
+                    ];
+                    for (let i = 0 ; i < readyStates.length; i++) {
+                        if (!readyStates[i]) {
+                            return ;
+                        }
+                    }                   
+                    clearInterval(interval);
+                    resolve();
+                }, 200);
+            });
+            envCubeMapProbesRendered.then( function (){
+                irradiance._renderBounces();
+            });
             //Creation of a promise to know when the shCoeff are modified => probe has been rendered
             // we can then compute the light map of irradiance
+           /*
             let shCoefPromise = new Promise((resolve, reject) => {
                 let interval = setInterval(() => {
                     let readyStates = [
@@ -105,7 +123,14 @@ export class Irradiance {
             shCoefPromise.then( function (){
                 irradiance._fillLightMap();
             });
+            */
         });
+    }
+
+    private _renderBounces() {
+        for (let probe of this.probeList){
+            probe.renderBounce( this.irradianceLightmap );
+        }
     }
 
     private _createPromise() : Promise<void> {
@@ -166,6 +191,15 @@ export class Irradiance {
 
     private _isIrradianceLightMapReady() : boolean {    
         return this.irradianceLightmap.isReady();
+    }
+
+    private  _areProbesEnvMapReady() : boolean {
+        for (let probe of this.probeList) {
+            if (probe.envCubeMapRendered == false){
+                return false;
+            }
+        }
+        return true;  
     }
 
     private _areShCoeffReady() : boolean {
