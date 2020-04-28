@@ -488,6 +488,61 @@ export class RadiosityRenderer {
 
     }
 
+    private renderToCombineLightmaps(subMesh: SubMesh, inputLightmap: Nullable<Texture>) {
+        const mesh = subMesh.getRenderingMesh();
+        const scene = this._scene;
+        const engine = scene.getEngine();
+        const batch = mesh._getInstancesRenderList(subMesh._id);
+        const hardwareInstancedRendering = (engine.getCaps().instancedArrays) && (batch.visibleInstances[subMesh._id] !== null);
+        const effect = this._radiosityEffectsManager.lightmapCombineEffect;
+
+        engine.setDirectViewport(0, 0, this.getCurrentRenderWidth(), this.getCurrentRenderHeight());
+        engine.enableEffect(effect);
+
+        effect.setTexture("inputTexture", inputLightmap);
+
+        mesh._bind(subMesh, effect, Material.TriangleFillMode);
+
+        // Draw triangles
+        mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
+            (isInstance, world) => effect.setMatrix("world", world));
+    }
+
+
+    /**
+     * Combine meshes lightmaps into one texture in order to debug the full lighting computations
+     * @param {Mesh[]} meshes the meshes you want the lightmaps to be combine in the returned RT
+     * @returns {RenderTargetTexture}
+     */
+    public generateCombinedLightmap(meshes: Mesh[]) {
+        const combinedLightmap = new RenderTargetTexture("lightmapCombined", { width: this.meshes[1].radiosityInfo.lightmapSize.width, height: this.meshes[1].radiosityInfo.lightmapSize.height }, this._scene, false, true, Constants.TEXTURETYPE_FLOAT, false, Texture.NEAREST_SAMPLINGMODE, false, false, false, Constants.TEXTUREFORMAT_RGBA, false);
+        combinedLightmap.refreshRate = 1;
+        combinedLightmap.renderList = meshes;
+
+        combinedLightmap.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
+            this._scene.getEngine().clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
+
+            for (let index = 0; index < opaqueSubMeshes.length; index++) {
+                const mesh = opaqueSubMeshes.data[index].getRenderingMesh();
+                this.renderToCombineLightmaps(opaqueSubMeshes.data[index], mesh.getRadiosityTexture());
+            }
+
+            for (let index = 0; index < alphaTestSubMeshes.length; index++) {
+                const mesh = alphaTestSubMeshes.data[index].getRenderingMesh();
+                this.renderToCombineLightmaps(alphaTestSubMeshes.data[index], mesh.getRadiosityTexture());
+            }
+
+            for (let index = 0; index < transparentSubMeshes.length; index++) {
+                const mesh = transparentSubMeshes.data[index].getRenderingMesh();
+                this.renderToCombineLightmaps(transparentSubMeshes.data[index], mesh.getRadiosityTexture());
+            }
+        };
+
+        combinedLightmap.render();
+
+        return combinedLightmap;
+    }
+
     private renderToRadiosityTexture(mesh: Mesh, patch: Patch, patchArea: number, doNotWriteToGathering = false) {
         var deltaArea = patchArea;
         var mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;

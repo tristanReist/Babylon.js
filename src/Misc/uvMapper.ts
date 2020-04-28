@@ -949,61 +949,61 @@ export class UvMapper {
     //     ctx.stroke();
     // }
 
-    // private debugUvs(uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
-    //     let canvas = document.createElement("canvas");
-    //     let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+    // Create a transparent canvas with uv drawn
+    public debugUvs(position: Vector2, size: Vector2, uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
+        let canvas = document.createElement("canvas");
+        let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+        const width = 512;
+        const height = 512;
 
-    //     document.body.appendChild(canvas);
-    //     canvas.width = 300;
-    //     canvas.height = 300;
-    //     canvas.style.position = "absolute";
-    //     canvas.style.zIndex = "10";
-    //     canvas.style.top = "0px";
-    //     canvas.style.left = "0px";
-    //     canvas.onclick = () => {
-    //         canvas.style.display = "none";
-    //     }
+        document.body.appendChild(canvas);
+        canvas.width = size.x;
+        canvas.height = size.y;
+        canvas.style.position = "absolute";
+        canvas.style.transform = "rotateX(180deg)";
+        canvas.style.zIndex = "10";
+        canvas.style.top = `${position.x}px`;
+        canvas.style.left = `${position.y}px`;
+        canvas.onclick = () => {
+            canvas.style.display = "none";
+        };
 
-    //     ctx.clearRect(0, 0, 300, 300);
-    //     ctx.fillStyle = "white";
-    //     ctx.fillRect(0, 0, 300, 300);
-    //     ctx.fillStyle = "red";
-    //     ctx.scale(300, 300);
-    //     ctx.lineWidth = 0.001;
+        ctx.scale(width, height);
+        ctx.lineWidth = 0.001;
 
-    //     ctx.strokeStyle = "green";
-    //     for (let j = 0; j < uvsArray.length; j++) {
-    //         let uvs = uvsArray[j];
-    //         let indices = indicesArray[j];
-    //         for (let i = 0; i < indices.length; i += 3) {
-    //             let lessThanZeroCount = 0;
-    //             if (uvs[indices[i] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
-    //             if (uvs[indices[i + 1] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
-    //             if (uvs[indices[i + 2] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
+        ctx.strokeStyle = "red";
+        for (let j = 0; j < uvsArray.length; j++) {
+            let uvs = uvsArray[j];
+            let indices = indicesArray[j];
+            for (let i = 0; i < indices.length; i += 3) {
+                let lessThanZeroCount = 0;
+                if (uvs[indices[i] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
+                if (uvs[indices[i + 1] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
+                if (uvs[indices[i + 2] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
 
-    //             if (lessThanZeroCount > 1) {
-    //                 debugger;
-    //             } else if (lessThanZeroCount === 1) {
-    //                 debugger;
-    //             }
+                if (lessThanZeroCount > 1) {
+                    debugger;
+                } else if (lessThanZeroCount === 1) {
+                    debugger;
+                }
 
-    //             ctx.beginPath();
-    //             ctx.moveTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
-    //             ctx.stroke();
-    //             // ctx.fill();
-    //         }
-    //     }
+                ctx.beginPath();
+                ctx.moveTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
+                ctx.stroke();
+                // ctx.fill();
+            }
+        }
 
-    // }
+    }
 
     private optiRotateUvIsland(faces: Face[]) {
         let uvPoints: Vector2[] = [];
