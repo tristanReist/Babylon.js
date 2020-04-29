@@ -31,8 +31,8 @@ export class UniformVolume extends Volume {
      * @param probeRes The resolution with which the probes will be rendered
      * @param space The space between probes
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, albedoName : string, probeRes : number,  numberProbeX : number, numberProbeY : number, numberProbeZ : number){
-        super(meshes, scene, albedoName, probeRes);
+    constructor(meshes : Array<Mesh>, scene : Scene, albedoName : string, probeRes : number,  numberProbeX : number, numberProbeY : number, numberProbeZ : number, numberBounces : number){
+        super(meshes, scene, albedoName, numberBounces, probeRes);
         this.probeList = [];
         this._numberX = numberProbeX;
         this._numberY = numberProbeY;

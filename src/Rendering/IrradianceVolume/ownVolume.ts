@@ -18,8 +18,8 @@ export class OwnVolume extends Volume{
      * @param probeRes The resolution with which the probes will render
      * @param probes The list of probes that will be render
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, probeRes = 16, probes? : Array<Probe>){
-        super(meshes, scene, strAlbedo, probeRes);
+    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, numberBounces : number, probeRes = 16, probes? : Array<Probe>){
+        super(meshes, scene, strAlbedo, numberBounces, probeRes);
         this._initProbeIrradiance(probes);
     }
 

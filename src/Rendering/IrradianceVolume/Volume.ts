@@ -34,6 +34,8 @@ export abstract class Volume {
 
     public strAlbedo : string;
 
+    public numberBounces : number;
+
     /**
      * Instanciate a new volume for the scene
      * @param meshes List of 
@@ -41,11 +43,12 @@ export abstract class Volume {
      * @param probeRes The resolution with which the probes will render
      * @param probes The list of probes that will be render
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, probeRes = 16){
+    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, numberBounces : number, probeRes = 16){
         this._scene = scene;
         this.meshList = meshes;
         this.renderResolution = probeRes;
         this.strAlbedo = strAlbedo;
+        this.numberBounces = numberBounces;
     }
 
     protected _initProbeIrradiance( probes? : Array<Probe>) : void {
@@ -60,7 +63,7 @@ export abstract class Volume {
         else {
             this.probeList = new Array<Probe>();
         }
-        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList, this.strAlbedo);   
+        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList, this.strAlbedo, this.numberBounces);   
     }
 
 

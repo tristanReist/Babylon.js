@@ -21,7 +21,6 @@ import "../../Shaders/uv.fragment"
 import "../../Shaders/uv.vertex"
 import "../../Shaders/addGlobalIllumination.vertex"
 import "../../Shaders/addGlobalIllumination.fragment"
-import { depthBoxBlurPixelShader } from '../../Shaders/depthBoxBlur.fragment';
 
 
 /**
@@ -92,6 +91,9 @@ export class Probe {
     public tempBounce : RenderTargetTexture;
     public irradianceLightMap : RenderTargetTexture;
 
+    public sphericalHarmonicChanged : boolean;
+
+
     /**
      * Create the probe used to capture the irradiance at a point 
      * @param position The position at which the probe is set
@@ -103,6 +105,7 @@ export class Probe {
         this._scene = scene;
         this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
         this.sphere.visibility = 0;
+
         this.cameraList = new Array<UniversalCamera>();
 
 
@@ -142,7 +145,7 @@ export class Probe {
         }
 
         this.sphere.translate(position, 1);
-
+        this.sphericalHarmonicChanged = false;
     }
 
     /**
@@ -214,7 +217,7 @@ export class Probe {
             effect = this.uvEffect;
         }
         else {
-            internalTexture = <InternalTexture>this.tempBounce._texture;
+            internalTexture = <InternalTexture>this.tempBounce.getInternalTexture();
             effect = this.bounceEffect;
         }
 
@@ -273,8 +276,6 @@ export class Probe {
      * @param meshes The meshes we want to render
      */
     public render(meshes : Array<Mesh>, albedo : Texture, uvEffet : Effect, bounceEffect : Effect) : void {
-        //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
-        // //We need it for the computation of the spherical harmonics
         this.albedo = albedo;
         this.uvEffect = uvEffet;
         this.bounceEffect = bounceEffect;
@@ -292,7 +293,6 @@ export class Probe {
 
         this.cubicMRT.onAfterRenderObservable.add(() => {
             this.envCubeMapRendered = true;
-            // this._CPUcomputeSHCoeff();
         });
 
     }
@@ -300,18 +300,20 @@ export class Probe {
     public renderBounce( irradianceLightMap : RenderTargetTexture ) : void {
         let ground = MeshBuilder.CreateGround("test", {width : 2, height : 2}, this._scene);
         ground.visibility = 0;
-
         ground.translate(new Vector3(0, 1, 0), 1.);
 
-        this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
         this.tempBounce.renderList = [ground];
         this._scene.customRenderTargets.push(this.tempBounce);
+
+        this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE; 
         this.tempBounce.boundingBoxPosition = this.sphere.position;
         this.irradianceLightMap = irradianceLightMap;
         this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(transparentSubMeshes, false);          
         }
-        
+        this.tempBounce.onAfterRenderObservable.add(() => {
+            this._CPUcomputeSHCoeff();     
+        });
     }
 
     /**
@@ -342,12 +344,12 @@ export class Probe {
 
     private _CPUcomputeSHCoeff() : void {
         //Possible problem, y can be inverted
-        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.cubicMRT.textures[1]);
+        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.tempBounce);
         if (sp != null){
             this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
+            this.sphericalHarmonicChanged = true;
         }
         this._computeProbeIrradiance();
-        
     }
 
     private _computeProbeIrradiance() : void {
