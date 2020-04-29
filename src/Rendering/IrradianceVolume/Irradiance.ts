@@ -9,7 +9,6 @@ import { Texture } from '../../Materials/Textures/texture';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
 import { Vector3 } from '../../Maths/math.vector';
-import { PostProcessRenderPipelineManagerSceneComponent } from '../../PostProcesses';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -41,6 +40,7 @@ export class Irradiance {
     
     private _strAlbedo : string;
     public uvEffect : Effect;
+    public bounceEffect : Effect;
     public albedo : Texture;
 
     /**
@@ -83,7 +83,7 @@ export class Irradiance {
         // When all we need is ready 
         this._promise.then( function () {
             for (let probe of irradiance.probeList){
-                probe.render(irradiance.meshes, irradiance.albedo, irradiance.uvEffect);
+                probe.render(irradiance.meshes, irradiance.albedo, irradiance.uvEffect, irradiance.bounceEffect);
             }
             let envCubeMapProbesRendered = new Promise((resolve, reject) => {
                 let interval = setInterval(() => {
@@ -143,7 +143,8 @@ export class Irradiance {
                     this._isIrradianceLightMapReady(),
                     this._isTextureReady(),
                     this._areProbesReady(),
-                    this._isEffectReady()
+                    this._isUVEffectReady(),
+                    this._isBounceEffectReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -177,7 +178,7 @@ export class Irradiance {
         return this.albedo.isReady();
     }
 
-    private _isEffectReady() : boolean {
+    private _isUVEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
         var uniforms = ["world", "projection", "view"];
         var samplers = ["albedo"];
@@ -187,6 +188,16 @@ export class Irradiance {
             samplers);
     
         return this.uvEffect.isReady();
+    }
+
+    private _isBounceEffectReady() : boolean {
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
+        var samplers = ["envMap", "envMapUV", "irradianceMap"];
+        this.bounceEffect = this._scene.getEngine().createEffect("addGlobalIllumination", 
+            attribs, ["world", "rotation"],
+            samplers);
+    
+        return this.bounceEffect.isReady();
     }
 
     private _isIrradianceLightMapReady() : boolean {    
