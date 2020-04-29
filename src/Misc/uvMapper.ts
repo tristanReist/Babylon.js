@@ -1,9 +1,9 @@
 import { Vector2, Vector3, Matrix } from "../Maths/math";
 import { Nullable } from "../types";
-import { Mesh } from "../meshes/mesh";
-import { VertexData } from "../meshes/mesh.vertexdata";
+import { Mesh } from "../Meshes/mesh";
+import { VertexData } from "../Meshes/mesh.vertexData";
 import { IndicesArray, FloatArray } from "../types";
-import { VertexBuffer } from "../meshes/buffer";
+import { VertexBuffer } from "../Meshes/buffer";
 
 /**
  * Face with 3 vertices

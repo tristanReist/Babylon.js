@@ -131,7 +131,7 @@ class Patch {
     public static ProjectionMatrixNY: Matrix;
 }
 
-declare module "../meshes/mesh" {
+declare module "../Meshes/mesh" {
     export interface Mesh {
         /** Object containing radiosity information for this mesh */
         radiosityInfo: {
