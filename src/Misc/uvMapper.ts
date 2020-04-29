@@ -968,7 +968,7 @@ export class UvMapper {
             canvas.style.display = "none";
         };
 
-        ctx.scale(width, height);
+        ctx.scale(size.x, size.y);
         ctx.lineWidth = 0.001;
 
         ctx.strokeStyle = "red";
@@ -1728,7 +1728,7 @@ export class UvMapper {
             newUvs[meshIndex] = verticesData.uvs2;
         }
 
-        this.debugUvs(newUvs, indices);
+        // this.debugUvs(Vector2.Zero(), new Vector2(256, 256), newUvs, indices);
 
         return worldToUVRatio;
     }
@@ -1744,22 +1744,11 @@ export class UvMapper {
 
         while (islandIdx < islandList.length) {
             let [minx, miny, maxx, maxy] = this.boundsIslands(islandList[islandIdx]);
-
-            // Expect the mesh to use 256 pixels width and height by default
-            let texelWidth = 256;
-            let texelHeight = 256;
-
-            if (islandMeshes[islandIdx].radiosityInfo) {
-                texelWidth = islandMeshes[islandIdx].radiosityInfo.lightmapSize.width;
-                texelHeight = islandMeshes[islandIdx].radiosityInfo.lightmapSize.height;
-            }
-
             let w = maxx - minx;
             let h = maxy - miny;
 
             if (USER_ISLAND_MARGIN) {
-                // User margin as a texel number
-                // Convert the margin in texel unit to texture space unit
+                // Uses margin as a world unit number
                 minx -= USER_ISLAND_MARGIN;
                 miny -= USER_ISLAND_MARGIN;
                 maxx += USER_ISLAND_MARGIN;
