@@ -1760,13 +1760,10 @@ export class UvMapper {
             if (USER_ISLAND_MARGIN) {
                 // User margin as a texel number
                 // Convert the margin in texel unit to texture space unit
-                const heightMargin = USER_ISLAND_MARGIN * (h / texelHeight);
-                const widthMargin = USER_ISLAND_MARGIN * (w / texelWidth);
-
-                minx -= widthMargin;
-                miny -= heightMargin;
-                maxx += widthMargin;
-                maxy += heightMargin;
+                minx -= USER_ISLAND_MARGIN;
+                miny -= USER_ISLAND_MARGIN;
+                maxx += USER_ISLAND_MARGIN;
+                maxy += USER_ISLAND_MARGIN;
 
                 w = maxx - minx;
                 h = maxy - miny;
@@ -2462,8 +2459,8 @@ class BoxPacker {
     static debugFitAABB(boxes: BoxBlender[], w: number, h: number) {
         let canvas = document.createElement("canvas");
         let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-        const width = 900;
-        const height = 900;
+        const width = 1024;
+        const height = 1024;
 
         document.body.appendChild(canvas);
         canvas.width = width;
@@ -2477,8 +2474,8 @@ class BoxPacker {
         };
 
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, width, height);
+        // ctx.fillStyle = "white";
+        // ctx.fillRect(0, 0, width, height);
         ctx.scale(width, height);
         ctx.lineWidth = 0.001;
 
