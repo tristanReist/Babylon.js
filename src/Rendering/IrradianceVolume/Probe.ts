@@ -349,6 +349,7 @@ export class Probe {
             this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
             this.sphericalHarmonicChanged = true;
         }
+        
         this._computeProbeIrradiance();
     }
 
