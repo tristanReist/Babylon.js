@@ -49,7 +49,7 @@ export class DirectLightMapGeneration{
 
 
         
-        var shaderMaterial = new ShaderMaterial("depthShader", this._scene, "./../../src/Shaders/myDepth", {
+        var shaderMaterial = new ShaderMaterial("depthShader", this._scene, "./../../src/Shaders/irradianceVolumeMyDepth", {
             attributes: ["position"],
             uniforms: ["world"]
         });
@@ -86,7 +86,7 @@ export class DirectLightMapGeneration{
 
         var previousMaterials = new Array<Nullable<Material>>();
 
-        var shaderMaterial = new ShaderMaterial("lightMap", this._scene, "./../../src/Shaders/lightMap", {
+        var shaderMaterial = new ShaderMaterial("lightMap", this._scene, "./../../src/Shaders/irradianceVolumeLightMap", {
             attributes : ["position", "uv"],
             uniforms : ["world"]
         });

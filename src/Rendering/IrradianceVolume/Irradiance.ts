@@ -172,94 +172,7 @@ export class Irradiance {
 
     }
 
-    private _createPromise() : Promise<void> {
-        return new Promise((resolve, reject) => {
-            this._initProbesPromise();
-            this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 1024, this._scene);
-            this.albedo = new Texture(this._strAlbedo, this._scene);
-            let interval = setInterval(() => {
-                let readyStates = [
-                    this._isIrradianceLightMapReady(),
-                    this._isTextureReady(),
-                    this._areProbesReady(),
-                    this._isUVEffectReady(),
-                    this._isBounceEffectReady()
-                ];
-                for (let i = 0 ; i < readyStates.length; i++) {
-                    if (!readyStates[i]) {
-                        return ;
-                    }
-                }
-                clearInterval(interval);
-                resolve();
-            }, 200);
-        });
-    }
-
-    private _initProbesPromise() : void {
-        for (let probe of this.probeList){
-            probe.initPromise();
-        }
-    }
-
-    private _areProbesReady() : boolean {
-        let ready = true;
-        for (let probe of this.probeList){
-            ready = probe.isProbeReady() && ready;
-            if (!ready){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private _isTextureReady() : boolean {
-        return this.albedo.isReady();
-    }
-
-    private _isUVEffectReady() : boolean {
-        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var uniforms = ["world", "projection", "view"];
-        var samplers = ["albedo"];
-        this.uvEffect = this._scene.getEngine().createEffect("uv", 
-            attribs,
-            uniforms,
-            samplers);
-    
-        return this.uvEffect.isReady();
-    }
-
-    private _isBounceEffectReady() : boolean {
-        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var samplers = ["envMap", "envMapUV", "irradianceMap"];
-        this.bounceEffect = this._scene.getEngine().createEffect("addGlobalIllumination", 
-            attribs, ["world", "rotation"],
-            samplers);
-    
-        return this.bounceEffect.isReady();
-    }
-
-    private _isIrradianceLightMapReady() : boolean {    
-        return this.irradianceLightmap.isReady();
-    }
-
-    private  _areProbesEnvMapReady() : boolean {
-        for (let probe of this.probeList) {
-            if (probe.envCubeMapRendered == false){
-                return false;
-            }
-        }
-        return true;  
-    }
-
-    private _areShCoeffReady() : boolean {
-        for (let probe of this.probeList) {
-            if (! probe.sphericalHarmonicChanged){
-                return false;
-            }
-        }
-        return true;
-    };
+   
 
     private _initIrradianceLightMap() : void {
     
@@ -268,7 +181,7 @@ export class Irradiance {
         this.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
        
         let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene, 
-            "./../../src/Shaders/irradianceLightmap", {
+            "./../../src/Shaders/irradianceVolumeIrradianceLightmap", {
                 attributes : ["position", "normal", "uv"],
                 uniforms : ["world"],
                 defines : ["#define NUM_PROBES " + this.probeList.length]
@@ -347,4 +260,93 @@ export class Irradiance {
             }
         });
     }
+
+    private _createPromise() : Promise<void> {
+        return new Promise((resolve, reject) => {
+            this._initProbesPromise();
+            this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 1024, this._scene);
+            this.albedo = new Texture(this._strAlbedo, this._scene);
+            let interval = setInterval(() => {
+                let readyStates = [
+                    this._isIrradianceLightMapReady(),
+                    this._isTextureReady(),
+                    this._areProbesReady(),
+                    this._isUVEffectReady(),
+                    this._isBounceEffectReady()
+                ];
+                for (let i = 0 ; i < readyStates.length; i++) {
+                    if (!readyStates[i]) {
+                        return ;
+                    }
+                }
+                clearInterval(interval);
+                resolve();
+            }, 200);
+        });
+    }
+
+    private _initProbesPromise() : void {
+        for (let probe of this.probeList){
+            probe.initPromise();
+        }
+    }
+
+    private _areProbesReady() : boolean {
+        let ready = true;
+        for (let probe of this.probeList){
+            ready = probe.isProbeReady() && ready;
+            if (!ready){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private _isTextureReady() : boolean {
+        return this.albedo.isReady();
+    }
+
+    private _isUVEffectReady() : boolean {
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
+        var uniforms = ["world", "projection", "view"];
+        var samplers = ["albedo"];
+        this.uvEffect = this._scene.getEngine().createEffect("irradianceVolumeProbeEnv", 
+            attribs,
+            uniforms,
+            samplers);
+    
+        return this.uvEffect.isReady();
+    }
+
+    private _isBounceEffectReady() : boolean {
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
+        var samplers = ["envMap", "envMapUV", "irradianceMap"];
+        this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv", 
+            attribs, ["world", "rotation"],
+            samplers);
+    
+        return this.bounceEffect.isReady();
+    }
+
+    private _isIrradianceLightMapReady() : boolean {    
+        return this.irradianceLightmap.isReady();
+    }
+
+    private  _areProbesEnvMapReady() : boolean {
+        for (let probe of this.probeList) {
+            if (probe.envCubeMapRendered == false){
+                return false;
+            }
+        }
+        return true;  
+    }
+
+    private _areShCoeffReady() : boolean {
+        for (let probe of this.probeList) {
+            if (! probe.sphericalHarmonicChanged){
+                return false;
+            }
+        }
+        return true;
+    };
 }

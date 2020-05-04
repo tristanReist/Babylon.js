@@ -17,11 +17,10 @@ import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { BaseTexture } from '../../Materials/Textures/baseTexture';
 import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
 
-import "../../Shaders/uv.fragment"
-import "../../Shaders/uv.vertex"
-import "../../Shaders/addGlobalIllumination.vertex"
-import "../../Shaders/addGlobalIllumination.fragment"
-
+import "../../Shaders/irradianceVolumeProbeEnv.vertex"
+import "../../Shaders/irradianceVolumeProbeEnv.fragment"
+import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.vertex"
+import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment"
 
 /**
  * The probe is what is used for irradiance volume
@@ -376,7 +375,7 @@ export class Probe {
 
     private _computeProbeIrradiance() : void {
         //We use a shader to add this texture to the probe
-        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/computeIrradiance", {
+        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/irradianceVolumeComputeIrradiance", {
             attributes : ["position", "normal"],
             uniforms : ["worldViewProjection"]
         })
