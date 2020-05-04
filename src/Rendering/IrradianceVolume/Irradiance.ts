@@ -39,9 +39,25 @@ export class Irradiance {
     private _promise : Promise<void>;
     
     private _strAlbedo : string;
+
+    /**
+     * The effect that will be use to render the environment of each probes. It will be given to every probes of the volume
+     */
     public uvEffect : Effect;
+
+    /**
+     * The effect used to render the irradiance from each probe.
+     */
     public bounceEffect : Effect;
+
+    /**
+     * The texture of the environment
+     */
     public albedo : Texture;
+
+    /**
+     * The number of bounces we want to render on our scene. (1 == only direct light)
+     */
     public numberBounces : number;
 
     /**
@@ -69,6 +85,13 @@ export class Irradiance {
         this._promise = this._createPromise();
     }   
 
+    /**
+     * Method called when we have a uniform volume.
+     * It will change the part where we create the irradiance light map, mainly because of the tricubic interpolation
+     * @param numberProbes 
+     * @param bottomLeft 
+     * @param size 
+     */
     public setUniform(numberProbes : Vector3, bottomLeft : Vector3, size : Vector3) : void {
         this._uniformNumberProbes = numberProbes;
         this._uniformBottomLeft = bottomLeft;
@@ -88,6 +111,7 @@ export class Irradiance {
                 probe.renderBounce(irradiance.irradianceLightmap);
             }
             if (irradiance.numberBounces > 1){
+                // We wait for the envCubeMap rendering to be finish
                 let envCubeMapProbesRendered = new Promise((resolve, reject) => {
                     let interval = setInterval(() => {
                         let readyStates = [
@@ -103,7 +127,6 @@ export class Irradiance {
                     }, 200);
                 });
                 envCubeMapProbesRendered.then( function (){
-                    //Initialisation of the renderTargetTexture that aims to render what we want
                     let currentBounce = 2;
                     for (let probe of irradiance.probeList){
                         probe.sphericalHarmonicChanged = false;

@@ -87,10 +87,26 @@ export class Probe {
      */
     public sphericalHarmonic : SphericalHarmonics; 
 
-    public envCubeMapRendered = false;
+
+
+    /**
+     * RenderTargetTexture that aims to copy the cubicMRT envCubeMap and add the irradiance compute previously to it, to simulate the bounces of the light 
+     */
     public tempBounce : RenderTargetTexture;
+        
+    /**
+     * The light map that contains the info of the bounces opf the light
+     */
     public irradianceLightMap : RenderTargetTexture;
 
+    /**
+     * Variable helpful and use to know when the environment cube map has been rendered to continue the process
+     */
+    public envCubeMapRendered = false;
+
+    /**
+     * Variable helpful and use to know when the spherical harmonic coefficient has been computed to continue the process
+     */
     public sphericalHarmonicChanged : boolean;
 
 
@@ -297,6 +313,11 @@ export class Probe {
 
     }
 
+    /**
+     * Render one bounce of the light from the point of view of a probe
+     * 
+     * @param irradianceLightMap THe irradiance lightmap use to render the bounces
+     */
     public renderBounce( irradianceLightMap : RenderTargetTexture ) : void {
         let ground = MeshBuilder.CreateGround("test", {width : 2, height : 2}, this._scene);
         ground.visibility = 0;
@@ -347,9 +368,9 @@ export class Probe {
         let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.tempBounce);
         if (sp != null){
             this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
+            this._weightSHCoeff();
             this.sphericalHarmonicChanged = true;
         }
-        
         this._computeProbeIrradiance();
     }
 
@@ -359,6 +380,7 @@ export class Probe {
             attributes : ["position", "normal"],
             uniforms : ["worldViewProjection"]
         })
+
         shaderMaterial.setVector3("L00", this.sphericalHarmonic.l00);
         
         shaderMaterial.setVector3("L10", this.sphericalHarmonic.l10);
@@ -375,5 +397,17 @@ export class Probe {
    
     }
 
+    private _weightSHCoeff() {
+        let weight = 0.5;
+        this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l10 = this.sphericalHarmonic.l10.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l11 = this.sphericalHarmonic.l11.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l1_1 = this.sphericalHarmonic.l1_1.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l20 = this.sphericalHarmonic.l20.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l21 = this.sphericalHarmonic.l21.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l22 = this.sphericalHarmonic.l22.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l2_1 = this.sphericalHarmonic.l2_1.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
+    }
 
 }
