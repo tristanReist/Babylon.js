@@ -6,11 +6,9 @@ uniform sampler2D text;
 void main ( void ){
     vec2 uv = vec2(vUV.x, 1. - vUV.y);
     vec4 textureColor = vec4(texture2D(text, uv).rgb, 1);
-    vec4 irradianceColor = vec4(texture2D(irradianceMap, uv).rgb, 1);
-    if (textureColor.rgb == vec3(0., 0., 0.)){
-        gl_FragColor = irradianceColor;
+    vec4 irradianceColor = texture2D(irradianceMap, uv);
+    if ( irradianceColor.a != 0. ){
+        irradianceColor /= irradianceColor.a;
     }
-    else {
-        gl_FragColor = textureColor;
-    }
+    gl_FragColor = irradianceColor;
 }

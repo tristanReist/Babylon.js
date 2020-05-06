@@ -12,6 +12,7 @@ uniform vec3 bottomLeft;
 uniform int isUniform;
 
 
+
 vec2[8] responsibleProbesUniform( vec4 position ) {
     vec2 responsibleProbes[8];
 
@@ -129,7 +130,7 @@ vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
         return vec4(0., 0., 0., 0.);
     }
 
-    direction = vec4(normalize(direction.xyz), 1.);
+    direction = vec4(normalize( - normal.xyz), 1.);
     
     direction.yz = vec2(- direction.z, direction.y); 
 // ____________________________________________
@@ -192,8 +193,6 @@ void main(){
     }
     
     color /= color.w;
-
-
 
     gl_FragColor = color;
 }

@@ -10,6 +10,7 @@ import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
 import { Vector3 } from '../../Maths/math.vector';
 
+
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
  */
@@ -106,6 +107,7 @@ export class Irradiance {
         let irradiance = this;
         // When all we need is ready 
         this._promise.then( function () {
+            console.log(irradiance.irradianceLightmap);
             for (let probe of irradiance.probeList){
                 probe.render(irradiance.meshes, irradiance.albedo, irradiance.uvEffect, irradiance.bounceEffect);
                 probe.renderBounce(irradiance.irradianceLightmap);
@@ -141,6 +143,9 @@ export class Irradiance {
 
     private _renderBounce(currentBounce : number) {
         for (let probe of this.probeList){
+            if (currentBounce == 3 ){
+                probe.firstBounce = false;
+            }
             probe.tempBounce.render();
         }
 
@@ -175,7 +180,6 @@ export class Irradiance {
    
 
     private _initIrradianceLightMap() : void {
-    
         this.irradianceLightmap.renderList = this.meshes;
         this._scene.customRenderTargets.push(this.irradianceLightmap);
         this.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
@@ -197,9 +201,10 @@ export class Irradiance {
         irradianceMaterial.backFaceCulling = false;
 
         let previousMaterial = new Array<Nullable<Material>>();
-        
-        this.irradianceLightmap.onBeforeRenderObservable.add(() => {
             
+
+
+        this.irradianceLightmap.onBeforeRenderObservable.add(() => {
             let probePosition = [];
             let shCoef = [];
             for (let probe of  this.probeList){
@@ -260,6 +265,7 @@ export class Irradiance {
             }
         });
     }
+
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
@@ -322,7 +328,7 @@ export class Irradiance {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
         var samplers = ["envMap", "envMapUV", "irradianceMap"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv", 
-            attribs, ["world", "rotation"],
+            attribs, ["world", "rotation", "firstBounce"],
             samplers);
     
         return this.bounceEffect.isReady();

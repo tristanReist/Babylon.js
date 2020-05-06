@@ -108,6 +108,8 @@ export class Probe {
      */
     public sphericalHarmonicChanged : boolean;
 
+    public firstBounce = true;
+
 
     /**
      * Create the probe used to capture the irradiance at a point 
@@ -207,6 +209,7 @@ export class Probe {
                 effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
                 effect.setTexture("irradianceMap", this.irradianceLightMap);
                 effect.setMatrix("rotation", rotation);
+                effect.setBool("firstBounce", this.firstBounce);
             }
             
             var batch = mesh._getInstancesRenderList(subMesh._id);
@@ -397,7 +400,7 @@ export class Probe {
     }
 
     private _weightSHCoeff() {
-        let weight = 0.5;
+        let weight = 1.;
         this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l10 = this.sphericalHarmonic.l10.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l11 = this.sphericalHarmonic.l11.multiplyByFloats(weight, weight, weight);
