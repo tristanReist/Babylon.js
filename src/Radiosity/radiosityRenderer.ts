@@ -18,7 +18,7 @@ import { RadiosityUtils } from "./radiosityUtils";
 import { RadiosityEffectsManager } from "./radiosityEffectsManager";
 
 import { Nullable } from "../types";
-// import { Tools } from "../misc/tools";
+// import { Tools } from "../Misc/tools";
 
 /**
  * Patch, infinitesimal unit when discretizing surfaces
@@ -131,7 +131,7 @@ class Patch {
     public static ProjectionMatrixNY: Matrix;
 }
 
-declare module "../meshes/mesh" {
+declare module "../Meshes/mesh" {
     export interface Mesh {
         /** Object containing radiosity information for this mesh */
         radiosityInfo: {
@@ -154,10 +154,16 @@ declare module "../meshes/mesh" {
             residualTexture: Nullable<MultiRenderTarget>;
             /** Radiosity patches */
             radiosityPatches: Patch[];
+            /** Total area of the polygon in world unit */
+            polygonWorldArea: number;
         };
 
         /** Inits the `radiosityInfo` object */
         initForRadiosity() : void;
+
+        /** Reset radiosity textures */
+        resetForRadiosity() : void;
+
         /** Gets radiosity texture
          * @return the radiosity texture. Can be fully black if the radiosity process has not been run yet.
          */
@@ -177,7 +183,8 @@ Mesh.prototype.initForRadiosity = function() {
         _lightMapId: new Vector3(0, 0, 0),
         _patchOffset: 0,
         residualTexture: null,
-        radiosityPatches: []
+        radiosityPatches: [],
+        polygonWorldArea: 0
     };
 };
 
@@ -186,10 +193,10 @@ Mesh.prototype.getRadiosityTexture = function() {
 };
 
 declare interface RadiosityRendererOptions {
-    near?: number,
-    far?: number,
-    bias?: number,
-    normalBias?: number,
+    near?: number;
+    far?: number;
+    bias?: number;
+    normalBias?: number;
 }
 
 /**
@@ -272,7 +279,6 @@ export class RadiosityRenderer {
     private squareToDiskArea(a: number) {
         return a * a * Math.PI / 4;
     }
-
 
     /**
      * Instanciates a radiosity renderer
@@ -847,8 +853,12 @@ export class RadiosityRenderer {
         }
 
         for (let i = 0; i < this.meshes.length; i++) {
-            var mesh = this.meshes[i];
-            var mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
+            const mesh = this.meshes[i];
+            const mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
+            const texelWorldArea : number = mesh.radiosityInfo.texelWorldSize * mesh.radiosityInfo.texelWorldSize;
+            const polygonTexelCount = mesh.radiosityInfo.polygonWorldArea / texelWorldArea;
+            const texelArea = (1 / mesh.radiosityInfo.lightmapSize.width) / (1 / mesh.radiosityInfo.lightmapSize.height);
+            const polygonArea: number = (polygonTexelCount * texelArea) || (mrt.getRenderWidth() * mrt.getRenderHeight());
 
             if (!mrt) {
                 continue;
@@ -860,7 +870,7 @@ export class RadiosityRenderer {
             this._radiosityEffectsManager.nextShooterEffect.setVector3("polygonId", polygonId);
             this._radiosityEffectsManager.nextShooterEffect.setTexture("unshotRadiositySampler", unshotTexture);
             this._radiosityEffectsManager.nextShooterEffect.setFloat("lod", lod);
-            this._radiosityEffectsManager.nextShooterEffect.setFloat("area", mrt.getRenderWidth() * mrt.getRenderHeight()); // TODO : REAL POLYGON AREA
+            this._radiosityEffectsManager.nextShooterEffect.setFloat("area", polygonArea);
 
             engine.setDirectViewport(0, 0, 1, 1);
             engine.drawElementsType(Material.TriangleFillMode, 0, 6);
@@ -930,7 +940,7 @@ export class RadiosityRenderer {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._radiosityEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setFloat("_ExposureAdjustment", 0.5); // TODO
+        effect.setFloat("_ExposureAdjustment", 1); // TODO
         effect.setColor3("ambientColor", new Color3(0.4, 0.4, 0.4)); // TODO
         engine.bindBuffers(vb, this._radiosityEffectsManager.screenQuadIB, effect);
 

@@ -1,9 +1,9 @@
 import { Vector2, Vector3, Matrix } from "../Maths/math";
 import { Nullable } from "../types";
-import { Mesh } from "../meshes/mesh";
-import { VertexData } from "../meshes/mesh.vertexdata";
+import { Mesh } from "../Meshes/mesh";
+import { VertexData } from "../Meshes/mesh.vertexData";
 import { IndicesArray, FloatArray } from "../types";
-import { VertexBuffer } from "../meshes/buffer";
+import { VertexBuffer } from "../Meshes/buffer";
 
 /**
  * Face with 3 vertices
@@ -539,6 +539,9 @@ function projectMat(vector: Vector3) {
 const USER_FILL_HOLES = 0;
 const USER_FILL_HOLES_QUALITY = 1;
 const USER_ISLAND_MARGIN = 0;
+const USE_PACK_BIAS: boolean = true;
+const USE_FREE_STRIP: boolean = true;
+const USE_MERGE: boolean = true;
 const SMALL_NUM = 1e-12;
 
 /**
@@ -946,9 +949,25 @@ export class UvMapper {
     //     ctx.stroke();
     // }
 
-    // private debugUvs(uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
-    //     let canvas = document.createElement("canvas");
-    //     let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+    // Create a transparent canvas with uv drawn
+    public debugUvs(position: Vector2, size: Vector2, uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
+        let canvas = document.createElement("canvas");
+        let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+
+        document.body.appendChild(canvas);
+        canvas.width = size.x;
+        canvas.height = size.y;
+        canvas.style.position = "absolute";
+        canvas.style.transform = "rotateX(180deg)";
+        canvas.style.zIndex = "10";
+        canvas.style.top = `${position.x}px`;
+        canvas.style.left = `${position.y}px`;
+        canvas.onclick = () => {
+            canvas.style.display = "none";
+        };
+
+        ctx.scale(size.x, size.y);
+        ctx.lineWidth = 0.001;
 
     //     document.body.appendChild(canvas);
     //     canvas.width = 300;
@@ -1000,7 +1019,7 @@ export class UvMapper {
     //         }
     //     }
 
-    // }
+    }
 
     private optiRotateUvIsland(faces: Face[]) {
         let uvPoints: Vector2[] = [];
@@ -1423,6 +1442,7 @@ export class UvMapper {
      * @param removeDoubles If some vertices share the same position, mergin them reduces the number of islands in uv space, thus saving space and reducing seams
      * set to true to activate the vertex merging.
      * @returns An average world space to uv space ratio, resulting of the uv layout.
+     * @returns And an array of the input meshes areas in world unit
      */
     public map(obList: Mesh[],
         islandMargin: number = 0,
@@ -1430,12 +1450,14 @@ export class UvMapper {
         userAreaWeight: number = 0,
         useAspect: boolean = false, // TODO
         strechToBounds: boolean = false, // TODO
-        removeDoubles: boolean = true) : number {
+        removeDoubles: boolean = true) : any[] {
         const USER_PROJECTION_LIMIT_CONVERTED = Math.cos(projectionLimit * Math.PI / 180);
         const USER_PROJECTION_LIMIT_HALF_CONVERTED = Math.cos(projectionLimit / 2 * Math.PI / 180);
         const USER_SHARE_SPACE = true;
 
         let collectedIslandList: Island[] = [];
+        let collectedIslandMesh: Mesh[] = [];
+        let polygonsArea: number[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
         let worldToUVRatio = 0;
@@ -1448,6 +1470,7 @@ export class UvMapper {
         for (let i = 0; i < obList.length; i++) {
             let meshFaces: Face[] = [];
             let m = obList[i];
+            polygonsArea[i] = 0;
 
             if (!m.isVerticesDataPresent(VertexBuffer.PositionKind)) {
                 continue;
@@ -1480,6 +1503,10 @@ export class UvMapper {
 
             if (!meshFaces.length) {
                 continue;
+            }
+
+            for (const face of meshFaces) {
+                polygonsArea[i] += face.area;
             }
 
             let projectVecs: Vector3[] = [];
@@ -1709,7 +1736,7 @@ export class UvMapper {
 
         // this.debugUvs(newUvs, indices);
 
-        return worldToUVRatio;
+        return [worldToUVRatio, polygonsArea];
     }
 
     private packIslands(islandList: Island[]) : number {
@@ -1914,10 +1941,9 @@ enum CORNERFLAGS {
  * @param {number} index
  * @returns {number} the flag
  */
-function toFlag(index: number) : number { 
+function toFlag(index: number) : number {
     return 1 << index;
 }
-
 
 class BoxVert {
     x: number;
@@ -2180,7 +2206,7 @@ class BoxPacker {
             if (useFreeStrip) {
                 let index = vertexPackIndices.length - 1;
 
-                while(index != 0 && vertices[vertexPackIndices[index]].free == 0) {
+                while (index != 0 && vertices[vertexPackIndices[index]].free == 0) {
                     vertexPackIndices.pop();
                     index--;
                 }
@@ -2286,8 +2312,8 @@ class BoxPacker {
                              * Mask free flags for verts that are
                              * on the bottom or side so we don't get
                              * boxes outside the given rectangle ares
-                             * 
-                             * We can do an else/if here because only the first 
+                             *
+                             * We can do an else/if here because only the first
                              * firstBox can be at the very bottom left corner
                              */
                             if (box.xmin_get() <= 0) {
@@ -2302,7 +2328,7 @@ class BoxPacker {
                             /**
                              * The following block of code does a logical
                              * check with 2 adjacent boxes, its possible to
-                             * flag verts on one or both of the boxes 
+                             * flag verts on one or both of the boxes
                              * as being used by checking the width or
                              * height of both boxes
                              *
@@ -2439,7 +2465,7 @@ class BoxPacker {
                 }
             }
         }
-        
+
         // BoxPacker.debugFitAABB(boxes, tot.x, tot.y);
 
         return {
