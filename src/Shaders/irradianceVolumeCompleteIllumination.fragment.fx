@@ -10,5 +10,5 @@ void main ( void ){
     if ( irradianceColor.a != 0. ){
         irradianceColor /= irradianceColor.a;
     }
-    gl_FragColor = irradianceColor;
+    gl_FragColor = irradianceColor ;
 }

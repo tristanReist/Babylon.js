@@ -270,7 +270,7 @@ export class Irradiance {
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
             this._initProbesPromise();
-            this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 1024, this._scene);
+            this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 512, this._scene);
             this.albedo = new Texture(this._strAlbedo, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
@@ -313,8 +313,8 @@ export class Irradiance {
     }
 
     private _isUVEffectReady() : boolean {
-        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var uniforms = ["world", "projection", "view"];
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind];
+        var uniforms = ["world", "projection", "view", "probePosition"];
         var samplers = ["albedo"];
         this.uvEffect = this._scene.getEngine().createEffect("irradianceVolumeProbeEnv", 
             attribs,

@@ -196,6 +196,7 @@ export class Probe {
             let mesh = subMesh.getRenderingMesh();
 
             mesh._bind(subMesh, effect, Material.TriangleFillMode);   
+            mesh.cullingStrategy = 2;
             if ( subMesh.verticesCount === 0) {
                 return;
             }
@@ -203,6 +204,7 @@ export class Probe {
                 effect.setMatrix("view", view);
                 effect.setMatrix("projection", projection);
                 effect.setTexture("albedo", this.albedo);
+                effect.setVector3("probePosition", this.sphere.position);
             }
             else {
                 effect.setTexture("envMap", this.cubicMRT.textures[1]);
@@ -211,7 +213,6 @@ export class Probe {
                 effect.setMatrix("rotation", rotation);
                 effect.setBool("firstBounce", this.firstBounce);
             }
-            
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
                 return ;
@@ -400,7 +401,7 @@ export class Probe {
     }
 
     private _weightSHCoeff() {
-        let weight = 1.;
+        let weight = 1.5;
         this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l10 = this.sphericalHarmonic.l10.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l11 = this.sphericalHarmonic.l11.multiplyByFloats(weight, weight, weight);
