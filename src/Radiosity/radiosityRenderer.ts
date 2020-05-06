@@ -653,6 +653,7 @@ export class RadiosityRenderer {
 
         this.toneMap(textureArray[4], textureArray[6]);
         this.swap(textureArray, 4, 6);
+        this.swap(texture.internalTextures, 4, 6);
     }
 
     /**

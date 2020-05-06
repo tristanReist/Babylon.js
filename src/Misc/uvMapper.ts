@@ -539,9 +539,6 @@ function projectMat(vector: Vector3) {
 const USER_FILL_HOLES = 0;
 const USER_FILL_HOLES_QUALITY = 1;
 const USER_ISLAND_MARGIN = 0;
-const USE_PACK_BIAS: boolean = true;
-const USE_FREE_STRIP: boolean = true;
-const USE_MERGE: boolean = true;
 const SMALL_NUM = 1e-12;
 
 /**
@@ -1456,7 +1453,6 @@ export class UvMapper {
         const USER_SHARE_SPACE = true;
 
         let collectedIslandList: Island[] = [];
-        let collectedIslandMesh: Mesh[] = [];
         let polygonsArea: number[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
@@ -1961,12 +1957,7 @@ class BoxVert {
 
     /* Store last intersecting boxes here
      * speedup intersection testing */
-    intersection_cache: BoxBlender[] = [
-        null,
-        null,
-        null,
-        null,
-    ];
+    intersection_cache: BoxBlender[] = [];
 
 // #ifdef USE_PACK_BIAS
     bias : number = 0;
@@ -2167,7 +2158,7 @@ class BoxPacker {
         for (let boxIndex = 1; boxIndex < boxes.length; boxIndex++) {
             const box = boxes[boxIndex];
 
-            const vertexSort = (index1, index2) => {
+            const vertexSort = (index1: number, index2: number) => {
                 const v1 = vertices[index1];
                 const v2 = vertices[index2];
                 let a1, a2;
