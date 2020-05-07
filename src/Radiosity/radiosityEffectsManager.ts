@@ -15,6 +15,8 @@ import "../Shaders/dilate.fragment";
 import "../Shaders/dilate.vertex";
 import "../Shaders/radiosityPostProcess.fragment";
 import "../Shaders/radiosityPostProcess.vertex";
+import "../Shaders/lightmapCombine.fragment";
+import "../Shaders/lightmapCombine.vertex";
 
 /**
   * Creates various effects to solve radiosity.

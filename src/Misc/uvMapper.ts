@@ -953,9 +953,6 @@ export class UvMapper {
     public debugUvs(position: Vector2, size: Vector2, uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
         let canvas = document.createElement("canvas");
         let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-        const width = 512;
-        const height = 512;
-
         document.body.appendChild(canvas);
         canvas.width = size.x;
         canvas.height = size.y;
@@ -1935,10 +1932,9 @@ enum CORNERFLAGS {
  * @param {number} index
  * @returns {number} the flag
  */
-function toFlag(index: number) : number { 
+function toFlag(index: number) : number {
     return 1 << index;
 }
-
 
 class BoxVert {
     x: number;
@@ -2188,7 +2184,7 @@ class BoxPacker {
                     return -1;
                 }
                 return 0;
-            }
+            };
 
             vertexPackIndices.sort(sortVertices);
 
@@ -2196,7 +2192,7 @@ class BoxPacker {
             if (USE_FREE_STRIP) {
                 let index = vertexPackIndices.length - 1;
 
-                while(index != 0 && vertices[vertexPackIndices[index]].free == 0) {
+                while (index != 0 && vertices[vertexPackIndices[index]].free == 0) {
                     vertexPackIndices.pop();
                     index--;
                 }
@@ -2302,8 +2298,8 @@ class BoxPacker {
                              * Mask free flags for verts that are
                              * on the bottom or side so we don't get
                              * boxes outside the given rectangle ares
-                             * 
-                             * We can do an else/if here because only the first 
+                             *
+                             * We can do an else/if here because only the first
                              * firstBox can be at the very bottom left corner
                              */
                             if (box.xmin_get() <= 0) {
@@ -2318,7 +2314,7 @@ class BoxPacker {
                             /**
                              * The following block of code does a logical
                              * check with 2 adjacent boxes, its possible to
-                             * flag verts on one or both of the boxes 
+                             * flag verts on one or both of the boxes
                              * as being used by checking the width or
                              * height of both boxes
                              *
@@ -2435,7 +2431,7 @@ class BoxPacker {
                 }
             }
         }
-        
+
         // BoxPacker.debugFitAABB(boxes, tot.x, tot.y);
 
         return {
