@@ -21,6 +21,7 @@ import "../../Shaders/irradianceVolumeProbeEnv.vertex"
 import "../../Shaders/irradianceVolumeProbeEnv.fragment"
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.vertex"
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment"
+import { PBRMaterial } from '../../Materials';
 
 /**
  * The probe is what is used for irradiance volume
@@ -74,7 +75,7 @@ export class Probe {
     /**
      * The texture used to render the cube map
      */
-    public albedo : BaseTexture;
+    public directLightMap : BaseTexture;
 
     /**
      * The multirendertarget that is use to redner the scene from the probe
@@ -120,8 +121,8 @@ export class Probe {
      */
     constructor(position : Vector3, scene : Scene) {
         this._scene = scene;
-        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
-        this.sphere.visibility = 0;
+        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 30 }, scene);
+        this.sphere.visibility = 1;
 
         this.cameraList = new Array<UniversalCamera>();
 
@@ -203,13 +204,20 @@ export class Probe {
             if (isMRT)  {
                 effect.setMatrix("view", view);
                 effect.setMatrix("projection", projection);
-                effect.setTexture("albedo", this.albedo);
+                if (mesh.material != null){
+                    let color = (<PBRMaterial> (mesh.material)).albedoColor;
+                    effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
+                    effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
+                }
+
                 effect.setVector3("probePosition", this.sphere.position);
+                
             }
             else {
                 effect.setTexture("envMap", this.cubicMRT.textures[1]);
                 effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
                 effect.setTexture("irradianceMap", this.irradianceLightMap);
+                effect.setTexture("directIlluminationLightMap", this.directLightMap);
                 effect.setMatrix("rotation", rotation);
                 effect.setBool("firstBounce", this.firstBounce);
             }
@@ -294,8 +302,8 @@ export class Probe {
      * Render the 6 cameras of the probes with different effect to create the cube map we need
      * @param meshes The meshes we want to render
      */
-    public render(meshes : Array<Mesh>, albedo : Texture, uvEffet : Effect, bounceEffect : Effect) : void {
-        this.albedo = albedo;
+    public render(meshes : Array<Mesh>, directLightMap : Texture, uvEffet : Effect, bounceEffect : Effect) : void {
+        this.directLightMap = directLightMap;
         this.uvEffect = uvEffet;
         this.bounceEffect = bounceEffect;
         for (let texture of this.cubicMRT.textures){
@@ -401,7 +409,7 @@ export class Probe {
     }
 
     private _weightSHCoeff() {
-        let weight = 1.5;
+        let weight = 0.5;
         this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l10 = this.sphericalHarmonic.l10.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l11 = this.sphericalHarmonic.l11.multiplyByFloats(weight, weight, weight);

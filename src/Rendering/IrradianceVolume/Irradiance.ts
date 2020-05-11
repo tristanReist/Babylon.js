@@ -39,7 +39,7 @@ export class Irradiance {
 
     private _promise : Promise<void>;
     
-    private _strAlbedo : string;
+    private _lightMapName : string;
 
     /**
      * The effect that will be use to render the environment of each probes. It will be given to every probes of the volume
@@ -54,12 +54,14 @@ export class Irradiance {
     /**
      * The texture of the environment
      */
-    public albedo : Texture;
+    public directLightMap : Texture;
 
     /**
      * The number of bounces we want to render on our scene. (1 == only direct light)
      */
     public numberBounces : number;
+
+    public finish = false;
 
     /**
      * Initiate a new Iradiance
@@ -67,11 +69,11 @@ export class Irradiance {
      * @param probes The probes that are used to render the irradiance
      * @param meshes The meshes that are rendered by the probes
      */
-    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, strAlbedo : string, numberBounces : number){
+    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, lightMapName : string, numberBounces : number){
         this._scene = scene;
         this.probeList = probes;
         this.meshes = meshes;
-        this._strAlbedo = strAlbedo;
+        this._lightMapName = lightMapName;
         this.numberBounces = numberBounces;
         this._promise = this._createPromise();
     }
@@ -99,6 +101,9 @@ export class Irradiance {
         this._uniformBoxSize = size;
     }
 
+
+
+
     /**
      * Function that launch all the render needed to create the final light map of irradiance that contains
      * global illumination
@@ -109,7 +114,7 @@ export class Irradiance {
         this._promise.then( function () {
             console.log(irradiance.irradianceLightmap);
             for (let probe of irradiance.probeList){
-                probe.render(irradiance.meshes, irradiance.albedo, irradiance.uvEffect, irradiance.bounceEffect);
+                probe.render(irradiance.meshes, irradiance.directLightMap, irradiance.uvEffect, irradiance.bounceEffect);
                 probe.renderBounce(irradiance.irradianceLightmap);
             }
             if (irradiance.numberBounces > 1){
@@ -137,6 +142,7 @@ export class Irradiance {
                     irradiance._renderBounce(currentBounce);
                 });
             }
+            
         });
     }
 
@@ -172,6 +178,9 @@ export class Irradiance {
             irradiance.irradianceLightmap.render();
             if (currentBounce < irradiance.numberBounces){
                 irradiance._renderBounce(currentBounce + 1);
+            }
+            else{
+                irradiance.finish = true;
             }
         });
 
@@ -271,7 +280,7 @@ export class Irradiance {
         return new Promise((resolve, reject) => {
             this._initProbesPromise();
             this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 512, this._scene);
-            this.albedo = new Texture(this._strAlbedo, this._scene);
+            this.directLightMap = new Texture(this._lightMapName, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isIrradianceLightMapReady(),
@@ -309,13 +318,13 @@ export class Irradiance {
     }
 
     private _isTextureReady() : boolean {
-        return this.albedo.isReady();
+        return this.directLightMap.isReady();
     }
 
     private _isUVEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind];
-        var uniforms = ["world", "projection", "view", "probePosition"];
-        var samplers = ["albedo"];
+        var uniforms = ["world", "projection", "view", "probePosition", "albedoColor"];
+        var samplers = ["albedoTexture"];
         this.uvEffect = this._scene.getEngine().createEffect("irradianceVolumeProbeEnv", 
             attribs,
             uniforms,
@@ -326,7 +335,7 @@ export class Irradiance {
 
     private _isBounceEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var samplers = ["envMap", "envMapUV", "irradianceMap"];
+        var samplers = ["envMap", "envMapUV", "irradianceMap", "directIlluminationLightMap"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv", 
             attribs, ["world", "rotation", "firstBounce"],
             samplers);

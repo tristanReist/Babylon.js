@@ -10,7 +10,8 @@ in vec3 wNormal;
 in vec3 wPosition;
 
 uniform vec3 probePosition;
-uniform sampler2D albedo;
+uniform vec3 albedoColor;
+uniform sampler2D albedoTexture;
 
 void main( void )
 {   
@@ -23,6 +24,12 @@ void main( void )
     }
     else {    
         glFragData[0] = vec4(uv, 0, 1);
-        glFragData[1]= vec4(texture(albedo, uv).rgb, 1.);
+        if (texture(albedoTexture, uv).rgb !=  vec3(0., 0., 0.)) {
+            glFragData[1]= vec4(texture(albedoTexture, uv).rgb, 1.);
+        }
+        else {
+            glFragData[1]= vec4(albedoColor, 1.);
+        }
+
     }
 }
