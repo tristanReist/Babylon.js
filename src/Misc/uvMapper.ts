@@ -949,61 +949,61 @@ export class UvMapper {
     //     ctx.stroke();
     // }
 
-    // private debugUvs(uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
-    //     let canvas = document.createElement("canvas");
-    //     let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+    public debugUvs(uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
+        let canvas = document.createElement("canvas");
+        let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-    //     document.body.appendChild(canvas);
-    //     canvas.width = 300;
-    //     canvas.height = 300;
-    //     canvas.style.position = "absolute";
-    //     canvas.style.zIndex = "10";
-    //     canvas.style.top = "0px";
-    //     canvas.style.left = "0px";
-    //     canvas.onclick = () => {
-    //         canvas.style.display = "none";
-    //     }
+        document.body.appendChild(canvas);
+        canvas.width = 300;
+        canvas.height = 300;
+        canvas.style.position = "absolute";
+        canvas.style.zIndex = "10";
+        canvas.style.top = "0px";
+        canvas.style.left = "0px";
+        canvas.onclick = () => {
+            canvas.style.display = "none";
+        };
 
-    //     ctx.clearRect(0, 0, 300, 300);
-    //     ctx.fillStyle = "white";
-    //     ctx.fillRect(0, 0, 300, 300);
-    //     ctx.fillStyle = "red";
-    //     ctx.scale(300, 300);
-    //     ctx.lineWidth = 0.001;
+        ctx.clearRect(0, 0, 300, 300);
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, 300, 300);
+        ctx.fillStyle = "red";
+        ctx.scale(300, 300);
+        ctx.lineWidth = 0.001;
 
-    //     ctx.strokeStyle = "green";
-    //     for (let j = 0; j < uvsArray.length; j++) {
-    //         let uvs = uvsArray[j];
-    //         let indices = indicesArray[j];
-    //         for (let i = 0; i < indices.length; i += 3) {
-    //             let lessThanZeroCount = 0;
-    //             if (uvs[indices[i] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
-    //             if (uvs[indices[i + 1] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
-    //             if (uvs[indices[i + 2] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
+        ctx.strokeStyle = "green";
+        for (let j = 0; j < uvsArray.length; j++) {
+            let uvs = uvsArray[j];
+            let indices = indicesArray[j];
+            for (let i = 0; i < indices.length; i += 3) {
+                let lessThanZeroCount = 0;
+                if (uvs[indices[i] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
+                if (uvs[indices[i + 1] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
+                if (uvs[indices[i + 2] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
 
-    //             if (lessThanZeroCount > 1) {
-    //                 debugger;
-    //             } else if (lessThanZeroCount === 1) {
-    //                 debugger;
-    //             }
+                if (lessThanZeroCount > 1) {
+                    debugger;
+                } else if (lessThanZeroCount === 1) {
+                    debugger;
+                }
 
-    //             ctx.beginPath();
-    //             ctx.moveTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
-    //             ctx.stroke();
-    //             // ctx.fill();
-    //         }
-    //     }
+                ctx.beginPath();
+                ctx.moveTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
+                ctx.stroke();
+                // ctx.fill();
+            }
+        }
 
-    // }
+    }
 
     private optiRotateUvIsland(faces: Face[]) {
         let uvPoints: Vector2[] = [];
@@ -1729,7 +1729,7 @@ export class UvMapper {
             newUvs[meshIndex] = verticesData.uvs2;
         }
 
-        this.debugUvs(newUvs, indices);
+        // this.debugUvs(newUvs, indices);
 
         return worldToUVRatio;
     }
@@ -1745,15 +1745,6 @@ export class UvMapper {
 
         while (islandIdx < islandList.length) {
             let [minx, miny, maxx, maxy] = this.boundsIslands(islandList[islandIdx]);
-
-            // Expect the mesh to use 256 pixels width and height by default
-            let texelWidth = 256;
-            let texelHeight = 256;
-
-            if (islandMeshes[islandIdx].radiosityInfo) {
-                texelWidth = islandMeshes[islandIdx].radiosityInfo.lightmapSize.width;
-                texelHeight = islandMeshes[islandIdx].radiosityInfo.lightmapSize.height;
-            }
 
             let w = maxx - minx;
             let h = maxy - miny;
@@ -1947,10 +1938,9 @@ enum CORNERFLAGS {
  * @param {number} index
  * @returns {number} the flag
  */
-function toFlag(index: number) : number { 
+function toFlag(index: number) : number {
     return 1 << index;
 }
-
 
 class BoxVert {
     x: number;
@@ -2200,7 +2190,7 @@ class BoxPacker {
                     return -1;
                 }
                 return 0;
-            }
+            };
 
             vertexPackIndices.sort(sortVertices);
 
@@ -2208,7 +2198,7 @@ class BoxPacker {
             if (USE_FREE_STRIP) {
                 let index = vertexPackIndices.length - 1;
 
-                while(index != 0 && vertices[vertexPackIndices[index]].free == 0) {
+                while (index != 0 && vertices[vertexPackIndices[index]].free == 0) {
                     vertexPackIndices.pop();
                     index--;
                 }
@@ -2314,8 +2304,8 @@ class BoxPacker {
                              * Mask free flags for verts that are
                              * on the bottom or side so we don't get
                              * boxes outside the given rectangle ares
-                             * 
-                             * We can do an else/if here because only the first 
+                             *
+                             * We can do an else/if here because only the first
                              * firstBox can be at the very bottom left corner
                              */
                             if (box.xmin_get() <= 0) {
@@ -2330,7 +2320,7 @@ class BoxPacker {
                             /**
                              * The following block of code does a logical
                              * check with 2 adjacent boxes, its possible to
-                             * flag verts on one or both of the boxes 
+                             * flag verts on one or both of the boxes
                              * as being used by checking the width or
                              * height of both boxes
                              *
@@ -2447,7 +2437,7 @@ class BoxPacker {
                 }
             }
         }
-        
+
         // BoxPacker.debugFitAABB(boxes, tot.x, tot.y);
 
         return {

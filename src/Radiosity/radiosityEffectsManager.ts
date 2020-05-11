@@ -1,6 +1,6 @@
 import { Effect } from "../Materials/effect";
 import { VertexBuffer } from "../Meshes/buffer";
-import { DataBuffer } from "../Meshes/databuffer";
+import { DataBuffer } from "../Meshes/dataBuffer";
 import { Scene } from "../scene";
 
 import "../Shaders/nextShooter.fragment";

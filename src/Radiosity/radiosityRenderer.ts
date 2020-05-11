@@ -18,7 +18,7 @@ import { RadiosityUtils } from "./radiosityUtils";
 import { RadiosityEffectsManager } from "./radiosityEffectsManager";
 
 import { Nullable } from "../types";
-// import { Tools } from "../misc/tools";
+// import { Tools } from "../Misc/tools";
 
 /**
  * Patch, infinitesimal unit when discretizing surfaces
@@ -186,10 +186,10 @@ Mesh.prototype.getRadiosityTexture = function() {
 };
 
 declare interface RadiosityRendererOptions {
-    near?: number,
-    far?: number,
-    bias?: number,
-    normalBias?: number,
+    near?: number;
+    far?: number;
+    bias?: number;
+    normalBias?: number;
 }
 
 /**
@@ -272,7 +272,6 @@ export class RadiosityRenderer {
     private squareToDiskArea(a: number) {
         return a * a * Math.PI / 4;
     }
-
 
     /**
      * Instanciates a radiosity renderer
