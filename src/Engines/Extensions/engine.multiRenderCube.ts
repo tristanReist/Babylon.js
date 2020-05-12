@@ -14,8 +14,7 @@ declare module "../../Engines/thinEngine" {
          * @param onBeforeUnbind defines a function which will be called before the effective unbind
          */
         unBindMultiColorAttachmentFramebufferCube(textures: InternalTexture[], disableGenerateMipMaps: boolean, onBeforeUnbind?: () => void): void;
-   
-        
+
         /**
          * Create a multi render target cube texture
          * @param size defines the size of the texture
@@ -107,12 +106,12 @@ ThinEngine.prototype.createMultipleRenderTargetCube = function(size: any, option
         generateStencilBuffer = options.generateStencilBuffer === undefined ? false : options.generateStencilBuffer;
         generateDepthTexture = options.generateDepthTexture === undefined ? false : options.generateDepthTexture;
         textureCount = options.textureCount || 1;
-        
-        if (options.types){
+
+        if (options.types) {
             types = options.types;
         }
 
-        if (options.samplingModes){
+        if (options.samplingModes) {
             samplingModes = options.samplingModes;
         }
     }
@@ -128,11 +127,10 @@ ThinEngine.prototype.createMultipleRenderTargetCube = function(size: any, option
     var attachments = [];
 
     var depthStencilBuffer = this._setupFramebufferDepthAttachments(generateStencilBuffer, generateDepthBuffer, width, height);
-    
+
     for (var i = 0; i < textureCount; i++) {
         var samplingMode = samplingModes[i] || defaultSamplingMode;
         var type = types[i] || defaultType;
-
 
         if (type === Constants.TEXTURETYPE_FLOAT && !this._caps.textureFloatLinearFiltering) {
             // if floating point linear (gl.FLOAT) then force to NEAREST_SAMPLINGMODE
@@ -166,7 +164,7 @@ ThinEngine.prototype.createMultipleRenderTargetCube = function(size: any, option
 
         for (var face = 0; face < 6; face++) {
             gl.texImage2D((gl.TEXTURE_CUBE_MAP_POSITIVE_X + face), 0, this._getRGBABufferInternalSizedFormat(type, gl.RGBA), size, size, 0, gl.RGBA, this._getWebGLTextureType(type), null);
-            //A voir si à mettre ici 
+            //A voir si à mettre ici
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, attachment, (gl.TEXTURE_CUBE_MAP_POSITIVE_X + face), texture._webGLTexture, 0);
         }
 
@@ -215,10 +213,10 @@ ThinEngine.prototype.createMultipleRenderTargetCube = function(size: any, option
                 0,
                 this.webGLVersion < 2 ? gl.DEPTH_COMPONENT : gl.DEPTH_COMPONENT16,
                 size,
-                size, 
+                size,
                 0,
                 gl.DEPTH_COMPONENT,
-                gl.UNSIGNED_SHORT, 
+                gl.UNSIGNED_SHORT,
                 null
             );
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, (gl.TEXTURE_CUBE_MAP_POSITIVE_X + face), depthTexture._webGLTexture, 0);
@@ -247,12 +245,4 @@ ThinEngine.prototype.createMultipleRenderTargetCube = function(size: any, option
     this.resetTextureCache();
 
     return textures;
-}
-
-
-    
-        
-
-    
-
-
+};

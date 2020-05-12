@@ -9,20 +9,19 @@ import { Volume } from './Volume';
  */
 export class OwnVolume extends Volume{
 
-    private _renderStarted : boolean; 
+    private _renderStarted : boolean;
 
     /**
      * Instanciate a new volume for the scene
-     * @param meshes List of 
-     * @param scene The scene the volume belong to  
+     * @param meshes List of
+     * @param scene The scene the volume belong to
      * @param probeRes The resolution with which the probes will render
      * @param probes The list of probes that will be render
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, numberBounces : number, probeRes = 16, probes? : Array<Probe>){
+    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, numberBounces : number, probeRes = 16, probes? : Array<Probe>) {
         super(meshes, scene, strAlbedo, numberBounces, probeRes);
         this._initProbeIrradiance(probes);
     }
-
 
     /**
      * Add a probe to the volume manually
@@ -30,7 +29,7 @@ export class OwnVolume extends Volume{
      * @param probe  The probe to be render
      */
     public addProbe(probe : Probe) : void {
-        if (this._renderStarted){
+        if (this._renderStarted) {
             console.log("Render has already started");
             return;
         }

@@ -188,12 +188,12 @@ export class MultiRenderTarget extends RenderTargetTexture {
     }
 
     private _createInternalTextures(): void {
-        if (this.isCube){
+        if (this.isCube) {
             this._internalTextures = this._engine.createMultipleRenderTargetCube(this._size, this._multiRenderTargetOptions);
             this.coordinatesMode = Texture.INVCUBIC_MODE;
             this._textureMatrix = Matrix.Identity();
         }
-        else{
+        else {
             this._internalTextures = this._engine.createMultipleRenderTarget(this._size, this._multiRenderTargetOptions);
         }
     }
@@ -237,11 +237,12 @@ export class MultiRenderTarget extends RenderTargetTexture {
     }
 
     protected unbindFrameBuffer(engine: Engine, faceIndex: number): void {
-        if (!this.isCube)
+        if (!this.isCube) {
             engine.unBindMultiColorAttachmentFramebuffer(this._internalTextures, this.isCube, () => {
                 this.onAfterRenderObservable.notifyObservers(faceIndex);
         });
-        else{
+        }
+        else {
             engine.unBindMultiColorAttachmentFramebufferCube(this._internalTextures, this.isCube, () => {
                 this.onAfterRenderObservable.notifyObservers(faceIndex);
         });

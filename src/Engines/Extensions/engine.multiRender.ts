@@ -135,7 +135,7 @@ ThinEngine.prototype.createMultipleRenderTarget = function(size: any, options: I
     var depthStencilBuffer = this._setupFramebufferDepthAttachments(generateStencilBuffer, generateDepthBuffer, width, height);
 
     // Chacune des 6 faces aura plusieurs attachment
-    
+
     for (var i = 0; i < textureCount; i++) {
         var samplingMode = samplingModes[i] || defaultSamplingMode;
         var type = types[i] || defaultType;
@@ -156,15 +156,14 @@ ThinEngine.prototype.createMultipleRenderTarget = function(size: any, options: I
         }
 
         var texture = new InternalTexture(this, InternalTextureSource.MultiRenderTarget);
-        // 
+        //
         var attachment = (<any>gl)[this.webGLVersion > 1 ? "COLOR_ATTACHMENT" + i : "COLOR_ATTACHMENT" + i + "_WEBGL"];
 
         textures.push(texture);
         attachments.push(attachment);
 
-
-        //  
-        gl.activeTexture((<any>gl)["TEXTURE" + i]);            
+        //
+        gl.activeTexture((<any>gl)["TEXTURE" + i]);
         gl.bindTexture(gl.TEXTURE_2D, texture._webGLTexture);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filters.mag);

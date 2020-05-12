@@ -92,7 +92,6 @@ export class CubeMapToSphericalPolynomialTools {
         return this.ConvertCubeMapToSphericalPolynomial(cubeInfo);
     }
 
-
         /**
      * Converts a texture to the according Spherical Polynomial data.
      * This extracts the first 3 orders only as they are the only one used in the lighting.
@@ -147,9 +146,6 @@ export class CubeMapToSphericalPolynomialTools {
         return this.ConvertCubeMapToSphericalHarmonics(cubeInfo);
     }
 
-
-
-    
     /**
      * Converts a cubemap to the according Spherical Polynomial data.
      * This extracts the first 3 orders only as they are the only one used in the lighting.
