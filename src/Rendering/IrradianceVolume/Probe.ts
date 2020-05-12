@@ -15,10 +15,13 @@ import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/c
 import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { BaseTexture } from '../../Materials/Textures/baseTexture';
+import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
 
-import "../../Shaders/uv.fragment"
-import "../../Shaders/uv.vertex"
-
+import "../../Shaders/irradianceVolumeProbeEnv.vertex"
+import "../../Shaders/irradianceVolumeProbeEnv.fragment"
+import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.vertex"
+import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment"
+import { PBRMaterial } from '../../Materials';
 
 /**
  * The probe is what is used for irradiance volume
@@ -62,6 +65,8 @@ export class Probe {
      */
     public uvEffect : Effect;
 
+    public bounceEffect : Effect;
+
     /**
      * The string representing the path to the texture that is used
      */
@@ -70,7 +75,7 @@ export class Probe {
     /**
      * The texture used to render the cube map
      */
-    public albedo : BaseTexture;
+    public directLightMap : BaseTexture;
 
     /**
      * The multirendertarget that is use to redner the scene from the probe
@@ -83,6 +88,30 @@ export class Probe {
     public sphericalHarmonic : SphericalHarmonics; 
 
 
+
+    /**
+     * RenderTargetTexture that aims to copy the cubicMRT envCubeMap and add the irradiance compute previously to it, to simulate the bounces of the light 
+     */
+    public tempBounce : RenderTargetTexture;
+        
+    /**
+     * The light map that contains the info of the bounces opf the light
+     */
+    public irradianceLightMap : RenderTargetTexture;
+
+    /**
+     * Variable helpful and use to know when the environment cube map has been rendered to continue the process
+     */
+    public envCubeMapRendered = false;
+
+    /**
+     * Variable helpful and use to know when the spherical harmonic coefficient has been computed to continue the process
+     */
+    public sphericalHarmonicChanged : boolean;
+
+    public firstBounce = true;
+
+
     /**
      * Create the probe used to capture the irradiance at a point 
      * @param position The position at which the probe is set
@@ -92,8 +121,9 @@ export class Probe {
      */
     constructor(position : Vector3, scene : Scene) {
         this._scene = scene;
-        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 1 }, scene);
-        this.sphere.visibility = 0;
+        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 30 }, scene);
+        this.sphere.visibility = 1;
+
         this.cameraList = new Array<UniversalCamera>();
 
 
@@ -133,7 +163,7 @@ export class Probe {
         }
 
         this.sphere.translate(position, 1);
-
+        this.sphericalHarmonicChanged = false;
     }
 
     /**
@@ -161,24 +191,36 @@ export class Probe {
     }
 
 
-    private _renderCubeTexture(subMeshes : SmartArray<SubMesh>) : void {
+    private _renderCubeTexture(subMeshes : SmartArray<SubMesh>, isMRT : boolean) : void {
 
-        var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
-    
+        var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix, isMRT : boolean, rotation : Matrix) => {
             let mesh = subMesh.getRenderingMesh();
 
-
-
             mesh._bind(subMesh, effect, Material.TriangleFillMode);   
-
+            mesh.cullingStrategy = 2;
             if ( subMesh.verticesCount === 0) {
                 return;
             }
+            if (isMRT)  {
+                effect.setMatrix("view", view);
+                effect.setMatrix("projection", projection);
+                if (mesh.material != null){
+                    let color = (<PBRMaterial> (mesh.material)).albedoColor;
+                    effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
+                    effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
+                }
 
-            effect.setMatrix("view", view);
-            effect.setMatrix("projection", projection);
-            effect.setTexture("albedo", this.albedo);
-            
+                effect.setVector3("probePosition", this.sphere.position);
+                
+            }
+            else {
+                effect.setTexture("envMap", this.cubicMRT.textures[1]);
+                effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
+                effect.setTexture("irradianceMap", this.irradianceLightMap);
+                effect.setTexture("directIlluminationLightMap", this.directLightMap);
+                effect.setMatrix("rotation", rotation);
+                effect.setBool("firstBounce", this.firstBounce);
+            }
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
                 return ;
@@ -193,12 +235,21 @@ export class Probe {
         let engine = scene.getEngine();
         let gl = engine._gl;
         
+        let internalTexture;
+        let secondInternalTexture;
+        let effect;
+        if (isMRT){
+            internalTexture = <InternalTexture>this.cubicMRT.textures[0]._texture;
+            secondInternalTexture = <InternalTexture> this.cubicMRT.textures[1]._texture;
+            effect = this.uvEffect;
+        }
+        else {
+            internalTexture = <InternalTexture>this.tempBounce.getInternalTexture();
+            effect = this.bounceEffect;
+        }
 
 
-        let uvInternal = <InternalTexture>this.cubicMRT.textures[0]._texture;
-        let albedoInternal = <InternalTexture> this.cubicMRT.textures[1]._texture;
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, uvInternal._framebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, internalTexture._framebuffer);
         engine.setState(false, 0, true, scene.useRightHandedSystem);
 
 
@@ -221,17 +272,26 @@ export class Probe {
             gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
         ];
 
+        let rotationMatrices = [
+            Matrix.RotationZ(-Math.PI / 2).multiply(Matrix.RotationX(Math.PI / 2)),
+            Matrix.RotationZ(Math.PI / 2).multiply(Matrix.RotationX(Math.PI / 2)),
+            Matrix.RotationX(-Math.PI),
+            Matrix.Identity(),
+            Matrix.RotationX(Math.PI / 2),
+            Matrix.RotationZ(Math.PI ).multiply(Matrix.RotationX(Math.PI / 2))
+        ];
+        engine.enableEffect(effect);
 
-        engine.enableEffect(this.uvEffect);
         for (let j = 0; j < 6; j++){
             engine.setDirectViewport(0, 0, this.cubicMRT.getRenderWidth(), this.cubicMRT.getRenderHeight());
-            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], uvInternal._webGLTexture, 0);
-            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, cubeSides[j], albedoInternal._webGLTexture, 0);
-
+            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], internalTexture._webGLTexture, 0);
+            if (isMRT && secondInternalTexture != null){
+                gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, cubeSides[j], secondInternalTexture._webGLTexture, 0);
+            }
+            
             engine.clear(new Color4(0, 0, 0, 0), true, true);
             for (let i = 0; i < subMeshes.length; i++){
-
-                renderSubMesh(subMeshes.data[i], this.uvEffect, viewMatrices[j], projectionMatrix);
+                renderSubMesh(subMeshes.data[i], effect, viewMatrices[j], projectionMatrix, isMRT, rotationMatrices[j]);
             }
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -242,11 +302,10 @@ export class Probe {
      * Render the 6 cameras of the probes with different effect to create the cube map we need
      * @param meshes The meshes we want to render
      */
-    public render(meshes : Array<Mesh>, albedo : Texture, uvEffet : Effect) : void {
-        //MultiRenderTarget texture does not seem to be consider as renderTarget but it is
-        // //We need it for the computation of the spherical harmonics
-        this.albedo = albedo;
+    public render(meshes : Array<Mesh>, directLightMap : Texture, uvEffet : Effect, bounceEffect : Effect) : void {
+        this.directLightMap = directLightMap;
         this.uvEffect = uvEffet;
+        this.bounceEffect = bounceEffect;
         for (let texture of this.cubicMRT.textures){
             texture.isRenderTarget = true;
         }
@@ -256,13 +315,37 @@ export class Probe {
         this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
 
         this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-            this._renderCubeTexture(opaqueSubMeshes);          
+            this._renderCubeTexture(opaqueSubMeshes, true);          
         }
 
         this.cubicMRT.onAfterRenderObservable.add(() => {
-            this._CPUcomputeSHCoeff();
+            this.envCubeMapRendered = true;
         });
 
+    }
+
+    /**
+     * Render one bounce of the light from the point of view of a probe
+     * 
+     * @param irradianceLightMap THe irradiance lightmap use to render the bounces
+     */
+    public renderBounce( irradianceLightMap : RenderTargetTexture ) : void {
+        let ground = MeshBuilder.CreateGround("test", {width : 2, height : 2}, this._scene);
+        ground.visibility = 0;
+        ground.translate(new Vector3(0, 1, 0), 1.);
+
+        this.tempBounce.renderList = [ground];
+        this._scene.customRenderTargets.push(this.tempBounce);
+
+        this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE; 
+        this.tempBounce.boundingBoxPosition = this.sphere.position;
+        this.irradianceLightMap = irradianceLightMap;
+        this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
+            this._renderCubeTexture(transparentSubMeshes, false);          
+        }
+        this.tempBounce.onAfterRenderObservable.add(() => {
+            this._CPUcomputeSHCoeff();     
+        });
     }
 
     /**
@@ -271,39 +354,44 @@ export class Probe {
      */
     public initPromise() : void {
         this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
+        this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
     }
 
     /**
      * Return if the probe is ready to be render
      */
     public isProbeReady() : boolean {
-        return this._isMRTReady();
+        return this._isMRTReady() && this._isTempBounceReady();
     }
-
 
 
     private _isMRTReady() : boolean {
-        
         return this.cubicMRT.isReady();
     }
 
+    private _isTempBounceReady() : boolean {
+        
+        return this.tempBounce.isReady();
+    }
 
     private _CPUcomputeSHCoeff() : void {
         //Possible problem, y can be inverted
-        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.cubicMRT.textures[1]);
+        let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.tempBounce);
         if (sp != null){
             this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
+            this._weightSHCoeff();
+            this.sphericalHarmonicChanged = true;
         }
         this._computeProbeIrradiance();
-
     }
 
     private _computeProbeIrradiance() : void {
         //We use a shader to add this texture to the probe
-        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/computeIrradiance", {
+        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/irradianceVolumeComputeIrradiance", {
             attributes : ["position", "normal"],
             uniforms : ["worldViewProjection"]
         })
+
         shaderMaterial.setVector3("L00", this.sphericalHarmonic.l00);
         
         shaderMaterial.setVector3("L10", this.sphericalHarmonic.l10);
@@ -320,5 +408,17 @@ export class Probe {
    
     }
 
+    private _weightSHCoeff() {
+        let weight = 0.5;
+        this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l10 = this.sphericalHarmonic.l10.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l11 = this.sphericalHarmonic.l11.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l1_1 = this.sphericalHarmonic.l1_1.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l20 = this.sphericalHarmonic.l20.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l21 = this.sphericalHarmonic.l21.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l22 = this.sphericalHarmonic.l22.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l2_1 = this.sphericalHarmonic.l2_1.multiplyByFloats(weight, weight, weight);
+        this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
+    }
 
 }

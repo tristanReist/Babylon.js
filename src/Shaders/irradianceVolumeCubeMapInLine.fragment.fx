@@ -3,7 +3,7 @@ varying vec2 vUV;
 uniform int numberCube;
 uniform int resolution;
 // uniform samplerCube cubeMapArray[10];
-uniform samplerCube cubeMapArray[NUM_PROBES];
+uniform samplerCube cubeMapArray[1];
 
 void main() {
 
@@ -21,7 +21,7 @@ void main() {
     float x = -1. + float(pixelInFace) / (float(resolution) / 2.);
 
  
-    for ( int i = 0 ; i < NUM_PROBES; i++ ){
+    for ( int i = 0 ; i < 1; i++ ){
         if (i == currentCube){
             if ( face == 0 ){           //Positive_X
                 color =  vec4(textureCube(cubeMapArray[0], vec3(1., y, - x)).rgb, 1); 
