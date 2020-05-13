@@ -5,10 +5,10 @@ import { Mesh } from '../../Meshes/mesh';
 import { Material } from '../../Materials/material';
 import { Nullable } from '../../types';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
-import { Texture } from '../../Materials/Textures/texture';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
 import { Vector3 } from '../../Maths/math.vector';
+import { MeshDictionary } from './meshDictionary';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -31,14 +31,8 @@ export class Irradiance {
      */
     public meshes : Array<Mesh>;
 
-    /**
-     * Texture that conntains the light map of the irradiance of the scene
-     */
-    public irradianceLightmap : RenderTargetTexture;
 
     private _promise : Promise<void>;
-
-    private _lightMapName : string;
 
     /**
      * The effect that will be use to render the environment of each probes. It will be given to every probes of the volume
@@ -50,10 +44,8 @@ export class Irradiance {
      */
     public bounceEffect : Effect;
 
-    /**
-     * The texture of the environment
-     */
-    public directLightMap : Texture;
+
+    public dictionary : MeshDictionary;
 
     /**
      * The number of bounces we want to render on our scene. (1 == only direct light)
@@ -68,11 +60,11 @@ export class Irradiance {
      * @param probes The probes that are used to render the irradiance
      * @param meshes The meshes that are rendered by the probes
      */
-    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, lightMapName : string, numberBounces : number) {
+    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, dictionary : MeshDictionary, numberBounces : number) {
         this._scene = scene;
         this.probeList = probes;
         this.meshes = meshes;
-        this._lightMapName = lightMapName;
+        this.dictionary = dictionary;
         this.numberBounces = numberBounces;
         this._promise = this._createPromise();
     }
@@ -108,10 +100,9 @@ export class Irradiance {
         let irradiance = this;
         // When all we need is ready
         this._promise.then(function() {
-            console.log(irradiance.irradianceLightmap);
             for (let probe of irradiance.probeList) {
-                probe.render(irradiance.meshes, irradiance.directLightMap, irradiance.uvEffect, irradiance.bounceEffect);
-                probe.renderBounce(irradiance.irradianceLightmap);
+                probe.render(irradiance.meshes, irradiance.dictionary, irradiance.uvEffect, irradiance.bounceEffect);
+                probe.renderBounce();
             }
             if (irradiance.numberBounces > 1) {
                 // We wait for the envCubeMap rendering to be finish
@@ -270,11 +261,9 @@ export class Irradiance {
         return new Promise((resolve, reject) => {
             this._initProbesPromise();
             this.irradianceLightmap = new RenderTargetTexture("irradianceLightMap", 4096, this._scene);
-            this.directLightMap = new Texture(this._lightMapName, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isIrradianceLightMapReady(),
-                    this._isTextureReady(),
                     this._areProbesReady(),
                     this._isUVEffectReady(),
                     this._isBounceEffectReady()
@@ -307,13 +296,9 @@ export class Irradiance {
         return true;
     }
 
-    private _isTextureReady() : boolean {
-        return this.directLightMap.isReady();
-    }
-
     private _isUVEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind, VertexBuffer.UV2Kind];
-        var uniforms = ["world", "projection", "view", "probePosition", "albedoColor"];
+        var uniforms = ["world", "projection", "view", "probePosition", "albedoColor", "hasTexture"];
         var samplers = ["albedoTexture"];
         this.uvEffect = this._scene.getEngine().createEffect("irradianceVolumeProbeEnv",
             attribs,

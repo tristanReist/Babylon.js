@@ -4,7 +4,7 @@ import { Volume } from './Volume';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Vector3 } from '../../Maths/math.vector';
 import { Probe } from './Probe';
-import { Nullable } from '../../types';
+import { MeshDictionary } from './meshDictionary';
 
 /**
  * Class that represent the irradiance volume
@@ -30,8 +30,8 @@ export class UniformVolume extends Volume {
      * @param probeRes The resolution with which the probes will be rendered
      * @param space The space between probes
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, lightMapName : string, probeRes : number,  numberProbeX : number, numberProbeY : number, numberProbeZ : number, numberBounces : number) {
-        super(meshes, scene, lightMapName, numberBounces, probeRes);
+    constructor(meshes : Array<Mesh>, scene : Scene, dictionary : MeshDictionary, probeRes : number,  numberProbeX : number, numberProbeY : number, numberProbeZ : number, numberBounces : number) {
+        super(meshes, scene, dictionary, numberBounces, probeRes);
         this.probeList = [];
         this._numberX = numberProbeX;
         this._numberY = numberProbeY;

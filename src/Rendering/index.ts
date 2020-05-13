@@ -10,6 +10,7 @@ export * from "./IrradianceVolume/Volume";
 export * from "./IrradianceVolume/ownVolume";
 export * from "./IrradianceVolume/uniformVolume";
 export * from "./IrradianceVolume/directLightMapGeneration";
+export * from "./IrradianceVolume/meshDictionary";
 export * from "./outlineRenderer";
 export * from "./renderingGroup";
 export * from "./renderingManager";

@@ -2,6 +2,7 @@ import { Scene } from '../../scene';
 import { Probe } from './Probe';
 import { Mesh } from '../../Meshes/mesh';
 import { Irradiance } from './Irradiance';
+import { MeshDictionary } from './meshDictionary';
 
 /**
  * Abstract class of a volume
@@ -31,7 +32,7 @@ export abstract class Volume {
      */
     public renderResolution : number;
 
-    public lightMapName : string;
+    public dictionary : MeshDictionary;
 
     public numberBounces : number;
 
@@ -42,11 +43,11 @@ export abstract class Volume {
      * @param probeRes The resolution with which the probes will render
      * @param probes The list of probes that will be render
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, lightMapName : string, numberBounces : number, probeRes = 16) {
+    constructor(meshes : Array<Mesh>, scene : Scene, dicstionary : MeshDictionary, numberBounces : number, probeRes = 16) {
         this._scene = scene;
         this.meshList = meshes;
         this.renderResolution = probeRes;
-        this.lightMapName = lightMapName;
+        this.dictionary = dicstionary;
         this.numberBounces = numberBounces;
     }
 
@@ -62,7 +63,7 @@ export abstract class Volume {
         else {
             this.probeList = new Array<Probe>();
         }
-        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList, this.lightMapName, this.numberBounces);
+        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshList, this.dictionary, this.numberBounces);
     }
 
     /**

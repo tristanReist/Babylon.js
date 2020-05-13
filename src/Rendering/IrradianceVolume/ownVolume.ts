@@ -2,6 +2,7 @@ import { Scene } from '../../scene';
 import { Probe } from './Probe';
 import { Mesh } from '../../Meshes/mesh';
 import { Volume } from './Volume';
+import { MeshDictionary } from './meshDictionary';
 
 /**
  * Class that represent a kind of volume where we manually add probes
@@ -18,8 +19,8 @@ export class OwnVolume extends Volume{
      * @param probeRes The resolution with which the probes will render
      * @param probes The list of probes that will be render
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, strAlbedo : string, numberBounces : number, probeRes = 16, probes? : Array<Probe>) {
-        super(meshes, scene, strAlbedo, numberBounces, probeRes);
+    constructor(meshes : Array<Mesh>, scene : Scene, dictionary : MeshDictionary, numberBounces : number, probeRes = 16, probes? : Array<Probe>) {
+        super(meshes, scene, dictionary, numberBounces, probeRes);
         this._initProbeIrradiance(probes);
     }
 
