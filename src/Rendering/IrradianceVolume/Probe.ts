@@ -19,7 +19,8 @@ import "../../Shaders/irradianceVolumeProbeEnv.vertex";
 import "../../Shaders/irradianceVolumeProbeEnv.fragment";
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.vertex";
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment";
-import { PBRMaterial } from '../../Materials';
+import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
+import { BaseTexture } from '../../Materials/Textures/baseTexture';
 import { MeshDictionary } from './meshDictionary';
 
 /**
@@ -191,6 +192,7 @@ export class Probe {
             if (isMRT)  {
                 effect.setMatrix("view", view);
                 effect.setMatrix("projection", projection);
+                effect.setFloat("lightmapNumber", this.dictionary.containsKey(mesh.name) / this.dictionary.values().length);
                 if (mesh.material != null) {
                     let color = (<PBRMaterial> (mesh.material)).albedoColor;
                     effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
@@ -207,11 +209,18 @@ export class Probe {
             else {
                 effect.setTexture("envMap", this.cubicMRT.textures[1]);
                 effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
-                let meshValue = this.dictionary.getValue(mesh.name);
-                if (meshValue != null){
-                    effect.setTexture("irradianceMap", meshValue.irradianceLightmap);
-                    effect.setTexture("directIlluminationLightMap", meshValue.directLightmap);
+                effect.setInt("numberLightmap", this.dictionary.values().length);
+                let irradianceArray = new Array<BaseTexture>();
+                let directLightArray = new Array<BaseTexture>();
+                for (let value of this.dictionary.values()){
+                    irradianceArray.push(value.irradianceLightmap);
+                    if (value.directLightmap != null){
+                        directLightArray.push(value.directLightmap);
+                    }
                 }
+                effect.setTextureArray("irradianceMapArray", irradianceArray);
+                effect.setTextureArray("directIlluminationLightMapArray", directLightArray);
+                
                 effect.setMatrix("rotation", rotation);
                 effect.setBool("firstBounce", this.firstBounce);
             }
@@ -392,7 +401,6 @@ export class Probe {
         shaderMaterial.setVector3("L22", this.sphericalHarmonic.l22);
         shaderMaterial.setVector3("L2m1", this.sphericalHarmonic.l2_1);
         shaderMaterial.setVector3("L2m2", this.sphericalHarmonic.l2_2);
-
         this.sphere.material = shaderMaterial;
 
     }

@@ -14,6 +14,8 @@ uniform vec3 probePosition;
 uniform vec3 albedoColor;
 uniform sampler2D albedoTexture;
 
+uniform float lightmapNumber; 
+
 uniform bool hasTexture;
 
 void main( void )
@@ -27,7 +29,7 @@ void main( void )
         glFragData[1] = vec4(0., 0., 0., 1.);
     }
     else {    
-        glFragData[0] = vec4(uv2, 0, 1);
+        glFragData[0] = vec4(uv2, lightmapNumber, 1);
         if (hasTexture) {
             glFragData[1]= vec4(texture(albedoTexture, uv).rgb, 1.);
         }
