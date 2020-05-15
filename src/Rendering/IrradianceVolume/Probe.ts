@@ -20,7 +20,7 @@ import "../../Shaders/irradianceVolumeProbeEnv.fragment";
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.vertex";
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment";
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
-import { BaseTexture } from '../../Materials/Textures/baseTexture';
+
 import { MeshDictionary } from './meshDictionary';
 
 /**
@@ -207,22 +207,52 @@ export class Probe {
                 effect.setVector3("probePosition", this.sphere.position);
             }
             else {
-                effect.setTexture("envMap", this.cubicMRT.textures[1]);
-                effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
-                effect.setInt("numberLightmap", this.dictionary.values().length);
-                let irradianceArray = new Array<BaseTexture>();
-                let directLightArray = new Array<BaseTexture>();
-                for (let value of this.dictionary.values()){
-                    irradianceArray.push(value.irradianceLightmap);
-                    if (value.directLightmap != null){
-                        directLightArray.push(value.directLightmap);
+                effect.setMatrix("view", view);
+                effect.setMatrix("projection", projection);
+                if (mesh.material != null) {
+                    let color = (<PBRMaterial> (mesh.material)).albedoColor;
+                    effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
+                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null){
+                        effect.setBool("hasTexture", true);
+                        effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
+                    }
+                    else {
+                        effect.setBool("hasTexture", false);
                     }
                 }
-                effect.setTextureArray("irradianceMapArray", irradianceArray);
-                effect.setTextureArray("directIlluminationLightMapArray", directLightArray);
                 
-                effect.setMatrix("rotation", rotation);
+                effect.setVector3("probePosition", this.sphere.position);
+
+                let value = this.dictionary.getValue(mesh.name);
+                if (value != null){
+                    
+                    effect.setTexture("irradianceMap", value.irradianceLightmap);
+                    effect.setTexture("directIlluminationLightmap", value.directLightmap);
+                }
+
+
+
                 effect.setBool("firstBounce", this.firstBounce);
+
+                /* 
+                To add when we want the upgrade, where we render only one mesh
+                */
+                // effect.setTexture("envMap", this.cubicMRT.textures[1]);
+                // effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
+                // effect.setInt("numberLightmap", this.dictionary.values().length);
+                // let irradianceArray = new Array<BaseTexture>();
+                // let directLightArray = new Array<BaseTexture>();
+                // for (let value of this.dictionary.values()){
+                //     irradianceArray.push(<BaseTexture> value.irradianceLightmap);
+                //     if (value.directLightmap != null){
+                //         directLightArray.push(<BaseTexture> value.directLightmap);
+                //     }
+                // }
+                // effect.setTextureArray("irradianceMapArray",[irradianceArray[0],irradianceArray[0] ]);
+                // effect.setTextureArray("directIlluminationLightMapArray", [directLightArray[0], directLightArray[0]]);
+                
+                // effect.setMatrix("rotation", rotation);
+
             }
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
@@ -306,6 +336,7 @@ export class Probe {
         this.dictionary = dictionary;
         this.uvEffect = uvEffet;
         this.bounceEffect = bounceEffect;
+        /*
         for (let texture of this.cubicMRT.textures) {
             texture.isRenderTarget = true;
         }
@@ -314,6 +345,7 @@ export class Probe {
         this.cubicMRT.boundingBoxPosition = this.sphere.position;
         this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
 
+
         this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(opaqueSubMeshes, true);
         };
@@ -321,7 +353,7 @@ export class Probe {
         this.cubicMRT.onAfterRenderObservable.add(() => {
             this.envCubeMapRendered = true;
         });
-
+*/
     }
 
     /**
@@ -329,18 +361,20 @@ export class Probe {
      *
      * @param irradianceLightMap THe irradiance lightmap use to render the bounces
      */
-    public renderBounce() : void {
+    public renderBounce(meshes : Array<Mesh>) : void {
+/*
         let ground = MeshBuilder.CreateGround("test", {width : 2, height : 2}, this._scene);
         ground.visibility = 0;
         ground.translate(new Vector3(0, 1, 0), 1.);
+*/
 
-        this.tempBounce.renderList = [ground];
+        this.tempBounce.renderList = meshes;
         this._scene.customRenderTargets.push(this.tempBounce);
 
         this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
         this.tempBounce.boundingBoxPosition = this.sphere.position;
         this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-            this._renderCubeTexture(transparentSubMeshes, false);
+            this._renderCubeTexture(opaqueSubMeshes, false);
         };
         this.tempBounce.onAfterRenderObservable.add(() => {
             this._CPUcomputeSHCoeff();

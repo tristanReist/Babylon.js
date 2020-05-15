@@ -102,32 +102,32 @@ export class Irradiance {
         this._promise.then(function() {
             for (let probe of irradiance.probeList) {
                 probe.render(irradiance.meshes, irradiance.dictionary, irradiance.uvEffect, irradiance.bounceEffect);
-                probe.renderBounce();
+                probe.renderBounce(irradiance.meshes);
             }
             if (irradiance.numberBounces > 1) {
                 // We wait for the envCubeMap rendering to be finish
-                let envCubeMapProbesRendered = new Promise((resolve, reject) => {
-                    let interval = setInterval(() => {
-                        let readyStates = [
-                            irradiance._areProbesEnvMapReady()
-                        ];
-                        for (let i = 0 ; i < readyStates.length; i++) {
-                            if (!readyStates[i]) {
-                                return ;
-                            }
-                        }
-                        clearInterval(interval);
-                        resolve();
-                    }, 200);
-                });
-                envCubeMapProbesRendered.then(function() {
-                    let currentBounce = 2;
-                    for (let probe of irradiance.probeList) {
-                        probe.sphericalHarmonicChanged = false;
-                    }
-                    irradiance._initIrradianceLightMap();
-                    irradiance._renderBounce(currentBounce);
-                });
+                // let envCubeMapProbesRendered = new Promise((resolve, reject) => {
+                //     let interval = setInterval(() => {
+                //         let readyStates = [
+                //             irradiance._areProbesEnvMapReady()
+                //         ];
+                //         for (let i = 0 ; i < readyStates.length; i++) {
+                //             if (!readyStates[i]) {
+                //                 return ;
+                //             }
+                //         }
+                //         clearInterval(interval);
+                //         resolve();
+                //     }, 200);
+                // });
+                // envCubeMapProbesRendered.then(function() {
+                let currentBounce = 2;
+                for (let probe of irradiance.probeList) {
+                    probe.sphericalHarmonicChanged = false;
+                }
+                irradiance._initIrradianceLightMap();
+                irradiance._renderBounce(currentBounce);
+                // });
             }
 
         });
@@ -313,9 +313,13 @@ export class Irradiance {
     }
 
     private _isBounceEffectReady() : boolean {
-        var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
-        var samplers = ["envMap", "envMapUV", "irradianceMapArray", "directIlluminationLightMapArray"];
-        var uniform = ["world", "rotation", "firstBounce", "numberLightmap"];
+        // var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind, VertexBuffer.UV2Kind];
+        // var samplers = ["envMap", "envMapUV", "irradianceMapArray", "directIlluminationLightMapArray"];
+        var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
+
+        // var uniform = ["world", "rotation", "firstBounce", "numberLightmap"];
+        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture","world",  "numberLightmap"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);

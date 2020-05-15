@@ -63,17 +63,12 @@ export class MeshDictionary {
         return null;
     }
 
-    public containsKey(  key : string ) : number {
-        /*
+    public containsKey(  key : string ) : number {     
         for (let i = 0; i < this._keys.length; i++){
             if (this._keys[i] == key){
                 return i;
             }
         }
-        */
-       if (this._values.length != 0){
-           return 0;
-       }
         return -1;
     }
 
