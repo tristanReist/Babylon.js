@@ -55,7 +55,8 @@ export class MeshDictionary {
         return this._values;
     }
 
-    public getValue( key : string ) : Nullable<IMeshesGroup> {
+    public getValue( mesh : Mesh ) : Nullable<IMeshesGroup> {
+        let key = mesh.name;
         let index = this.containsKey(key);
         if (index != -1){
             return this._values[index];

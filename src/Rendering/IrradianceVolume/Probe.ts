@@ -223,9 +223,9 @@ export class Probe {
                 
                 effect.setVector3("probePosition", this.sphere.position);
 
-                let value = this.dictionary.getValue(mesh.name);
+                let value = this.dictionary.getValue(mesh);
                 if (value != null){
-                    
+
                     effect.setTexture("irradianceMap", value.irradianceLightmap);
                     effect.setTexture("directIlluminationLightmap", value.directLightmap);
                 }
