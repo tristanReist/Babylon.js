@@ -100,7 +100,6 @@ export class Probe {
      */
     public sphericalHarmonicChanged : boolean;
 
-    public firstBounce = true;
 
     /**
      * Create the probe used to capture the irradiance at a point
@@ -220,6 +219,7 @@ export class Probe {
                         effect.setBool("hasTexture", false);
                     }
                 }
+            
                 
                 effect.setVector3("probePosition", this.sphere.position);
 
@@ -231,8 +231,6 @@ export class Probe {
                 }
 
 
-
-                effect.setBool("firstBounce", this.firstBounce);
 
                 /* 
                 To add when we want the upgrade, where we render only one mesh

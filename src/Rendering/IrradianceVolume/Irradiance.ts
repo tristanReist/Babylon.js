@@ -135,9 +135,6 @@ export class Irradiance {
 
     private _renderBounce(currentBounce : number) {
         for (let probe of this.probeList) {
-            if (currentBounce == 3) {
-                probe.firstBounce = false;
-            }
             probe.tempBounce.render();
         }
 
@@ -318,7 +315,7 @@ export class Irradiance {
         // var samplers = ["envMap", "envMapUV", "irradianceMapArray", "directIlluminationLightMapArray"];
         var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
 
-        // var uniform = ["world", "rotation", "firstBounce", "numberLightmap"];
+        // var uniform = ["world", "rotation", "numberLightmap"];
         var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture","world",  "numberLightmap"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
@@ -332,10 +329,13 @@ export class Irradiance {
             if (!value.irradianceLightmap.isReady()){
                 return false;
             }
+            if (value.directLightmap != null && !value.directLightmap.isReady()){
+                return false;
+            }
         }
         return true;
     }
-
+/*
     private  _areProbesEnvMapReady() : boolean {
         for (let probe of this.probeList) {
             if (probe.envCubeMapRendered == false) {
@@ -344,7 +344,7 @@ export class Irradiance {
         }
         return true;
     }
-
+*/
     private _areShCoeffReady() : boolean {
         for (let probe of this.probeList) {
             if (! probe.sphericalHarmonicChanged) {
