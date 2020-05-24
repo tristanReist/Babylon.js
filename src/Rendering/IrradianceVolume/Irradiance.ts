@@ -9,6 +9,8 @@ import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
 import { Vector3 } from '../../Maths/math.vector';
 import { MeshDictionary } from './meshDictionary';
+import { RawTexture } from '../../Materials/Textures/rawTexture';
+import { Engine } from '../../Engines/engine';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -53,6 +55,10 @@ export class Irradiance {
     public numberBounces : number;
 
     public finish = false;
+
+
+    private _shTexture : RawTexture;
+
 
     /**
      * Initiate a new Iradiance
@@ -158,9 +164,11 @@ export class Irradiance {
             for (let probe of irradiance.probeList) {
                 probe.sphericalHarmonicChanged = false;
             }
+            irradiance.updateShTexture();
             for (let value of irradiance.dictionary.values()){
                 value.irradianceLightmap.render();     
             }
+            irradiance._shTexture.readPixels();
             if (currentBounce < irradiance.numberBounces) {
                 irradiance._renderBounce(currentBounce + 1);
             }
@@ -168,6 +176,97 @@ export class Irradiance {
                 irradiance.finish = true;
             }
         });
+
+    }
+
+    public updateShTexture() : void {
+        let shArray = new Float32Array(this.probeList.length * 9  * 4);
+        for (let i = 0; i < this.probeList.length; i++){
+            let probe = this.probeList[i];
+            let index = i * 9 * 4;
+            // shArray[index] =  probe.sphericalHarmonic.l00.x;
+            // shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
+            // shArray[index + 2] = probe.sphericalHarmonic.l00.z;
+            // shArray[index + 3]
+            // shArray[index + 3] = probe.sphericalHarmonic.l11.x;
+            // shArray[index + 4] = probe.sphericalHarmonic.l11.y;
+            // shArray[index + 5] = probe.sphericalHarmonic.l11.z;
+
+            // shArray[index + 6] = probe.sphericalHarmonic.l10.x;
+            // shArray[index + 7] =  probe.sphericalHarmonic.l10.y;
+            // shArray[index + 8] =  probe.sphericalHarmonic.l10.z;
+
+            // shArray[index + 9] =  probe.sphericalHarmonic.l1_1.x;
+            // shArray[index + 10] =  probe.sphericalHarmonic.l1_1.y;
+            // shArray[index + 11] = probe.sphericalHarmonic.l1_1.z;
+
+            // shArray[index + 12] =  probe.sphericalHarmonic.l22.x;
+            // shArray[index + 13] =  probe.sphericalHarmonic.l22.y;
+            // shArray[index + 14] =  probe.sphericalHarmonic.l22.z;
+
+            // shArray[index + 15] =  probe.sphericalHarmonic.l21.x;
+            // shArray[index + 16] =  probe.sphericalHarmonic.l21.y;
+            // shArray[index + 17] =  probe.sphericalHarmonic.l21.z;
+
+            // shArray[index + 18] =  probe.sphericalHarmonic.l20.x;
+            // shArray[index + 19] =  probe.sphericalHarmonic.l20.y;
+            // shArray[index + 20] =  probe.sphericalHarmonic.l20.z;
+
+            // shArray[index + 21] =  probe.sphericalHarmonic.l2_1.x;
+            // shArray[index + 22] =  probe.sphericalHarmonic.l2_1.y;
+            // shArray[index + 23] =  probe.sphericalHarmonic.l2_1.z;
+
+            
+            // shArray[index + 24] =  probe.sphericalHarmonic.l2_2.x;
+            // shArray[index + 25] =  probe.sphericalHarmonic.l2_2.y;
+            // shArray[index + 26] =  probe.sphericalHarmonic.l2_2.z;
+            
+            shArray[index] =  probe.sphericalHarmonic.l00.x;
+            shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
+            shArray[index + 2] = probe.sphericalHarmonic.l00.z;
+            shArray[index + 3] = 1;
+
+            shArray[index + 4] = probe.sphericalHarmonic.l11.x;
+            shArray[index + 5] = probe.sphericalHarmonic.l11.y;
+            shArray[index + 6] = probe.sphericalHarmonic.l11.z;
+            shArray[index + 7] = 1;
+
+            shArray[index + 8] = probe.sphericalHarmonic.l10.x;
+            shArray[index + 9] =  probe.sphericalHarmonic.l10.y;
+            shArray[index + 10] =  probe.sphericalHarmonic.l10.z;
+            shArray[index + 11] = 1;
+
+            shArray[index + 12] =  probe.sphericalHarmonic.l1_1.x;
+            shArray[index + 13] =  probe.sphericalHarmonic.l1_1.y;
+            shArray[index + 14] = probe.sphericalHarmonic.l1_1.z;
+            shArray[index + 15] = 1;
+
+            shArray[index + 16] =  probe.sphericalHarmonic.l22.x;
+            shArray[index + 17] =  probe.sphericalHarmonic.l22.y;
+            shArray[index + 18] =  probe.sphericalHarmonic.l22.z;
+            shArray[index + 19] = 1;
+
+            shArray[index + 20] =  probe.sphericalHarmonic.l21.x;
+            shArray[index + 21] =  probe.sphericalHarmonic.l21.y;
+            shArray[index + 22] =  probe.sphericalHarmonic.l21.z;
+            shArray[index + 23] = 1;
+
+            shArray[index + 24] =  probe.sphericalHarmonic.l20.x;
+            shArray[index + 25] =  probe.sphericalHarmonic.l20.y;
+            shArray[index + 26] =  probe.sphericalHarmonic.l20.z;
+            shArray[index + 27] = 1;
+
+            shArray[index + 28] =  probe.sphericalHarmonic.l2_1.x;
+            shArray[index + 29] =  probe.sphericalHarmonic.l2_1.y;
+            shArray[index + 30] =  probe.sphericalHarmonic.l2_1.z;
+            shArray[index + 31] = 1;
+
+            shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
+            shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
+            shArray[index + 34] =  probe.sphericalHarmonic.l2_2.z;
+            shArray[index + 36] = 1;
+        }
+        this._shTexture = new RawTexture(shArray, 9, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
 
     }
 
@@ -184,9 +283,12 @@ export class Irradiance {
             irradianceMaterial.setVector3("numberProbesInSpace", this._uniformNumberProbes);
             irradianceMaterial.setVector3("boxSize", this._uniformBoxSize);
             irradianceMaterial.setVector3("bottomLeft", this._uniformBottomLeft);
+            
         }
         irradianceMaterial.backFaceCulling = false;
 
+
+  
 
         for (let value of this.dictionary.values()){
             this._scene.customRenderTargets.push(value.irradianceLightmap);
@@ -195,53 +297,56 @@ export class Irradiance {
        
             let previousMaterial = new Array<Nullable<Material>>();
 
+
             value.irradianceLightmap.onBeforeRenderObservable.add(() => {
                 let probePosition = [];
-                let shCoef = [];
+                // let shCoef = [];
                 for (let probe of  this.probeList) {
                     probePosition.push(probe.sphere.position.x);
                     probePosition.push(probe.sphere.position.y);
                     probePosition.push(probe.sphere.position.z);
 
-                    //We need to put float instead of vector3
-                    shCoef.push(probe.sphericalHarmonic.l00.x);
-                    shCoef.push(probe.sphericalHarmonic.l00.y);
-                    shCoef.push(probe.sphericalHarmonic.l00.z);
+                    // //We need to put float instead of vector3
+                    // shCoef.push(probe.sphericalHarmonic.l00.x);
+                    // shCoef.push(probe.sphericalHarmonic.l00.y);
+                    // shCoef.push(probe.sphericalHarmonic.l00.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l11.x);
-                    shCoef.push(probe.sphericalHarmonic.l11.y);
-                    shCoef.push(probe.sphericalHarmonic.l11.z);
+                    // shCoef.push(probe.sphericalHarmonic.l11.x);
+                    // shCoef.push(probe.sphericalHarmonic.l11.y);
+                    // shCoef.push(probe.sphericalHarmonic.l11.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l10.x);
-                    shCoef.push(probe.sphericalHarmonic.l10.y);
-                    shCoef.push(probe.sphericalHarmonic.l10.z);
+                    // shCoef.push(probe.sphericalHarmonic.l10.x);
+                    // shCoef.push(probe.sphericalHarmonic.l10.y);
+                    // shCoef.push(probe.sphericalHarmonic.l10.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l1_1.x);
-                    shCoef.push(probe.sphericalHarmonic.l1_1.y);
-                    shCoef.push(probe.sphericalHarmonic.l1_1.z);
+                    // shCoef.push(probe.sphericalHarmonic.l1_1.x);
+                    // shCoef.push(probe.sphericalHarmonic.l1_1.y);
+                    // shCoef.push(probe.sphericalHarmonic.l1_1.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l22.x);
-                    shCoef.push(probe.sphericalHarmonic.l22.y);
-                    shCoef.push(probe.sphericalHarmonic.l22.z);
+                    // shCoef.push(probe.sphericalHarmonic.l22.x);
+                    // shCoef.push(probe.sphericalHarmonic.l22.y);
+                    // shCoef.push(probe.sphericalHarmonic.l22.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l21.x);
-                    shCoef.push(probe.sphericalHarmonic.l21.y);
-                    shCoef.push(probe.sphericalHarmonic.l21.z);
+                    // shCoef.push(probe.sphericalHarmonic.l21.x);
+                    // shCoef.push(probe.sphericalHarmonic.l21.y);
+                    // shCoef.push(probe.sphericalHarmonic.l21.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l20.x);
-                    shCoef.push(probe.sphericalHarmonic.l20.y);
-                    shCoef.push(probe.sphericalHarmonic.l20.z);
+                    // shCoef.push(probe.sphericalHarmonic.l20.x);
+                    // shCoef.push(probe.sphericalHarmonic.l20.y);
+                    // shCoef.push(probe.sphericalHarmonic.l20.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l2_1.x);
-                    shCoef.push(probe.sphericalHarmonic.l2_1.y);
-                    shCoef.push(probe.sphericalHarmonic.l2_1.z);
+                    // shCoef.push(probe.sphericalHarmonic.l2_1.x);
+                    // shCoef.push(probe.sphericalHarmonic.l2_1.y);
+                    // shCoef.push(probe.sphericalHarmonic.l2_1.z);
 
-                    shCoef.push(probe.sphericalHarmonic.l2_2.x);
-                    shCoef.push(probe.sphericalHarmonic.l2_2.y);
-                    shCoef.push(probe.sphericalHarmonic.l2_2.z);
+                    // shCoef.push(probe.sphericalHarmonic.l2_2.x);
+                    // shCoef.push(probe.sphericalHarmonic.l2_2.y);
+                    // shCoef.push(probe.sphericalHarmonic.l2_2.z);
                 }
                 irradianceMaterial.setArray3("probePosition", probePosition);
-                irradianceMaterial.setArray3("shCoef", shCoef);
+                irradianceMaterial.setTexture("shTexture", this._shTexture);
+
+                // irradianceMaterial.setArray3("shCoef", shCoef);
                 //Add the right material to the meshes
                 for (let mesh of value.meshes) {
                     previousMaterial.push(mesh.material);
@@ -262,8 +367,11 @@ export class Irradiance {
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
             this._initProbesPromise();
+            let initArray = new Float32Array(this.probeList.length * 9 *4);
+            this._shTexture = new RawTexture(initArray, 9, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
             let interval = setInterval(() => {
                 let readyStates = [
+                    this._isRawTextReady(),
                     this._areIrradianceLightMapReady(),
                     this._areProbesReady(),
                     this._isUVEffectReady(),
@@ -280,10 +388,15 @@ export class Irradiance {
         });
     }
 
+
     private _initProbesPromise() : void {
         for (let probe of this.probeList) {
             probe.initPromise();
         }
+    }
+
+    private _isRawTextReady() : boolean {
+        return this._shTexture.isReady();
     }
 
     private _areProbesReady() : boolean {

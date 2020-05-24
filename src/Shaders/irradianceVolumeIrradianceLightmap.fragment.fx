@@ -4,12 +4,15 @@ varying vec3 vNormal;
 uniform mat4 world;
 
 uniform vec3 probePosition[NUM_PROBES];
-uniform vec3 shCoef[NUM_PROBES * 9];
+// uniform vec3 shCoef[NUM_PROBES * 9];
+
+uniform sampler2D shText;
 
 uniform vec3 numberProbesInSpace;
 uniform vec3 boxSize;
 uniform vec3 bottomLeft;
 uniform int isUniform;
+
 
 
 
@@ -113,17 +116,53 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
 }
 
 vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
-    vec3 L00 = shCoef[probe * 9];
+    //Avoir les L00, ... à partir de la texture
 
-    vec3 L11 = shCoef[probe * 9 + 1];
-    vec3 L10 = shCoef[probe * 9 + 2];
-    vec3 L1m1 = shCoef[probe * 9 + 3];
+    float textY; 
 
-    vec3 L22 = shCoef[probe * 9 + 4];
-    vec3 L21 = shCoef[probe * 9 + 5];
-    vec3 L20 = shCoef[probe * 9 + 6];
-    vec3 L2m1 = shCoef[probe * 9 + 7];
-    vec3 L2m2 = shCoef[probe * 9 + 8];
+    float ySize = 1. / float(NUM_PROBES);
+    float xSize = 1. / 9.;
+
+    textY = float(probe) * ySize ;
+
+    vec3 L00 = texture(shText, vec2(xSize / 2., textY )).rgb;
+    vec3 L11 = texture(shText, vec2(xSize, textY )).rgb;
+    vec3 L10 = texture(shText, vec2( 2. * xSize , textY )).rgb;
+    vec3 L1m1 = texture(shText, vec2( 3. * xSize , textY )).rgb;
+
+    vec3 L22 = texture(shText, vec2( 4. * xSize, textY )).rgb;
+    vec3 L21 = texture(shText, vec2( 5. * xSize , textY )).rgb;
+    vec3 L20 = texture(shText, vec2( 6. * xSize , textY )).rgb;
+    vec3 L2m1 = texture(shText, vec2( 7. * xSize , textY )).rgb;
+    vec3 L2m2 = texture(shText, vec2( 8. * xSize, textY )).rgb;
+
+    // if (L00.x < 0.){
+    //     return vec4(1., 0., 0., 1.);
+    // }
+
+    // vec3 L00 =  vec3(0., 0., 0.);
+    // vec3 L11 =  vec3(0., 0., 0.);
+    // vec3 L10 =  vec3(0., 0., 0.);
+    // vec3 L1m1 = vec3(0., 0., 0.);
+
+    // vec3 L22 =  vec3(0., 0., 0.);
+    // vec3 L21 =  vec3(0., 0., 0.);
+    // vec3 L20 =  vec3(0., 0., 0.);
+    // vec3 L2m1 = vec3(0., 0., 0.);
+    // vec3 L2m2 = vec3(0., 0., 0.);
+
+
+    // vec3 L00 = shCoef[probe * 9];
+
+    // vec3 L11 = shCoef[probe * 9 + 1];
+    // vec3 L10 = shCoef[probe * 9 + 2];
+    // vec3 L1m1 = shCoef[probe * 9 + 3];
+
+    // vec3 L22 = shCoef[probe * 9 + 4];
+    // vec3 L21 = shCoef[probe * 9 + 5];
+    // vec3 L20 = shCoef[probe * 9 + 6];
+    // vec3 L2m1 = shCoef[probe * 9 + 7];
+    // vec3 L2m2 = shCoef[probe * 9 + 8];
 
     vec4 direction = position - vec4(probePosition[probe], 1.);
     if (dot(direction, normal) >= 0.){
