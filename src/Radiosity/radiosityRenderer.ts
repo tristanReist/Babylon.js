@@ -302,29 +302,10 @@ export class RadiosityRenderer {
             this._far,
         );
 
-        Patch.ProjectionMatrixPX = Patch.ProjectionMatrix.multiply(Matrix.FromValues(2, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            1, 0, 0, 1
-        ));
-
-        Patch.ProjectionMatrixNX = Patch.ProjectionMatrix.multiply(Matrix.FromValues(2, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            -1, 0, 0, 1
-        ));
-
-        Patch.ProjectionMatrixPY = Patch.ProjectionMatrix.multiply(Matrix.FromValues(1, 0, 0, 0,
-            0, 2, 0, 0,
-            0, 0, 1, 0,
-            0, 1, 0, 1
-        ));
-
-        Patch.ProjectionMatrixNY = Patch.ProjectionMatrix.multiply(Matrix.FromValues(1, 0, 0, 0,
-            0, 2, 0, 0,
-            0, 0, 1, 0,
-            0, -1, 0, 1
-        ));
+        Patch.ProjectionMatrixPX = Patch.ProjectionMatrix;
+        Patch.ProjectionMatrixNX = Patch.ProjectionMatrix;
+        Patch.ProjectionMatrixPY = Patch.ProjectionMatrix;
+        Patch.ProjectionMatrixNY = Patch.ProjectionMatrix;
 
         this._frameBuffer0 = <WebGLFramebuffer>(scene.getEngine()._gl.createFramebuffer());
         this._frameBuffer1 = <WebGLFramebuffer>(scene.getEngine()._gl.createFramebuffer());
@@ -1128,20 +1109,6 @@ export class RadiosityRenderer {
         Patch.ProjectionMatrixNY
         ];
 
-        let viewportMultipliers = [
-            [1, 1],
-            [0.5, 1],
-            [0.5, 1],
-            [1, 0.5],
-            [1, 0.5],
-        ];
-        let viewportOffsets = [
-            [0, 0],
-            [0, 0],
-            [0.5, 0],
-            [0, 0],
-            [0, 0.5],
-        ];
         let cubeSides = [
             gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
             gl.TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -1154,7 +1121,7 @@ export class RadiosityRenderer {
 
         for (let j = 0; j < 5; j++) {
             // Full cube viewport when rendering the front face
-            engine.setDirectViewport(viewportOffsets[j][0] * this._patchMap.getRenderWidth(), viewportOffsets[j][1] * this._patchMap.getRenderHeight(), this._patchMap.getRenderWidth() * viewportMultipliers[j][0], this._patchMap.getRenderHeight() * viewportMultipliers[j][1]);
+            engine.setDirectViewport(0, 0, this._patchMap.getRenderWidth(), this._patchMap.getRenderHeight());
             // Render on each face of the hemicube
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], internalTexture._webGLTexture, 0);
             engine.clear(new Color4(0, 0, 0, 0), true, true);
