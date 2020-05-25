@@ -116,53 +116,24 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
 }
 
 vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
-    //Avoir les L00, ... à partir de la texture
-
+    //Access to the coef of the shCoef from the texture
     float textY; 
 
     float ySize = 1. / float(NUM_PROBES);
     float xSize = 1. / 9.;
+    textY =  float(probe) * ySize ;
 
-    textY = float(probe) * ySize ;
+    vec3 L00 = texture(shText, vec2( xSize / 2., textY + ySize / 2.)).rgb;
+    vec3 L11 = texture(shText, vec2( xSize + xSize / 2., textY + ySize / 2. )).rgb;
+    vec3 L10 = texture(shText, vec2( 2. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
+    vec3 L1m1 = texture(shText, vec2( 3. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
 
-    vec3 L00 = texture(shText, vec2(xSize / 2., textY )).rgb;
-    vec3 L11 = texture(shText, vec2(xSize, textY )).rgb;
-    vec3 L10 = texture(shText, vec2( 2. * xSize , textY )).rgb;
-    vec3 L1m1 = texture(shText, vec2( 3. * xSize , textY )).rgb;
+    vec3 L22 = texture(shText, vec2( 4. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
+    vec3 L21 = texture(shText, vec2( 5. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
+    vec3 L20 = texture(shText, vec2( 6. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
+    vec3 L2m1 = texture(shText, vec2( 7. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
+    vec3 L2m2 = texture(shText, vec2( 8. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
 
-    vec3 L22 = texture(shText, vec2( 4. * xSize, textY )).rgb;
-    vec3 L21 = texture(shText, vec2( 5. * xSize , textY )).rgb;
-    vec3 L20 = texture(shText, vec2( 6. * xSize , textY )).rgb;
-    vec3 L2m1 = texture(shText, vec2( 7. * xSize , textY )).rgb;
-    vec3 L2m2 = texture(shText, vec2( 8. * xSize, textY )).rgb;
-
-    // if (L00.x < 0.){
-    //     return vec4(1., 0., 0., 1.);
-    // }
-
-    // vec3 L00 =  vec3(0., 0., 0.);
-    // vec3 L11 =  vec3(0., 0., 0.);
-    // vec3 L10 =  vec3(0., 0., 0.);
-    // vec3 L1m1 = vec3(0., 0., 0.);
-
-    // vec3 L22 =  vec3(0., 0., 0.);
-    // vec3 L21 =  vec3(0., 0., 0.);
-    // vec3 L20 =  vec3(0., 0., 0.);
-    // vec3 L2m1 = vec3(0., 0., 0.);
-    // vec3 L2m2 = vec3(0., 0., 0.);
-
-
-    // vec3 L00 = shCoef[probe * 9];
-
-    // vec3 L11 = shCoef[probe * 9 + 1];
-    // vec3 L10 = shCoef[probe * 9 + 2];
-    // vec3 L1m1 = shCoef[probe * 9 + 3];
-
-    // vec3 L22 = shCoef[probe * 9 + 4];
-    // vec3 L21 = shCoef[probe * 9 + 5];
-    // vec3 L20 = shCoef[probe * 9 + 6];
-    // vec3 L2m1 = shCoef[probe * 9 + 7];
-    // vec3 L2m2 = shCoef[probe * 9 + 8];
 
     vec4 direction = position - vec4(probePosition[probe], 1.);
     if (dot(direction, normal) >= 0.){
@@ -207,7 +178,7 @@ vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
 
 void main(){
     vec4 wPosition =  world *  vec4(vPosition, 1.); 
-    vec4 normalizeNormal = normalize(world * vec4(vNormal, 0.));
+    vec4 normalizeNormal = vec4(normalize(mat3(transpose(inverse(world))) * vNormal), 0.);
 
     vec4 color = vec4(0., 0., 0., 0.);
     if (isUniform == 1){

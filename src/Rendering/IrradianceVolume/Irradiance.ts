@@ -159,7 +159,6 @@ export class Irradiance {
                 resolve();
             }, 200);
         });
-
         shCoefPromise.then(function() {
             for (let probe of irradiance.probeList) {
                 probe.sphericalHarmonicChanged = false;
@@ -184,43 +183,7 @@ export class Irradiance {
         for (let i = 0; i < this.probeList.length; i++){
             let probe = this.probeList[i];
             let index = i * 9 * 4;
-            // shArray[index] =  probe.sphericalHarmonic.l00.x;
-            // shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
-            // shArray[index + 2] = probe.sphericalHarmonic.l00.z;
-            // shArray[index + 3]
-            // shArray[index + 3] = probe.sphericalHarmonic.l11.x;
-            // shArray[index + 4] = probe.sphericalHarmonic.l11.y;
-            // shArray[index + 5] = probe.sphericalHarmonic.l11.z;
 
-            // shArray[index + 6] = probe.sphericalHarmonic.l10.x;
-            // shArray[index + 7] =  probe.sphericalHarmonic.l10.y;
-            // shArray[index + 8] =  probe.sphericalHarmonic.l10.z;
-
-            // shArray[index + 9] =  probe.sphericalHarmonic.l1_1.x;
-            // shArray[index + 10] =  probe.sphericalHarmonic.l1_1.y;
-            // shArray[index + 11] = probe.sphericalHarmonic.l1_1.z;
-
-            // shArray[index + 12] =  probe.sphericalHarmonic.l22.x;
-            // shArray[index + 13] =  probe.sphericalHarmonic.l22.y;
-            // shArray[index + 14] =  probe.sphericalHarmonic.l22.z;
-
-            // shArray[index + 15] =  probe.sphericalHarmonic.l21.x;
-            // shArray[index + 16] =  probe.sphericalHarmonic.l21.y;
-            // shArray[index + 17] =  probe.sphericalHarmonic.l21.z;
-
-            // shArray[index + 18] =  probe.sphericalHarmonic.l20.x;
-            // shArray[index + 19] =  probe.sphericalHarmonic.l20.y;
-            // shArray[index + 20] =  probe.sphericalHarmonic.l20.z;
-
-            // shArray[index + 21] =  probe.sphericalHarmonic.l2_1.x;
-            // shArray[index + 22] =  probe.sphericalHarmonic.l2_1.y;
-            // shArray[index + 23] =  probe.sphericalHarmonic.l2_1.z;
-
-            
-            // shArray[index + 24] =  probe.sphericalHarmonic.l2_2.x;
-            // shArray[index + 25] =  probe.sphericalHarmonic.l2_2.y;
-            // shArray[index + 26] =  probe.sphericalHarmonic.l2_2.z;
-            
             shArray[index] =  probe.sphericalHarmonic.l00.x;
             shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
             shArray[index + 2] = probe.sphericalHarmonic.l00.z;
@@ -263,10 +226,9 @@ export class Irradiance {
 
             shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
             shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
-            shArray[index + 34] =  probe.sphericalHarmonic.l2_2.z;
-            shArray[index + 36] = 1;
+             
         }
-        this._shTexture = new RawTexture(shArray, 9, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
+        this._shTexture.update(shArray);
 
     }
 
@@ -287,9 +249,6 @@ export class Irradiance {
         }
         irradianceMaterial.backFaceCulling = false;
 
-
-  
-
         for (let value of this.dictionary.values()){
             this._scene.customRenderTargets.push(value.irradianceLightmap);
             value.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
@@ -305,48 +264,10 @@ export class Irradiance {
                     probePosition.push(probe.sphere.position.x);
                     probePosition.push(probe.sphere.position.y);
                     probePosition.push(probe.sphere.position.z);
-
-                    // //We need to put float instead of vector3
-                    // shCoef.push(probe.sphericalHarmonic.l00.x);
-                    // shCoef.push(probe.sphericalHarmonic.l00.y);
-                    // shCoef.push(probe.sphericalHarmonic.l00.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l11.x);
-                    // shCoef.push(probe.sphericalHarmonic.l11.y);
-                    // shCoef.push(probe.sphericalHarmonic.l11.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l10.x);
-                    // shCoef.push(probe.sphericalHarmonic.l10.y);
-                    // shCoef.push(probe.sphericalHarmonic.l10.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l1_1.x);
-                    // shCoef.push(probe.sphericalHarmonic.l1_1.y);
-                    // shCoef.push(probe.sphericalHarmonic.l1_1.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l22.x);
-                    // shCoef.push(probe.sphericalHarmonic.l22.y);
-                    // shCoef.push(probe.sphericalHarmonic.l22.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l21.x);
-                    // shCoef.push(probe.sphericalHarmonic.l21.y);
-                    // shCoef.push(probe.sphericalHarmonic.l21.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l20.x);
-                    // shCoef.push(probe.sphericalHarmonic.l20.y);
-                    // shCoef.push(probe.sphericalHarmonic.l20.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l2_1.x);
-                    // shCoef.push(probe.sphericalHarmonic.l2_1.y);
-                    // shCoef.push(probe.sphericalHarmonic.l2_1.z);
-
-                    // shCoef.push(probe.sphericalHarmonic.l2_2.x);
-                    // shCoef.push(probe.sphericalHarmonic.l2_2.y);
-                    // shCoef.push(probe.sphericalHarmonic.l2_2.z);
                 }
                 irradianceMaterial.setArray3("probePosition", probePosition);
-                irradianceMaterial.setTexture("shTexture", this._shTexture);
-
-                // irradianceMaterial.setArray3("shCoef", shCoef);
+                irradianceMaterial.setTexture("shText", this._shTexture);
+                
                 //Add the right material to the meshes
                 for (let mesh of value.meshes) {
                     previousMaterial.push(mesh.material);
