@@ -311,8 +311,6 @@ export class RadiosityRenderer {
         this._frameBuffer1 = <WebGLFramebuffer>(scene.getEngine()._gl.createFramebuffer());
 
         this._radiosityEffectsManager = new RadiosityEffectsManager(this._scene);
-        while (!this._radiosityEffectsManager.isReady()) {
-        }
     }
 
     private resetRenderState(): void {
@@ -352,7 +350,7 @@ export class RadiosityRenderer {
         engine.setState(false);
         engine.setDirectViewport(0, 0, this.getCurrentRenderWidth(), this.getCurrentRenderHeight());
 
-        const hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
+        var hardwareInstancedRendering = (engine.getCaps().instancedArrays) && (batch.visibleInstances[subMesh._id] !== null);
         var effect = this._radiosityEffectsManager.radiosityEffect;
 
         if (!effect || !effect.isReady()) {
@@ -529,7 +527,7 @@ export class RadiosityRenderer {
                 return;
             }
 
-            var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
+            var hardwareInstancedRendering = (engine.getCaps().instancedArrays) && (batch.visibleInstances[subMesh._id] !== null);
             mesh._bind(subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode);
             mesh._processRendering(mesh, subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
                 (isInstance, world) => this._radiosityEffectsManager.shootEffect.setMatrix("world", world));
@@ -632,6 +630,7 @@ export class RadiosityRenderer {
 
     private postProcessLightmap(texture: MultiRenderTarget) {
         var textureArray = texture.textures;
+        // var internalTextureArray = texture.internalTextures;
 
         this.toneMap(textureArray[4], textureArray[6]);
         this.swap(textureArray, 4, 6);
@@ -1060,7 +1059,7 @@ export class RadiosityRenderer {
         }
 
         // Draw triangles
-        var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
+        var hardwareInstancedRendering = (engine.getCaps().instancedArrays) && (batch.visibleInstances[subMesh._id] !== null);
         mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
             (isInstance, world) => effect.setMatrix("world", world));
     }
