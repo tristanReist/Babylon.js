@@ -15,7 +15,7 @@ void main(void) {
 
     vec4 viewPos = view * world * vec4(position, 1.0);
     gl_Position = projection * viewPos;
-    // gl_Position.z += bias * gl_Position.w;
+    gl_Position.z += bias * gl_Position.w;
     vDepthMetric = gl_Position;
     // vView = viewPos.xyz;
     // vDepthMetric = gl_Position;

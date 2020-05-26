@@ -18,5 +18,5 @@ void main(void) {
 	
 	// // gl_FragColor = vec4(vDepthMetric, 0.0, 0.0, 1.0);
 	// gl_FragColor = vec4(vDepthMetric.z / vDepthMetric.w, 0.0, 0.0, 1.0);
-	gl_FragColor = vec4((vDepthMetric.z / vDepthMetric.w) + bias, 0.0, 0.0, 1.0);
+	gl_FragColor = vec4(vDepthMetric.z / vDepthMetric.w, 0.0, 0.0, 1.0);
 }
