@@ -1,6 +1,6 @@
 import { Mesh } from "../../Meshes/mesh";
 import { Vector3, Matrix } from '../../Maths/math.vector';
-import { MeshBuilder } from '../../Meshes/meshBuilder';
+import { SphereBuilder } from '../../Meshes/Builders/sphereBuilder';
 import { Scene } from '../../scene';
 import { Color4 } from '../../Maths/math.color';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
@@ -8,7 +8,7 @@ import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { SubMesh } from '../../Meshes/subMesh';
 import { Material } from '../../Materials/material';
 import { Effect } from '../../Materials/effect';
-import { SmartArray } from '../../Misc';
+import { SmartArray } from '../../Misc/smartArray';
 import { UniversalCamera } from '../../Cameras/universalCamera';
 import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
 import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
@@ -72,7 +72,6 @@ export class Probe {
      */
     public albedoStr : string;
 
-
     public dictionary : MeshDictionary;
 
     /**
@@ -100,7 +99,6 @@ export class Probe {
      */
     public sphericalHarmonicChanged : boolean;
 
-
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -110,7 +108,7 @@ export class Probe {
      */
     constructor(position : Vector3, scene : Scene) {
         this._scene = scene;
-        this.sphere = MeshBuilder.CreateSphere("probe", { diameter : 30 }, scene);
+        this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
         this.sphere.visibility = 1;
 
         this.cameraList = new Array<UniversalCamera>();
@@ -191,11 +189,11 @@ export class Probe {
             if (isMRT)  {
                 effect.setMatrix("view", view);
                 effect.setMatrix("projection", projection);
-                effect.setFloat("lightmapNumber", this.dictionary.containsKey(mesh.name) / this.dictionary.values().length);
+               // effect.setFloat("lightmapNumber", this.dictionary.containsKey(mesh) / this.dictionary.values().length);
                 if (mesh.material != null) {
                     let color = (<PBRMaterial> (mesh.material)).albedoColor;
                     effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
-                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null){
+                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null) {
                         effect.setBool("hasTexture", true);
                         effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
                     }
@@ -211,7 +209,7 @@ export class Probe {
                 if (mesh.material != null) {
                     let color = (<PBRMaterial> (mesh.material)).albedoColor;
                     effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
-                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null){
+                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null) {
                         effect.setBool("hasTexture", true);
                         effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
                     }
@@ -219,20 +217,17 @@ export class Probe {
                         effect.setBool("hasTexture", false);
                     }
                 }
-            
-                
+
                 effect.setVector3("probePosition", this.sphere.position);
 
                 let value = this.dictionary.getValue(mesh);
-                if (value != null){
+                if (value != null) {
 
                     effect.setTexture("irradianceMap", value.irradianceLightmap);
                     effect.setTexture("directIlluminationLightmap", value.directLightmap);
                 }
 
-
-
-                /* 
+                /*
                 To add when we want the upgrade, where we render only one mesh
                 */
                 // effect.setTexture("envMap", this.cubicMRT.textures[1]);
@@ -248,7 +243,7 @@ export class Probe {
                 // }
                 // effect.setTextureArray("irradianceMapArray",[irradianceArray[0],irradianceArray[0] ]);
                 // effect.setTextureArray("directIlluminationLightMapArray", [directLightArray[0], directLightArray[0]]);
-                
+
                 // effect.setMatrix("rotation", rotation);
 
             }
@@ -342,7 +337,6 @@ export class Probe {
         this._scene.customRenderTargets.push(this.cubicMRT);
         this.cubicMRT.boundingBoxPosition = this.sphere.position;
         this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
-
 
         this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(opaqueSubMeshes, true);

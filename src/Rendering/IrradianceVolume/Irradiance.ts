@@ -33,7 +33,6 @@ export class Irradiance {
      */
     public meshes : Array<Mesh>;
 
-
     private _promise : Promise<void>;
 
     /**
@@ -46,7 +45,6 @@ export class Irradiance {
      */
     public bounceEffect : Effect;
 
-
     public dictionary : MeshDictionary;
 
     /**
@@ -56,9 +54,7 @@ export class Irradiance {
 
     public finish = false;
 
-
     private _shTexture : RawTexture;
-
 
     /**
      * Initiate a new Iradiance
@@ -103,19 +99,19 @@ export class Irradiance {
      * global illumination
      */
     public render() : void {
-        let irradiance = this;
+
         // When all we need is ready
-        this._promise.then(function() {
-            for (let probe of irradiance.probeList) {
-                probe.render(irradiance.meshes, irradiance.dictionary, irradiance.uvEffect, irradiance.bounceEffect);
-                probe.renderBounce(irradiance.meshes);
+        this._promise.then(() => {
+            for (let probe of this.probeList) {
+                probe.render(this.meshes, this.dictionary, this.uvEffect, this.bounceEffect);
+                probe.renderBounce(this.meshes);
             }
-            if (irradiance.numberBounces > 1) {
+            if (this.numberBounces > 1) {
                 // We wait for the envCubeMap rendering to be finish
                 // let envCubeMapProbesRendered = new Promise((resolve, reject) => {
                 //     let interval = setInterval(() => {
                 //         let readyStates = [
-                //             irradiance._areProbesEnvMapReady()
+                //             this._areProbesEnvMapReady()
                 //         ];
                 //         for (let i = 0 ; i < readyStates.length; i++) {
                 //             if (!readyStates[i]) {
@@ -128,11 +124,11 @@ export class Irradiance {
                 // });
                 // envCubeMapProbesRendered.then(function() {
                 let currentBounce = 2;
-                for (let probe of irradiance.probeList) {
+                for (let probe of this.probeList) {
                     probe.sphericalHarmonicChanged = false;
                 }
-                irradiance._initIrradianceLightMap();
-                irradiance._renderBounce(currentBounce);
+                this._initIrradianceLightMap();
+                this._renderBounce(currentBounce);
                 // });
             }
 
@@ -144,11 +140,10 @@ export class Irradiance {
             probe.tempBounce.render();
         }
 
-        let irradiance = this;
         let shCoefPromise = new Promise((resolve, reject) => {
             let interval = setInterval(() => {
                 let readyStates = [
-                    irradiance._areShCoeffReady()
+                    this._areShCoeffReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -159,20 +154,20 @@ export class Irradiance {
                 resolve();
             }, 200);
         });
-        shCoefPromise.then(function() {
-            for (let probe of irradiance.probeList) {
+        shCoefPromise.then(() => {
+            for (let probe of this.probeList) {
                 probe.sphericalHarmonicChanged = false;
             }
-            irradiance.updateShTexture();
-            for (let value of irradiance.dictionary.values()){
-                value.irradianceLightmap.render();     
+            this.updateShTexture();
+            for (let value of this.dictionary.values()) {
+                value.irradianceLightmap.render();
             }
-            irradiance._shTexture.readPixels();
-            if (currentBounce < irradiance.numberBounces) {
-                irradiance._renderBounce(currentBounce + 1);
+            this._shTexture.readPixels();
+            if (currentBounce < this.numberBounces) {
+                this._renderBounce(currentBounce + 1);
             }
             else {
-                irradiance.finish = true;
+                this.finish = true;
             }
         });
 
@@ -180,7 +175,7 @@ export class Irradiance {
 
     public updateShTexture() : void {
         let shArray = new Float32Array(this.probeList.length * 9  * 4);
-        for (let i = 0; i < this.probeList.length; i++){
+        for (let i = 0; i < this.probeList.length; i++) {
             let probe = this.probeList[i];
             let index = i * 9 * 4;
 
@@ -226,10 +221,9 @@ export class Irradiance {
 
             shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
             shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
-             
+
         }
         this._shTexture.update(shArray);
-
     }
 
     private _initIrradianceLightMap() : void {
@@ -245,50 +239,50 @@ export class Irradiance {
             irradianceMaterial.setVector3("numberProbesInSpace", this._uniformNumberProbes);
             irradianceMaterial.setVector3("boxSize", this._uniformBoxSize);
             irradianceMaterial.setVector3("bottomLeft", this._uniformBottomLeft);
-            
+
         }
         irradianceMaterial.backFaceCulling = false;
 
-        for (let value of this.dictionary.values()){
-            this._scene.customRenderTargets.push(value.irradianceLightmap);
-            value.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
-       
-       
-            let previousMaterial = new Array<Nullable<Material>>();
+        for (let mesh of this.dictionary.keys()) {
+            let value = this.dictionary.getValue(mesh);
+            if (value != null) {
+                this._scene.customRenderTargets.push(value.irradianceLightmap);
+                value.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+                let previousMaterial : Nullable<Material>;
 
+                value.irradianceLightmap.onBeforeRenderObservable.add(() => {
+                    let probePosition = [];
+                    // let shCoef = [];
+                    for (let probe of  this.probeList) {
+                        probePosition.push(probe.sphere.position.x);
+                        probePosition.push(probe.sphere.position.y);
+                        probePosition.push(probe.sphere.position.z);
+                    }
+                    irradianceMaterial.setArray3("probePosition", probePosition);
+                    irradianceMaterial.setTexture("shText", this._shTexture);
 
-            value.irradianceLightmap.onBeforeRenderObservable.add(() => {
-                let probePosition = [];
-                // let shCoef = [];
-                for (let probe of  this.probeList) {
-                    probePosition.push(probe.sphere.position.x);
-                    probePosition.push(probe.sphere.position.y);
-                    probePosition.push(probe.sphere.position.z);
-                }
-                irradianceMaterial.setArray3("probePosition", probePosition);
-                irradianceMaterial.setTexture("shText", this._shTexture);
-                
-                //Add the right material to the meshes
-                for (let mesh of value.meshes) {
-                    previousMaterial.push(mesh.material);
+                    //Add the right material to the mesh
+                    previousMaterial = mesh.material;
                     mesh.material = irradianceMaterial;
-                }
-            });
 
-            value.irradianceLightmap.onAfterRenderObservable.add(() => {
-                //Put the previous material on the meshes
-                for (let i =  0; i < value.meshes.length; i++) {
-                    value.meshes[i].material = previousMaterial[i];
-                }
-            });
-        }        
+                });
+
+                value.irradianceLightmap.onAfterRenderObservable.add(() => {
+                    //Put the previous material on the meshes
+                    mesh.material = previousMaterial;
+
+                });
+
+            }
+
+        }
 
     }
 
     private _createPromise() : Promise<void> {
         return new Promise((resolve, reject) => {
             this._initProbesPromise();
-            let initArray = new Float32Array(this.probeList.length * 9 *4);
+            let initArray = new Float32Array(this.probeList.length * 9 * 4);
             this._shTexture = new RawTexture(initArray, 9, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
             let interval = setInterval(() => {
                 let readyStates = [
@@ -308,7 +302,6 @@ export class Irradiance {
             }, 200);
         });
     }
-
 
     private _initProbesPromise() : void {
         for (let probe of this.probeList) {
@@ -350,7 +343,7 @@ export class Irradiance {
         var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
 
         // var uniform = ["world", "rotation", "numberLightmap"];
-        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture","world",  "numberLightmap"];
+        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);
@@ -359,11 +352,11 @@ export class Irradiance {
     }
 
     private _areIrradianceLightMapReady() : boolean {
-        for (let value of this.dictionary.values()){
-            if (!value.irradianceLightmap.isReady()){
+        for (let value of this.dictionary.values()) {
+            if (!value.irradianceLightmap.isReady()) {
                 return false;
             }
-            if (value.directLightmap != null && !value.directLightmap.isReady()){
+            if (value.directLightmap != null && !value.directLightmap.isReady()) {
                 return false;
             }
         }

@@ -18,7 +18,6 @@ import { RadiosityUtils } from "./radiosityUtils";
 import { RadiosityEffectsManager } from "./radiosityEffectsManager";
 
 import { Nullable } from "../types";
-// import { Tools } from "../misc/tools";
 
 /**
  * Patch, infinitesimal unit when discretizing surfaces
@@ -151,7 +150,7 @@ class Patch {
     public static ProjectionMatrixNY: Matrix;
 }
 
-declare module "../meshes/mesh" {
+declare module "../Meshes/mesh" {
     export interface Mesh {
         /** Object containing radiosity information for this mesh */
         radiosityInfo: {
