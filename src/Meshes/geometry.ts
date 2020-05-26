@@ -107,6 +107,11 @@ export class Geometry implements IGetSetVerticesData {
         return geometry;
     }
 
+    /** Get the list of meshes using this geometry */
+    public get meshes(): Mesh[] {
+        return this._meshes;
+    }
+
     /**
      * Creates a new geometry
      * @param id defines the unique ID
@@ -355,7 +360,7 @@ export class Geometry implements IGetSetVerticesData {
 
     /** @hidden */
     public _bind(effect: Nullable<Effect>, indexToBind?: Nullable<DataBuffer>): void {
-        if (!effect) {
+        if (!effect || !effect.isReady()) {
             return;
         }
 

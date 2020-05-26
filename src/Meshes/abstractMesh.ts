@@ -785,7 +785,7 @@ export class AbstractMesh extends TransformNode implements IDisposable, ICullabl
         var isIn = light.isEnabled() && light.canAffectMesh(this);
 
         var index = this._lightSources.indexOf(light);
-
+        var removed = false;
         if (index === -1) {
             if (!isIn) {
                 return;
@@ -795,10 +795,11 @@ export class AbstractMesh extends TransformNode implements IDisposable, ICullabl
             if (isIn) {
                 return;
             }
+            removed = true;
             this._lightSources.splice(index, 1);
         }
 
-        this._markSubMeshesAsLightDirty();
+        this._markSubMeshesAsLightDirty(removed);
     }
 
     /** @hidden */
@@ -1484,14 +1485,23 @@ export class AbstractMesh extends TransformNode implements IDisposable, ICullabl
      * @param ray defines the ray to use
      * @param fastCheck defines if fast mode (but less precise) must be used (false by default)
      * @param trianglePredicate defines an optional predicate used to select faces when a mesh intersection is detected
+     * @param onlyBoundingInfo defines a boolean indicating if picking should only happen using bounding info (false by default)
      * @returns the picking info
      * @see http://doc.babylonjs.com/babylon101/intersect_collisions_-_mesh
      */
-    public intersects(ray: Ray, fastCheck?: boolean, trianglePredicate?: TrianglePickingPredicate): PickingInfo {
+    public intersects(ray: Ray, fastCheck?: boolean, trianglePredicate?: TrianglePickingPredicate, onlyBoundingInfo = false): PickingInfo {
         var pickingInfo = new PickingInfo();
         const intersectionThreshold = this.getClassName() === "InstancedLinesMesh" || this.getClassName() === "LinesMesh" ? (this as any).intersectionThreshold : 0;
         const boundingInfo = this._boundingInfo;
         if (!this.subMeshes || !boundingInfo || !ray.intersectsSphere(boundingInfo.boundingSphere, intersectionThreshold) || !ray.intersectsBox(boundingInfo.boundingBox, intersectionThreshold)) {
+            return pickingInfo;
+        }
+
+        if (onlyBoundingInfo) {
+            pickingInfo.hit = true;
+            pickingInfo.pickedMesh = this;
+            pickingInfo.distance = Vector3.Distance(ray.origin, boundingInfo.boundingSphere.center);
+            pickingInfo.subMeshId = 0;
             return pickingInfo;
         }
 

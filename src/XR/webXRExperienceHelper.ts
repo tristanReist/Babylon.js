@@ -101,9 +101,9 @@ export class WebXRExperienceHelper implements IDisposable {
         let sessionCreationOptions: XRSessionInit = {
             optionalFeatures: (referenceSpaceType !== "viewer" && referenceSpaceType !== "local") ? [referenceSpaceType] : []
         };
-        // we currently recommend "local" space in AR
-        if (sessionMode === "immersive-ar" && referenceSpaceType !== "local") {
-            Logger.Warn("We recommend using 'local' reference space type when using 'immersive-ar' session mode");
+        // we currently recommend "unbounded" space in AR (#7959)
+        if (sessionMode === "immersive-ar" && referenceSpaceType !== "unbounded") {
+            Logger.Warn("We recommend using 'unbounded' reference space type when using 'immersive-ar' session mode");
         }
         // make sure that the session mode is supported
         return this.sessionManager.isSessionSupportedAsync(sessionMode).then((supported) => {
@@ -124,14 +124,13 @@ export class WebXRExperienceHelper implements IDisposable {
             this._originalSceneAutoClear = this.scene.autoClear;
             this._nonVRCamera = this.scene.activeCamera;
 
-            // Overwrite current scene settings
-            this.scene.autoClear = false;
-
             this.scene.activeCamera = this.camera;
             // do not compensate when AR session is used
             if (sessionMode !== 'immersive-ar') {
                 this._nonXRToXRCamera();
             } else {
+                // Kept here, TODO - check if needed
+                this.scene.autoClear = false;
                 this.camera.compensateOnFirstFrame = false;
             }
 

@@ -27,6 +27,8 @@ export class BaseSubMesh {
     public _materialDefines: Nullable<MaterialDefines> = null;
     /** @hidden */
     public _materialEffect: Nullable<Effect> = null;
+    /** @hidden */
+    public _effectOverride: Nullable<Effect> = null;
 
     /**
      * Gets material defines used by the effect associated to the sub mesh
@@ -46,7 +48,7 @@ export class BaseSubMesh {
      * Gets associated effect
      */
     public get effect(): Nullable<Effect> {
-        return this._materialEffect;
+        return this._effectOverride ?? this._materialEffect;
     }
 
     /**
@@ -363,7 +365,7 @@ export class SubMesh extends BaseSubMesh implements ICullable {
      * @param ray defines the ray to test
      * @param positions defines mesh's positions array
      * @param indices defines mesh's indices array
-     * @param fastCheck defines if only bounding info should be used
+     * @param fastCheck defines if the first intersection will be used (and not the closest)
      * @param trianglePredicate defines an optional predicate used to select faces when a mesh intersection is detected
      * @returns intersection info or null if no intersection
      */

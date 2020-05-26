@@ -985,7 +985,7 @@ export class Mesh extends AbstractMesh implements IGetSetVerticesData {
         for (var light of this.lightSources) {
             let generator = light.getShadowGenerator();
 
-            if (generator) {
+            if (generator && (!generator.getShadowMap()?.renderList || generator.getShadowMap()?.renderList && generator.getShadowMap()?.renderList?.indexOf(this) !== -1)) {
                 for (var subMesh of this.subMeshes) {
                     if (!generator.isReady(subMesh, hardwareInstancedRendering)) {
                         return false;
@@ -1338,6 +1338,11 @@ export class Mesh extends AbstractMesh implements IGetSetVerticesData {
         if (!this._geometry) {
             return this;
         }
+
+        if (this._geometry.meshes.length === 1) {
+            return this;
+        }
+
         var oldGeometry = this._geometry;
         var geometry = this._geometry.copy(Geometry.RandomId());
         oldGeometry.releaseForMesh(this, true);
@@ -2809,6 +2814,18 @@ export class Mesh extends AbstractMesh implements IGetSetVerticesData {
      * @returns a new InstancedMesh
      */
     public createInstance(name: string): InstancedMesh {
+        let geometry = this.geometry;
+
+        if (geometry && geometry.meshes.length > 1) {
+            let others = geometry.meshes.slice(0);
+            for (var other of others) {
+                if (other === this) {
+                    continue;
+                }
+                other.makeGeometryUnique();
+            }
+        }
+
         return Mesh._instancedMeshFactory(name, this);
     }
 
@@ -2818,6 +2835,10 @@ export class Mesh extends AbstractMesh implements IGetSetVerticesData {
      * @returns the current mesh
      */
     public synchronizeInstances(): Mesh {
+        if (this._geometry && this._geometry.meshes.length !== 1 && this.instances.length) {
+            this.makeGeometryUnique();
+        }
+
         for (var instanceIndex = 0; instanceIndex < this.instances.length; instanceIndex++) {
             var instance = this.instances[instanceIndex];
             instance._syncSubMeshes();

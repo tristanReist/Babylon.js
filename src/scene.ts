@@ -3204,6 +3204,24 @@ export class Scene extends AbstractScene implements IAnimatable {
     }
 
     /**
+     * Gets a morph target using a given name (if many are found, this function will pick the first one)
+     * @param name defines the name to search for
+     * @return the found morph target or null if not found at all.
+     */
+    public getMorphTargetByName(name: string): Nullable<MorphTarget> {
+        for (let managerIndex = 0; managerIndex < this.morphTargetManagers.length; ++managerIndex) {
+            const morphTargetManager = this.morphTargetManagers[managerIndex];
+            for (let index = 0; index < morphTargetManager.numTargets; ++index) {
+                const target = morphTargetManager.getTarget(index);
+                if (target.name === name) {
+                    return target;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Gets a boolean indicating if the given mesh is active
      * @param mesh defines the mesh to look for
      * @returns true if the mesh is in the active list
@@ -3980,7 +3998,9 @@ export class Scene extends AbstractScene implements IAnimatable {
 
         // Restore back buffer
         this.activeCamera = currentActiveCamera;
-        this._bindFrameBuffer();
+        if (this._activeCamera && this._activeCamera.cameraRigMode !== Camera.RIG_MODE_CUSTOM) {
+            this._bindFrameBuffer();
+        }
         this.onAfterRenderTargetsRenderObservable.notifyObservers(this);
 
         for (let step of this._beforeClearStage) {
@@ -4399,7 +4419,7 @@ export class Scene extends AbstractScene implements IAnimatable {
      * @param x position on screen
      * @param y position on screen
      * @param predicate Predicate function used to determine eligible meshes. Can be set to null. In this case, a mesh must be enabled, visible and with isPickable set to true
-     * @param fastCheck Launch a fast check only using the bounding boxes. Can be set to null.
+     * @param fastCheck defines if the first intersection will be used (and not the closest)
      * @param camera to use for computing the picking ray. Can be set to null. In this case, the scene.activeCamera will be used
      * @param trianglePredicate defines an optional predicate used to select faces when a mesh intersection is detected
      * @returns a PickingInfo
@@ -4414,10 +4434,26 @@ export class Scene extends AbstractScene implements IAnimatable {
         return pi;
     }
 
+    /** Launch a ray to try to pick a mesh in the scene using only bounding information of the main mesh (not using submeshes)
+     * @param x position on screen
+     * @param y position on screen
+     * @param predicate Predicate function used to determine eligible meshes. Can be set to null. In this case, a mesh must be enabled, visible and with isPickable set to true
+     * @param fastCheck defines if the first intersection will be used (and not the closest)
+     * @param camera to use for computing the picking ray. Can be set to null. In this case, the scene.activeCamera will be used
+     * @returns a PickingInfo (Please note that some info will not be set like distance, bv, bu and everything that cannot be capture by only using bounding infos)
+     */
+    public pickWithBoundingInfo(x: number, y: number, predicate?: (mesh: AbstractMesh) => boolean,
+        fastCheck?: boolean, camera?: Nullable<Camera>): Nullable<PickingInfo> {
+        // Dummy info if picking as not been imported
+        const pi = new PickingInfo();
+        pi._pickingUnavailable = true;
+        return pi;
+    }
+
     /** Use the given ray to pick a mesh in the scene
      * @param ray The ray to use to pick meshes
      * @param predicate Predicate function used to determine eligible meshes. Can be set to null. In this case, a mesh must have isPickable set to true
-     * @param fastCheck Launch a fast check only using the bounding boxes. Can be set to null
+     * @param fastCheck defines if the first intersection will be used (and not the closest)
      * @param trianglePredicate defines an optional predicate used to select faces when a mesh intersection is detected
      * @returns a PickingInfo
      */

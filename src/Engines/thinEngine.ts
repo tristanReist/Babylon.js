@@ -132,14 +132,14 @@ export class ThinEngine {
      */
     // Not mixed with Version for tooling purpose.
     public static get NpmPackage(): string {
-        return "babylonjs@4.2.0-alpha.8";
+        return "babylonjs@4.2.0-alpha.11";
     }
 
     /**
      * Returns the current version of the framework
      */
     public static get Version(): string {
-        return "4.2.0-alpha.8";
+        return "4.2.0-alpha.11";
     }
 
     /**
@@ -2012,8 +2012,8 @@ export class ThinEngine {
     public createEffect(baseName: any, attributesNamesOrOptions: string[] | IEffectCreationOptions, uniformsNamesOrEngine: string[] | ThinEngine, samplers?: string[], defines?: string,
         fallbacks?: IEffectFallbacks,
         onCompiled?: Nullable<(effect: Effect) => void>, onError?: Nullable<(effect: Effect, errors: string) => void>, indexParameters?: any): Effect {
-        var vertex = baseName.vertexElement || baseName.vertex || baseName;
-        var fragment = baseName.fragmentElement || baseName.fragment || baseName;
+        var vertex = baseName.vertexElement || baseName.vertex || baseName.vertexToken || baseName;
+        var fragment = baseName.fragmentElement || baseName.fragment || baseName.fragmentToken || baseName;
 
         var name = vertex + "+" + fragment + "@" + (defines ? defines : (<IEffectCreationOptions>attributesNamesOrOptions).defines);
         if (this._compiledEffects[name]) {
@@ -4186,6 +4186,20 @@ export class ThinEngine {
         const format = hasAlpha ? this._gl.RGBA : this._gl.RGB;
         const data = new Uint8Array(height * width * numChannels);
         this._gl.readPixels(x, y, width, height, format, this._gl.UNSIGNED_BYTE, data);
+        return data;
+    }
+
+    /*
+     * Reads pixels from the current frame buffer. Please note that this function can be slow
+     * @param x defines the x coordinate of the rectangle where pixels must be read
+     * @param y defines the y coordinate of the rectangle where pixels must be read
+     * @param width defines the width of the rectangle where pixels must be read
+     * @param height defines the height of the rectangle where pixels must be read
+     * @returns a Float32Array containing RGBA colors
+     */
+    public readPixelsFloat(x: number, y: number, width: number, height: number): Float32Array {
+        var data = new Float32Array(height * width * 4);
+        this._gl.readPixels(x, y, width, height, this._gl.RGBA, this._gl.FLOAT, data);
         return data;
     }
 

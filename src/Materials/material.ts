@@ -19,6 +19,7 @@ import { Constants } from "../Engines/constants";
 import { Logger } from "../Misc/logger";
 import { IInspectable } from '../Misc/iInspectable';
 import { Plane } from '../Maths/math.plane';
+import { ShadowDepthWrapper } from './shadowDepthWrapper';
 
 declare type Mesh = import("../Meshes/mesh").Mesh;
 declare type Animation = import("../Animations/animation").Animation;
@@ -142,6 +143,16 @@ export class Material implements IAnimatable {
      * They are also discarded below the alpha cutoff threshold to improve performances.
      */
     public static readonly MATERIAL_ALPHATESTANDBLEND = 3;
+
+    /**
+     * Custom callback helping to override the default shader used in the material.
+     */
+    public customShaderNameResolve: (shaderName: string, uniforms: string[], uniformBuffers: string[], samplers: string[], defines: MaterialDefines | string[], attributes?: string[]) => string;
+
+    /**
+     * Custom shadow depth material to use for shadow rendering instead of the in-built one
+     */
+    public shadowDepthWrapper: Nullable<ShadowDepthWrapper> = null;
 
     /**
      * The ID of the material
@@ -346,6 +357,19 @@ export class Material implements IAnimatable {
         return this._onUnBindObservable;
     }
 
+    protected _onEffectCreatedObservable: Nullable<Observable<{ effect: Effect, subMesh: Nullable<SubMesh>}>>;
+
+    /**
+    * An event triggered when the effect is (re)created
+    */
+    public get onEffectCreatedObservable(): Observable<{ effect: Effect, subMesh: Nullable<SubMesh>}> {
+        if (!this._onEffectCreatedObservable) {
+            this._onEffectCreatedObservable = new Observable<{effect: Effect, subMesh: Nullable<SubMesh>}>();
+        }
+
+        return this._onEffectCreatedObservable;
+    }
+
     /**
      * Stores the value of the alpha mode
      */
@@ -416,6 +440,12 @@ export class Material implements IAnimatable {
      */
     @serialize()
     public disableDepthWrite = false;
+
+    /**
+     * Specifies if color writing should be disabled
+     */
+    @serialize()
+    public disableColorWrite = false;
 
     /**
      * Specifies if depth writing should be forced
@@ -560,6 +590,11 @@ export class Material implements IAnimatable {
      * Specifies if the depth write state should be cached
      */
     private _cachedDepthWriteState: boolean = false;
+
+    /**
+     * Specifies if the color write state should be cached
+     */
+    private _cachedColorWriteState: boolean = false;
 
     /**
      * Specifies if the depth function state should be cached
@@ -905,6 +940,12 @@ export class Material implements IAnimatable {
             engine.setDepthWrite(false);
         }
 
+        if (this.disableColorWrite) {
+            var engine = this._scene.getEngine();
+            this._cachedColorWriteState = engine.getColorWrite();
+            engine.setColorWrite(false);
+        }
+
         if (this.depthFunction !== 0) {
             var engine = this._scene.getEngine();
             this._cachedDepthFunctionState = engine.getDepthFunction() || 0;
@@ -928,6 +969,11 @@ export class Material implements IAnimatable {
         if (this.disableDepthWrite) {
             var engine = this._scene.getEngine();
             engine.setDepthWrite(this._cachedDepthWriteState);
+        }
+
+        if (this.disableColorWrite) {
+            var engine = this._scene.getEngine();
+            engine.setColorWrite(this._cachedColorWriteState);
         }
     }
 
@@ -1272,6 +1318,10 @@ export class Material implements IAnimatable {
 
         if (this._onUnBindObservable) {
             this._onUnBindObservable.clear();
+        }
+
+        if (this._onEffectCreatedObservable) {
+            this._onEffectCreatedObservable.clear();
         }
     }
 
