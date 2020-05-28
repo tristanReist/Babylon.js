@@ -953,8 +953,8 @@ export class RadiosityRenderer {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._radiosityEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setFloat("_ExposureAdjustment", 0.85); // TODO
-        effect.setColor3("ambientColor", new Color3(0.4, 0.4, 0.4)); // TODO
+        effect.setFloat("_ExposureAdjustment", 1); // TODO
+        effect.setColor3("ambientColor", new Color3(0, 0, 0)); // TODO
         engine.bindBuffers(vb, this._radiosityEffectsManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);

@@ -17,28 +17,25 @@ void main ( void ) {
     vec3 vector = wPosition - probePosition;
     vec4 diffuseColor;
 
-    // if (dot(wNormal, vector) > 0.){
-    //     diffuseColor = vec4(0., 0., 0., 1.);
-    // }
-    // else{
-        if (hasTexture) {
-            diffuseColor = vec4(texture(albedoTexture, vUV));
-        }
-        else {
-            diffuseColor = vec4(albedoColor, 1.);
-        }
-    // }
+    if (hasTexture) {
+        diffuseColor = vec4(texture(albedoTexture, vUV));
+    }
+    else {
+        diffuseColor = vec4(albedoColor, 1.);
+    }
+
 
 
     vec4 irradiance = texture(irradianceMap, vUV2);
-    vec4 directIllumination = texture(directIlluminationLightmap, vec2(vUV2.x, vUV2.y)) ;
+    
+    vec4 directIllumination = clamp(texture(directIlluminationLightmap, vec2(vUV2.x, vUV2.y)) * 1.5, 0., 1.) ;
 
 
     gl_FragColor = (irradiance + directIllumination) * diffuseColor;
    
 }
 
-
+/*
 // varying vec3 vPosition;
 
 // precision highp sampler2DArray;
@@ -63,3 +60,4 @@ void main ( void ) {
 //     gl_FragColor = (irradiance + texture(directIlluminationLightMapArray, vec3(uv.xy, 0))) * diffuse;
 //     //gl_FragColor = (irradiance + texture(directIlluminationLightMapArray, vec2(uv.xy))) * diffuse;//, uv.z))) * diffuse;
 // }
+*/

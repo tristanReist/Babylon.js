@@ -2,20 +2,13 @@
 in vec2 vUV;
 uniform sampler2D inputTexture;
 uniform float _ExposureAdjustment;
-uniform vec3 ambientColor;
 
-float Luminance(vec3 c)
-{
-    return dot(c, vec3(0.22, 0.707, 0.071));
-}
+float gamma = 2.2;
 
 void main(void) {
-	vec3 colour = texture2D(inputTexture, vUV).rgb + ambientColor;
+    vec3 color = texture2D(inputTexture, vUV).rgb;
 
-	float lum = Luminance(colour.rgb); 
-	float lumTm = lum * _ExposureAdjustment;
-	float scale = lumTm / (1.0 + lumTm);  
-
-	colour *= scale / lum;
-	gl_FragColor = vec4(colour.rgb, 1.0);
+        vec3 mapped = vec3(1.0) - exp(-color * _ExposureAdjustment);
+        color = pow(mapped, vec3(1.0 / gamma));
+    gl_FragColor = vec4(color.rgb, 1.0);
 }
