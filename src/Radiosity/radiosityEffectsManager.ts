@@ -1,6 +1,6 @@
 import { Effect } from "../Materials/effect";
 import { VertexBuffer } from "../Meshes/buffer";
-import { DataBuffer } from "../Meshes/databuffer";
+import { DataBuffer } from "../Meshes/dataBuffer";
 import { Scene } from "../scene";
 
 import "../Shaders/nextShooter.fragment";
@@ -15,6 +15,8 @@ import "../Shaders/dilate.fragment";
 import "../Shaders/dilate.vertex";
 import "../Shaders/radiosityPostProcess.fragment";
 import "../Shaders/radiosityPostProcess.vertex";
+import "../Shaders/lightmapCombine.fragment";
+import "../Shaders/lightmapCombine.vertex";
 
 /**
   * Creates various effects to solve radiosity.
@@ -44,6 +46,8 @@ export class RadiosityEffectsManager {
       * Effect to tonemap the lightmap. Necessary to map the dynamic range into 0;1.
       */
     public radiosityPostProcessEffect: Effect;
+
+    public lightmapCombineEffect: Effect;
 
     private _vertexBuffer: VertexBuffer;
     private _indexBuffer: DataBuffer;
@@ -87,7 +91,8 @@ export class RadiosityEffectsManager {
                     this.isShootEffectReady(),
                     this.isVisiblityEffectReady(),
                     this.isRadiosityPostProcessReady(),
-                    this.isDilateEffectReady()
+                    this.isDilateEffectReady(),
+                    this.isLightmapCombineEffectReady(),
                 ];
 
                 for (let i = 0; i < readyStates.length; i++) {
@@ -112,7 +117,8 @@ export class RadiosityEffectsManager {
                 this.isShootEffectReady() &&
                 this.isVisiblityEffectReady() &&
                 this.isRadiosityPostProcessReady() &&
-                this.isDilateEffectReady();
+                this.isDilateEffectReady() &&
+                this.isLightmapCombineEffectReady();
     }
 
     private prepareBuffers(): void {
@@ -232,5 +238,15 @@ export class RadiosityEffectsManager {
             ["inputTexture"], "");
 
         return this.radiosityPostProcessEffect.isReady();
+    }
+
+    public isLightmapCombineEffectReady(): boolean {
+        const attribs = [VertexBuffer.UV2Kind];
+        this.lightmapCombineEffect = this._scene.getEngine().createEffect("lightmapCombine",
+            attribs,
+            [],
+            ["inputTexture"]);
+
+        return this.lightmapCombineEffect.isReady();
     }
 }

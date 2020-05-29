@@ -539,6 +539,9 @@ function projectMat(vector: Vector3) {
 const USER_FILL_HOLES = 0;
 const USER_FILL_HOLES_QUALITY = 1;
 const USER_ISLAND_MARGIN = 0;
+const USE_PACK_BIAS: boolean = true;
+const USE_FREE_STRIP: boolean = true;
+const USE_MERGE: boolean = true;
 const SMALL_NUM = 1e-12;
 
 /**
@@ -946,61 +949,58 @@ export class UvMapper {
     //     ctx.stroke();
     // }
 
-    // private debugUvs(uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
-    //     let canvas = document.createElement("canvas");
-    //     let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+    // Create a transparent canvas with uv drawn
+    public debugUvs(position: Vector2, size: Vector2, uvsArray: FloatArray[], indicesArray: IndicesArray[]) {
+        let canvas = document.createElement("canvas");
+        let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+        document.body.appendChild(canvas);
+        canvas.width = size.x;
+        canvas.height = size.y;
+        canvas.style.position = "absolute";
+        canvas.style.transform = "rotateX(180deg)";
+        canvas.style.zIndex = "10";
+        canvas.style.top = `${position.x}px`;
+        canvas.style.left = `${position.y}px`;
+        canvas.onclick = () => {
+            canvas.style.display = "none";
+        };
 
-    //     document.body.appendChild(canvas);
-    //     canvas.width = 300;
-    //     canvas.height = 300;
-    //     canvas.style.position = "absolute";
-    //     canvas.style.zIndex = "10";
-    //     canvas.style.top = "0px";
-    //     canvas.style.left = "0px";
-    //     canvas.onclick = () => {
-    //         canvas.style.display = "none";
-    //     }
+        ctx.scale(size.x, size.y);
+        ctx.lineWidth = 0.001;
 
-    //     ctx.clearRect(0, 0, 300, 300);
-    //     ctx.fillStyle = "white";
-    //     ctx.fillRect(0, 0, 300, 300);
-    //     ctx.fillStyle = "red";
-    //     ctx.scale(300, 300);
-    //     ctx.lineWidth = 0.001;
+        ctx.strokeStyle = "red";
+        for (let j = 0; j < uvsArray.length; j++) {
+            let uvs = uvsArray[j];
+            let indices = indicesArray[j];
+            for (let i = 0; i < indices.length; i += 3) {
+                let lessThanZeroCount = 0;
+                if (uvs[indices[i] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
+                if (uvs[indices[i + 1] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
+                if (uvs[indices[i + 2] * 2] < 0) {
+                    lessThanZeroCount++;
+                }
 
-    //     ctx.strokeStyle = "green";
-    //     for (let j = 0; j < uvsArray.length; j++) {
-    //         let uvs = uvsArray[j];
-    //         let indices = indicesArray[j];
-    //         for (let i = 0; i < indices.length; i += 3) {
-    //             let lessThanZeroCount = 0;
-    //             if (uvs[indices[i] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
-    //             if (uvs[indices[i + 1] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
-    //             if (uvs[indices[i + 2] * 2] < 0) {
-    //                 lessThanZeroCount++;
-    //             }
+                if (lessThanZeroCount > 1) {
+                    debugger;
+                } else if (lessThanZeroCount === 1) {
+                    debugger;
+                }
 
-    //             if (lessThanZeroCount > 1) {
-    //                 debugger;
-    //             } else if (lessThanZeroCount === 1) {
-    //                 debugger;
-    //             }
+                ctx.beginPath();
+                ctx.moveTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]);
+                ctx.lineTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
+                ctx.stroke();
+                // ctx.fill();
+            }
+        }
 
-    //             ctx.beginPath();
-    //             ctx.moveTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]);
-    //             ctx.lineTo(uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]);
-    //             ctx.stroke();
-    //             // ctx.fill();
-    //         }
-    //     }
-
-    // }
+    }
 
     private optiRotateUvIsland(faces: Face[]) {
         let uvPoints: Vector2[] = [];
@@ -1436,6 +1436,7 @@ export class UvMapper {
         const USER_SHARE_SPACE = true;
 
         let collectedIslandList: Island[] = [];
+        let collectedIslandMesh: Mesh[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
         let worldToUVRatio = 0;
@@ -1603,14 +1604,31 @@ export class UvMapper {
             if (USER_SHARE_SPACE) {
                 let islandList = this.getUvIslands(faceProjectionGroupList, deletedFaces);
                 collectedIslandList = collectedIslandList.concat(islandList);
+
+                // Add copy of the island mesh for each island
+                // It will used to deduct the margin from island size the texture space
+                const meshArray : Array<Mesh> = new Array<Mesh>(islandList.length);
+                for (let meshIndex = 0; meshIndex < meshArray.length; meshIndex++) {
+                    meshArray[meshIndex] = m;
+                }
+                collectedIslandMesh = collectedIslandMesh.concat(meshArray);
+
             } else {
                 collectedIslandList = this.getUvIslands(faceProjectionGroupList, deletedFaces);
-                worldToUVRatio = this.packIslands(collectedIslandList);
+
+                // Add copy of the island mesh for each island
+                // It will used to deduct the margin from island size the texture space
+                collectedIslandMesh = new Array(collectedIslandList.length);
+                for (let meshIndex = 0; meshIndex < collectedIslandMesh.length; meshIndex++) {
+                    collectedIslandMesh[meshIndex] = m;
+                }
+
+                worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
             }
         }
 
         if (USER_SHARE_SPACE) {
-            worldToUVRatio = this.packIslands(collectedIslandList);
+            worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
         }
 
         let newUvs: FloatArray[] = [];
@@ -1707,12 +1725,12 @@ export class UvMapper {
             newUvs[meshIndex] = verticesData.uvs2;
         }
 
-        // this.debugUvs(newUvs, indices);
+        // this.debugUvs(Vector2.Zero(), new Vector2(256, 256), newUvs, indices);
 
         return worldToUVRatio;
     }
 
-    private packIslands(islandList: Island[]) : number {
+    private packIslands(islandList: Island[], islandMeshes: Mesh[]) : number {
         if (USER_FILL_HOLES) {
             this.mergeUvIslands(islandList);
         }
@@ -1723,15 +1741,15 @@ export class UvMapper {
 
         while (islandIdx < islandList.length) {
             let [minx, miny, maxx, maxy] = this.boundsIslands(islandList[islandIdx]);
-
             let w = maxx - minx;
             let h = maxy - miny;
 
             if (USER_ISLAND_MARGIN) {
-                minx -= USER_ISLAND_MARGIN * w / 2;
-                miny -= USER_ISLAND_MARGIN * h / 2;
-                maxx += USER_ISLAND_MARGIN * w / 2;
-                maxy += USER_ISLAND_MARGIN * h / 2;
+                // Uses margin as a world unit number
+                minx -= USER_ISLAND_MARGIN;
+                miny -= USER_ISLAND_MARGIN;
+                maxx += USER_ISLAND_MARGIN;
+                maxy += USER_ISLAND_MARGIN;
 
                 w = maxx - minx;
                 h = maxy - miny;
@@ -2061,7 +2079,7 @@ class BoxPacker {
      * Pack boxes to the lower left hand corner
      * TODO : use must be fixed
      */
-    static BoxPack2dBlender(boxes: BoxBlender[], usePackBias: boolean = true, useFreeStrip: boolean = true, useMerge: boolean = false) {
+    static BoxPack2dBlender(boxes: BoxBlender[]) {
         // Sort boxes by area
         boxes.sort((a, b) => (b.w * b.h) - (a.w * a.h));
 
@@ -2126,7 +2144,7 @@ class BoxPacker {
         for (const boxVertex of firstBox.v) {
             boxVertex.used = true;
 
-            if (usePackBias) {
+            if (USE_PACK_BIAS) {
                 boxVertex.updateBias();
             }
         }
@@ -2140,12 +2158,12 @@ class BoxPacker {
         for (let boxIndex = 1; boxIndex < boxes.length; boxIndex++) {
             const box = boxes[boxIndex];
 
-            const vertexSort = (index1: number, index2: number) => {
+            const sortVertices = (index1: number, index2: number) => {
                 const v1 = vertices[index1];
                 const v2 = vertices[index2];
                 let a1, a2;
 
-                if (useFreeStrip) {
+                if (USE_FREE_STRIP) {
                     /* push free verts to the end so we can strip */
                     if (v1.free == 0 && v2.free == 0) {
                         return  0;
@@ -2159,7 +2177,7 @@ class BoxPacker {
                 a1 = Math.max(v1.x + box.w, v1.y + box.h);
                 a2 = Math.max(v2.x + box.w, v2.y + box.h);
 
-                if (usePackBias) {
+                if (USE_PACK_BIAS) {
                     a1 += v1.bias;
                     a2 += v2.bias;
                 }
@@ -2173,10 +2191,10 @@ class BoxPacker {
                 return 0;
             };
 
-            vertexPackIndices.sort(vertexSort);
+            vertexPackIndices.sort(sortVertices);
 
             // Find vertices fully used and remove them from the vertex pack to speed up vertices loop
-            if (useFreeStrip) {
+            if (USE_FREE_STRIP) {
                 let index = vertexPackIndices.length - 1;
 
                 while (index != 0 && vertices[vertexPackIndices[index]].free == 0) {
@@ -2309,13 +2327,8 @@ class BoxPacker {
                              */
                             if (vertex.trb && vertex.tlb && (box === vertex.trb || box === vertex.tlb)) {
                                 if (Math.abs(vertex.tlb.h - vertex.trb.h) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.BLF | CORNERFLAGS.BRF;
-
-                                        if (vertex.trb.v[CORNERINDEX.TL].used != vertex.tlb.v[CORNERINDEX.TR].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.trb.v[CORNERINDEX.TL].used) {
                                             vertex.trb.v[CORNERINDEX.TL].free &= vertex.tlb.v[CORNERINDEX.TR].free & ~mask;
@@ -2337,13 +2350,8 @@ class BoxPacker {
 
                             else if (vertex.brb && vertex.blb && (box === vertex.brb || box === vertex.blb)) {
                                 if (Math.abs(vertex.blb.h - vertex.brb.h) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.TLF | CORNERFLAGS.TRF;
-
-                                        if (vertex.brb.v[CORNERINDEX.BL].used != vertex.blb.v[CORNERINDEX.BR].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.blb.v[CORNERINDEX.BR].used) {
                                             vertex.blb.v[CORNERINDEX.BR].free &= vertex.brb.v[CORNERINDEX.BL].free & ~mask;
@@ -2366,13 +2374,8 @@ class BoxPacker {
                             // Horizontally
                             else if (vertex.tlb && vertex.blb && (box === vertex.tlb || box === vertex.blb)) {
                                 if (Math.abs(vertex.tlb.w - vertex.blb.w) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.TRF | CORNERFLAGS.BRF;
-
-                                        if (vertex.tlb.v[CORNERINDEX.TL].used != vertex.blb.v[CORNERINDEX.BL].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.blb.v[CORNERINDEX.TL].used) {
                                             vertex.blb.v[CORNERINDEX.TL].free &= vertex.tlb.v[CORNERINDEX.BL].free & ~mask;
@@ -2393,13 +2396,8 @@ class BoxPacker {
                             }
                             else if (vertex.trb && vertex.brb && (box === vertex.trb || box === vertex.brb)) {
                                 if (Math.abs(vertex.trb.w - vertex.brb.w) < 1e-6) {
-                                    if (useMerge) {
+                                    if (USE_MERGE) {
                                         const mask = CORNERFLAGS.TLF | CORNERFLAGS.BLF;
-
-                                        if (vertex.trb.v[CORNERINDEX.TR].used != vertex.brb.v[CORNERINDEX.BR].used) {
-                                            console.warn("One of those vertices must not be used before merging them !");
-                                            console.log(boxIndex);
-                                        }
 
                                         if (vertex.brb.v[CORNERINDEX.TR].used) {
                                             vertex.brb.v[CORNERINDEX.TR].free &= vertex.trb.v[CORNERINDEX.BR].free & ~mask;
@@ -2423,7 +2421,7 @@ class BoxPacker {
                                 if (!boxVertex.used) {
                                     boxVertex.used = true;
 
-                                    if (usePackBias) {
+                                    if (USE_PACK_BIAS) {
                                         boxVertex.updateBias();
                                     }
 
@@ -2451,8 +2449,8 @@ class BoxPacker {
     static debugFitAABB(boxes: BoxBlender[], w: number, h: number) {
         let canvas = document.createElement("canvas");
         let ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-        const width = 900;
-        const height = 900;
+        const width = 1024;
+        const height = 1024;
 
         document.body.appendChild(canvas);
         canvas.width = width;
@@ -2466,8 +2464,8 @@ class BoxPacker {
         };
 
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, width, height);
+        // ctx.fillStyle = "white";
+        // ctx.fillRect(0, 0, width, height);
         ctx.scale(width, height);
         ctx.lineWidth = 0.001;
 
