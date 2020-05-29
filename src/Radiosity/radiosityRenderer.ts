@@ -174,10 +174,13 @@ declare module "../Meshes/mesh" {
             residualTexture: Nullable<MultiRenderTarget>;
             /** Radiosity patches */
             radiosityPatches: Patch[];
+            /** Total area of the polygon in world unit */
+            polygonWorldArea: number;
         };
 
         /** Inits the `radiosityInfo` object */
         initForRadiosity() : void;
+
         /** Gets radiosity texture
          * @return the radiosity texture. Can be fully black if the radiosity process has not been run yet.
          */
@@ -197,7 +200,8 @@ Mesh.prototype.initForRadiosity = function() {
         _lightMapId: new Vector3(0, 0, 0),
         _patchOffset: 0,
         residualTexture: null,
-        radiosityPatches: []
+        radiosityPatches: [],
+        polygonWorldArea: 0
     };
 };
 
@@ -346,6 +350,8 @@ export class RadiosityRenderer {
         this._frameBuffer1 = <WebGLFramebuffer>(scene.getEngine()._gl.createFramebuffer());
 
         this._radiosityEffectsManager = new RadiosityEffectsManager(this._scene);
+        while (!this._radiosityEffectsManager.isReady()) {
+        }
     }
 
     private resetRenderState(): void {
@@ -385,6 +391,7 @@ export class RadiosityRenderer {
         engine.setState(false);
         engine.setDirectViewport(0, 0, this.getCurrentRenderWidth(), this.getCurrentRenderHeight());
 
+        const hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
         var effect = this._radiosityEffectsManager.radiosityEffect;
 
         if (!effect || !effect.isReady()) {
@@ -397,18 +404,19 @@ export class RadiosityRenderer {
         uniformCallback(effect, args);
 
         // Draw triangles
-        mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, false,
+        mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
             (isInstance, world) => effect.setMatrix("world", world));
 
+        // Commented as it looks like it adds an ssao effect
         // render edges
-        mesh._bind(subMesh, effect, Material.WireFrameFillMode);
-        mesh._processRendering(mesh, subMesh, effect, Material.WireFrameFillMode, batch, false,
-            (isInstance, world) => effect.setMatrix("world", world));
+        // mesh._bind(subMesh, effect, Material.WireFrameFillMode);
+        // mesh._processRendering(mesh, subMesh, effect, Material.WireFrameFillMode, batch, false,
+        //     (isInstance, world) => effect.setMatrix("world", world));
 
-        // // render points
-        mesh._bind(subMesh, effect, Material.PointFillMode);
-        mesh._processRendering(mesh, subMesh, effect, Material.PointFillMode, batch, false,
-            (isInstance, world) => effect.setMatrix("world", world));
+        // // // render points
+        // mesh._bind(subMesh, effect, Material.PointFillMode);
+        // mesh._processRendering(mesh, subMesh, effect, Material.PointFillMode, batch, false,
+        //     (isInstance, world) => effect.setMatrix("world", world));
         return true;
     }
 
@@ -618,7 +626,7 @@ export class RadiosityRenderer {
                 return;
             }
 
-            var hardwareInstancedRendering = (engine.getCaps().instancedArrays) && (batch.visibleInstances[subMesh._id] !== null);
+            var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
             mesh._bind(subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode);
             mesh._processRendering(mesh, subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
                 (isInstance, world) => this._radiosityEffectsManager.shootEffect.setMatrix("world", world));
@@ -721,10 +729,10 @@ export class RadiosityRenderer {
 
     private postProcessLightmap(texture: MultiRenderTarget) {
         var textureArray = texture.textures;
-        // var internalTextureArray = texture.internalTextures;
 
         this.toneMap(textureArray[4], textureArray[6]);
         this.swap(textureArray, 4, 6);
+        this.swap(texture.internalTextures, 4, 6);
     }
 
     /**
@@ -925,8 +933,12 @@ export class RadiosityRenderer {
         }
 
         for (let i = 0; i < this.meshes.length; i++) {
-            var mesh = this.meshes[i];
-            var mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
+            const mesh = this.meshes[i];
+            const mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
+            const texelWorldArea : number = mesh.radiosityInfo.texelWorldSize * mesh.radiosityInfo.texelWorldSize;
+            const polygonTexelCount = mesh.radiosityInfo.polygonWorldArea / texelWorldArea;
+            const texelArea = (1 / mesh.radiosityInfo.lightmapSize.width) / (1 / mesh.radiosityInfo.lightmapSize.height);
+            const polygonArea: number = (polygonTexelCount * texelArea) || (mrt.getRenderWidth() * mrt.getRenderHeight());
 
             if (!mrt) {
                 continue;
@@ -938,7 +950,7 @@ export class RadiosityRenderer {
             this._radiosityEffectsManager.nextShooterEffect.setVector3("polygonId", polygonId);
             this._radiosityEffectsManager.nextShooterEffect.setTexture("unshotRadiositySampler", unshotTexture);
             this._radiosityEffectsManager.nextShooterEffect.setFloat("lod", lod);
-            this._radiosityEffectsManager.nextShooterEffect.setFloat("area", mrt.getRenderWidth() * mrt.getRenderHeight()); // TODO : REAL POLYGON AREA
+            this._radiosityEffectsManager.nextShooterEffect.setFloat("area", polygonArea);
 
             engine.setDirectViewport(0, 0, 1, 1);
             engine.drawElementsType(Material.TriangleFillMode, 0, 6);
@@ -1008,7 +1020,7 @@ export class RadiosityRenderer {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._radiosityEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setFloat("_ExposureAdjustment", 0.85); // TODO
+        effect.setFloat("_ExposureAdjustment", 1); // TODO
         effect.setColor3("ambientColor", new Color3(0.4, 0.4, 0.4)); // TODO
         engine.bindBuffers(vb, this._radiosityEffectsManager.screenQuadIB, effect);
 
@@ -1149,7 +1161,7 @@ export class RadiosityRenderer {
         }
 
         // Draw triangles
-        var hardwareInstancedRendering = (engine.getCaps().instancedArrays) && (batch.visibleInstances[subMesh._id] !== null);
+        var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
         mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
             (isInstance, world) => effect.setMatrix("world", world));
     }
