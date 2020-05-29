@@ -1451,9 +1451,11 @@ export class UvMapper {
         const USER_PROJECTION_LIMIT_CONVERTED = Math.cos(projectionLimit * Math.PI / 180);
         const USER_PROJECTION_LIMIT_HALF_CONVERTED = Math.cos(projectionLimit / 2 * Math.PI / 180);
         const USER_SHARE_SPACE = true;
+        USER_ISLAND_MARGIN = islandMargin;
 
         let collectedIslandList: Island[] = [];
         let polygonsArea: number[] = [];
+        let collectedIslandMesh: Mesh[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
         let worldToUVRatio = 0;
@@ -1489,6 +1491,7 @@ export class UvMapper {
 
             meshFaces.sort((a, b) => b.area - a.area);
 
+            // Remove small faces
             while (meshFaces.length && meshFaces[meshFaces.length - 1].area <= SMALL_NUM) {
                 for (let j = 0; j < meshFaces[meshFaces.length - 1].uv.length; j++) {
                     let uv = meshFaces[meshFaces.length - 1].uv[j];
@@ -1504,6 +1507,7 @@ export class UvMapper {
             for (const face of meshFaces) {
                 polygonsArea[i] += face.area;
             }
+
 
             let projectVecs: Vector3[] = [];
             let newProjectVec: Vector3 = meshFaces[0].no;
@@ -1626,14 +1630,31 @@ export class UvMapper {
             if (USER_SHARE_SPACE) {
                 let islandList = this.getUvIslands(faceProjectionGroupList, deletedFaces);
                 collectedIslandList = collectedIslandList.concat(islandList);
+
+                // Add copy of the island mesh for each island
+                // It will used to deduct the margin from island size the texture space
+                const meshArray : Array<Mesh> = new Array<Mesh>(islandList.length);
+                for (let meshIndex = 0; meshIndex < meshArray.length; meshIndex++) {
+                    meshArray[meshIndex] = m;
+                }
+                collectedIslandMesh = collectedIslandMesh.concat(meshArray);
+
             } else {
                 collectedIslandList = this.getUvIslands(faceProjectionGroupList, deletedFaces);
-                worldToUVRatio = this.packIslands(collectedIslandList);
+
+                // Add copy of the island mesh for each island
+                // It will used to deduct the margin from island size the texture space
+                collectedIslandMesh = new Array(collectedIslandList.length);
+                for (let meshIndex = 0; meshIndex < collectedIslandMesh.length; meshIndex++) {
+                    collectedIslandMesh[meshIndex] = m;
+                }
+
+                worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
             }
         }
 
         if (USER_SHARE_SPACE) {
-            worldToUVRatio = this.packIslands(collectedIslandList);
+            worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
         }
 
         let newUvs: FloatArray[] = [];
@@ -1735,7 +1756,7 @@ export class UvMapper {
         return [worldToUVRatio, polygonsArea];
     }
 
-    private packIslands(islandList: Island[]) : number {
+    private packIslands(islandList: Island[], islandMeshes: Mesh[]) : number {
         if (USER_FILL_HOLES) {
             this.mergeUvIslands(islandList);
         }
@@ -1746,15 +1767,15 @@ export class UvMapper {
 
         while (islandIdx < islandList.length) {
             let [minx, miny, maxx, maxy] = this.boundsIslands(islandList[islandIdx]);
-
             let w = maxx - minx;
             let h = maxy - miny;
 
             if (USER_ISLAND_MARGIN) {
-                minx -= USER_ISLAND_MARGIN * w / 2;
-                miny -= USER_ISLAND_MARGIN * h / 2;
-                maxx += USER_ISLAND_MARGIN * w / 2;
-                maxy += USER_ISLAND_MARGIN * h / 2;
+                // Uses margin as a world unit number
+                minx -= USER_ISLAND_MARGIN;
+                miny -= USER_ISLAND_MARGIN;
+                maxx += USER_ISLAND_MARGIN;
+                maxy += USER_ISLAND_MARGIN;
 
                 w = maxx - minx;
                 h = maxy - miny;
@@ -1959,14 +1980,12 @@ class BoxVert {
      * speedup intersection testing */
     intersection_cache: BoxBlender[] = [];
 
-// #ifdef USE_PACK_BIAS
     bias : number = 0;
     _pad2 : number;
-// #endif
 
     public updateBias() {
         if (!this.used) {
-            console.warn("Vertex must be used before updating it's biad !");
+            console.warn("Vertex must be used before updating it's bias !");
         }
 
         this.bias = this.x * this.y * 1e-6;
@@ -2261,7 +2280,8 @@ class BoxPacker {
                              * data-structure would be better
                              */
                             // As boxes are sorted we know that only previous boxes already placed, so we can break once we find the current firstBox
-                            for (let testBoxIndex = 0; boxes[testBoxIndex].index !== box.index; testBoxIndex++) {
+                            // for (let testBoxIndex = 0; boxes[testBoxIndex].index !== box.index; testBoxIndex++) {
+                            for (let testBoxIndex = 0; box !== boxes[testBoxIndex]; testBoxIndex++) {
                                 if (box.intersect(boxes[testBoxIndex])) {
                                     vertex.intersection_cache[quadrantIndex] = boxes[testBoxIndex];
                                     intersection = true;
