@@ -73,4 +73,11 @@ export abstract class Volume {
         this.irradiance.render();
     }
 
+    public updateNumberBounces(numberBounces : number){
+        this.numberBounces = numberBounces;
+        this.irradiance.updateNumberBounces(numberBounces);
+
+
+    }
+
 }

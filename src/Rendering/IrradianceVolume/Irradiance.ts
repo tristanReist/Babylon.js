@@ -11,6 +11,7 @@ import { Vector3 } from '../../Maths/math.vector';
 import { MeshDictionary } from './meshDictionary';
 import { RawTexture } from '../../Materials/Textures/rawTexture';
 import { Engine } from '../../Engines/engine';
+import { Color4 } from '../../Maths/math.color';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
@@ -106,36 +107,23 @@ export class Irradiance {
                 probe.render(this.meshes, this.dictionary, this.uvEffect, this.bounceEffect);
                 probe.renderBounce(this.meshes);
             }
-            if (this.numberBounces > 1) {
-                // We wait for the envCubeMap rendering to be finish
-                // let envCubeMapProbesRendered = new Promise((resolve, reject) => {
-                //     let interval = setInterval(() => {
-                //         let readyStates = [
-                //             this._areProbesEnvMapReady()
-                //         ];
-                //         for (let i = 0 ; i < readyStates.length; i++) {
-                //             if (!readyStates[i]) {
-                //                 return ;
-                //             }
-                //         }
-                //         clearInterval(interval);
-                //         resolve();
-                //     }, 200);
-                // });
-                // envCubeMapProbesRendered.then(function() {
-                let currentBounce = 2;
-                for (let probe of this.probeList) {
-                    probe.sphericalHarmonicChanged = false;
-                }
-                this._initIrradianceLightMap();
-                this._renderBounce(currentBounce);
-                // });
-            }
 
+            let currentBounce = 0;
+            for (let probe of this.probeList) {
+                probe.sphericalHarmonicChanged = false;
+            }
+            this._initIrradianceLightMap();
+            if (this.numberBounces > 0){
+                this._renderBounce(currentBounce + 1);
+            }
+            else {
+                this.finish = true;
+            }
         });
     }
 
     private _renderBounce(currentBounce : number) {
+        console.log(currentBounce);
         for (let probe of this.probeList) {
             probe.tempBounce.render();
         }
@@ -379,5 +367,56 @@ export class Irradiance {
             }
         }
         return true;
+    }
+
+    public updateNumberBounces(numberBounces : number) {
+        if (this.numberBounces < numberBounces){
+            this.finish = false;
+            let currentBounce = this.numberBounces + 1;
+            this.numberBounces = numberBounces;
+            this._renderBounce(currentBounce);
+        }
+        else if (this.numberBounces > numberBounces) {
+            this.finish = false;
+            this.numberBounces = numberBounces;
+            let engine = this._scene.getEngine();
+            for (let value of this.dictionary.values()){
+                let internal = value.irradianceLightmap.getInternalTexture();
+                if (internal != null){
+                    engine.bindFramebuffer(internal);
+                    engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
+                    engine.unBindFramebuffer(internal);
+                }
+            }
+
+            if (this.numberBounces == 0){
+                this.finish = true;
+            }
+            else {
+                this._renderBounce(1);
+            }
+        }
+        else {
+            console.log("same");
+            return;
+        }
+
+
+        let finsihPromise = new Promise((resolve, reject) => {
+            let interval = setInterval(() => {
+                if ( ! this.finish ) {
+                        return ;
+                    }                
+                clearInterval(interval);
+                resolve();
+            }, 200);
+        });
+
+        finsihPromise.then( () => {
+            for (let value of this.dictionary.values()){
+                value.sumOfBoth.render();
+            }
+        });
+
     }
 }

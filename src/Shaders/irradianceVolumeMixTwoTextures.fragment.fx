@@ -10,7 +10,7 @@ varying vec2 vUV2;
 
 void main ( void ) {
     vec2 uv2 = vUV2;
-    vec3 tempColor = clamp(texture(directLightmap, uv2).rgb, 0.05, 1.) + 1.2* texture(irradianceLightmap, uv2).rgb;
+    vec3 tempColor = clamp(texture(directLightmap, uv2).rgb, 0.05, 1.) + 1.2 * texture(irradianceLightmap, uv2).rgb;
     if (hasTexture > 0 ){
         tempColor *= texture(albedoTexture, vUV).rgb;
     }
