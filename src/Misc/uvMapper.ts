@@ -538,7 +538,7 @@ function projectMat(vector: Vector3) {
 
 const USER_FILL_HOLES = 0;
 const USER_FILL_HOLES_QUALITY = 1;
-const USER_ISLAND_MARGIN = 0;
+let USER_ISLAND_MARGIN = 0;
 const USE_PACK_BIAS: boolean = true;
 const USE_FREE_STRIP: boolean = true;
 const USE_MERGE: boolean = true;
@@ -1434,6 +1434,7 @@ export class UvMapper {
         const USER_PROJECTION_LIMIT_CONVERTED = Math.cos(projectionLimit * Math.PI / 180);
         const USER_PROJECTION_LIMIT_HALF_CONVERTED = Math.cos(projectionLimit / 2 * Math.PI / 180);
         const USER_SHARE_SPACE = true;
+        USER_ISLAND_MARGIN = islandMargin;
 
         let collectedIslandList: Island[] = [];
         let collectedIslandMesh: Mesh[] = [];
