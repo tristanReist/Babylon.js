@@ -10,7 +10,9 @@ vec3 diffuseBase = vec3(0., 0., 0.);
 #endif
 
 #ifdef LIGHTMAP
-    vec4 lightmapColor = texture2D(lightmapSampler, vLightmapUV + uvOffset);
+    // vec4 lightmapColor = texture2D(lightmapSampler, vLightmapUV + uvOffset);
+    vec4 lightmapColor = tex2DFastBicubic(lightmapSampler, vLightmapUV + uvOffset);
+    // vec4 lightmapColor = tex2DBicubic(lightmapSampler, vLightmapUV + uvOffset);
 
     #ifdef RGBDLIGHTMAP
         lightmapColor.rgb = fromRGBD(lightmapColor);

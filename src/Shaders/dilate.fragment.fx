@@ -1,38 +1,25 @@
-﻿// Attributes
-in vec2 vUV;
+﻿in vec2 vUV;
 uniform vec2 texelSize;
 uniform sampler2D inputTexture;
 
 void main(void) {
-	vec4 p = texture(inputTexture, vUV);
-	if (p.a != 0.0) {
-		gl_FragColor = p;
-		return;
-	}
+    vec4 c = texture2D(inputTexture, vUV);
 
-	vec4 n = texture(inputTexture, vec2(vUV.x, vUV.y + texelSize.y));
-	n.xyz *= n.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV - texelSize);
 
-	vec4 s = texture(inputTexture, vec2(vUV.x, vUV.y - texelSize.y));
-	s.xyz *= s.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + vec2(0, -texelSize.y));
 
-	vec4 e = texture(inputTexture, vec2(vUV.x + texelSize.x, vUV.y));
-	e.xyz *= e.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + vec2(texelSize.x, -texelSize.y));
 
-	vec4 w = texture(inputTexture, vec2(vUV.x - texelSize.x, vUV.y));
-	w.xyz *= w.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + vec2(-texelSize.x, 0));
 
-	vec4 ne = texture(inputTexture, vec2(vUV.x + texelSize.x, vUV.y + texelSize.y));
-	ne.xyz *= ne.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + vec2(texelSize.x, 0));
 
-	vec4 se = texture(inputTexture, vec2(vUV.x + texelSize.x, vUV.y - texelSize.y));
-	se.xyz *= se.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + vec2(-texelSize.x, texelSize.y));
 
-	vec4 nw = texture(inputTexture, vec2(vUV.x - texelSize.x, vUV.y + texelSize.y));
-	nw.xyz *= nw.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + vec2(0, texelSize.y));
 
-	vec4 sw = texture(inputTexture, vec2(vUV.x - texelSize.x, vUV.y - texelSize.y));
-	sw.xyz *= sw.a;
+    c = c.a>0.0? c : texture2D(inputTexture, vUV + texelSize);
 
-	gl_FragColor = vec4((n.xyz + s.xyz + e.xyz + w.xyz + nw.xyz + sw.xyz + ne.xyz + se.xyz) / (n.a + s.a + e.a + w.a + nw.a + sw.a + ne.a + se.a), 1.0);
+    gl_FragColor = c;
 }
