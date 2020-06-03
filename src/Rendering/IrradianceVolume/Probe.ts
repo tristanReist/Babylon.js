@@ -99,6 +99,8 @@ export class Probe {
      */
     public sphericalHarmonicChanged : boolean;
 
+    private bounceNumber = 0;
+
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -216,6 +218,12 @@ export class Probe {
                     else {
                         effect.setBool("hasTexture", false);
                     }
+                }
+                if( this.bounceNumber > 1){
+                    effect.setBool("firstBounce", false);
+                }
+                else {
+                    effect.setBool("firstBounce", true);
                 }
 
                 effect.setVector3("probePosition", this.sphere.position);
@@ -442,6 +450,10 @@ export class Probe {
         this.sphericalHarmonic.l22 = this.sphericalHarmonic.l22.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l2_1 = this.sphericalHarmonic.l2_1.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
+    }
+
+    public setBounce(bounceNumber : number){
+        this.bounceNumber = bounceNumber;
     }
 
 }

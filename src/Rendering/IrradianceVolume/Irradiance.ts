@@ -124,6 +124,7 @@ export class Irradiance {
 
     private _renderBounce(currentBounce : number) {
         for (let probe of this.probeList) {
+            probe.setBounce(currentBounce);
             probe.tempBounce.render();
         }
 
@@ -148,8 +149,9 @@ export class Irradiance {
             this.updateShTexture();
             for (let value of this.dictionary.values()) {
                 value.irradianceLightmap.render();
+                value.tempLightmap.render();
+                value.cumulativeLightmap.render();
             }
-            this._shTexture.readPixels();
             if (currentBounce < this.numberBounces) {
                 this._renderBounce(currentBounce + 1);
             }
@@ -260,7 +262,6 @@ export class Irradiance {
                     mesh.material = previousMaterial;
 
                 });
-
             }
 
         }
@@ -332,7 +333,7 @@ export class Irradiance {
         var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
 
         // var uniform = ["world", "rotation", "numberLightmap"];
-        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap"];
+        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world", "firstBounce" ];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);

@@ -5,6 +5,7 @@ import { Texture } from '../../Materials/Textures/texture';
 import { Scene } from '../../scene';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { PBRMaterial } from '../../Materials';
+import { Color4 } from '../../Maths/math.color';
 
 export interface IMeshesGroup {
     directLightmap : Texture;
@@ -42,15 +43,15 @@ export class MeshDictionary {
         for (let mesh of this._keys) {
             let value = this.getValue(mesh);
             if (value != null) {
-                let size = 256;
+                let size = value.directLightmap.getSize().width;
                 value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene); 
                 value.tempLightmap = new RenderTargetTexture("tempLightmap", size, this._scene);
                 value.cumulativeLightmap = new RenderTargetTexture("sumLightmap", size, this._scene); 
                 value.sumOfBoth = new RenderTargetTexture("sumOfBoth", size, this._scene);
             }
         }
-        this._initTempLightmap();
         this._initCumulativeLightmap();
+        this._initTempLightmap();
         this._initSumOfBoth();
     }
 
@@ -66,6 +67,10 @@ export class MeshDictionary {
             if (value != null) {
                 value.tempLightmap.renderList = [mesh];       
                 let previousMaterial = mesh.material;
+                value.tempLightmap.clearColor = new Color4(0., 0., 0., 1.);
+                this._scene.customRenderTargets.push(value.tempLightmap);
+                value.tempLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+
                 value.tempLightmap.onBeforeRenderObservable.add(() => {
                     if (value != null){
                         this._tempLightmapMaterial.setTexture( "texture1", value.cumulativeLightmap);
@@ -76,6 +81,7 @@ export class MeshDictionary {
 
                 value.tempLightmap.onAfterRenderObservable.add(() => {
                     mesh.material = previousMaterial;
+  
                 });
             }
         }
@@ -93,6 +99,9 @@ export class MeshDictionary {
         if (value != null) {
             value.cumulativeLightmap.renderList = [mesh];   
             let previousMaterial = mesh.material;
+            this._scene.customRenderTargets.push(value.cumulativeLightmap);
+            value.cumulativeLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+            value.cumulativeLightmap.clearColor = new Color4(0., 0., 0., 1.);
             value.cumulativeLightmap.onBeforeRenderObservable.add(() => {
                 if (value != null){
                     this._cumulativeLightmapMaterial.setTexture( "texture1", value.tempLightmap);
@@ -125,7 +134,7 @@ export class MeshDictionary {
                 value.sumOfBoth.onBeforeRenderObservable.add(() => {
                     if (value != null){
                         this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
-                        this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
+                        this._sumOfBothMaterial.setTexture( "texture2", value.cumulativeLightmap);
                     }
                     
                     mesh.material = this._sumOfBothMaterial;
