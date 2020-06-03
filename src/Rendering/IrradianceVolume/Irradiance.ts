@@ -123,7 +123,6 @@ export class Irradiance {
     }
 
     private _renderBounce(currentBounce : number) {
-        console.log(currentBounce);
         for (let probe of this.probeList) {
             probe.tempBounce.render();
         }
@@ -234,6 +233,7 @@ export class Irradiance {
         for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
+                value.irradianceLightmap.renderList = [mesh];
                 this._scene.customRenderTargets.push(value.irradianceLightmap);
                 value.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
                 let previousMaterial : Nullable<Material>;
@@ -278,7 +278,8 @@ export class Irradiance {
                     this._areIrradianceLightMapReady(),
                     this._areProbesReady(),
                     this._isUVEffectReady(),
-                    this._isBounceEffectReady()
+                    this._isBounceEffectReady(),
+                    this.dictionary.areMaterialReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
