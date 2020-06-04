@@ -47,7 +47,6 @@ export class Irradiance {
     public bounceEffect : Effect;
 
     public dictionary : MeshDictionary;
-
     /**
      * The number of bounces we want to render on our scene. (1 == only direct light)
      */
@@ -63,14 +62,22 @@ export class Irradiance {
      * @param probes The probes that are used to render the irradiance
      * @param meshes The meshes that are rendered by the probes
      */
-    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, dictionary : MeshDictionary, numberBounces : number) {
+    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, dictionary : MeshDictionary, numberBounces : number,
+        probeDisposition? : Vector3, bottomLeft? : Vector3, volumeSize? : Vector3 ) {
         this._scene = scene;
         this.probeList = probes;
         this.meshes = meshes;
         this.dictionary = dictionary;
         this.numberBounces = numberBounces;
+        if (volumeSize && probeDisposition && bottomLeft){
+            this._uniformNumberProbes = probeDisposition;
+            this._uniformBottomLeft = bottomLeft;
+            this._uniformBoxSize = volumeSize;
+        }
         this._promise = this._createPromise();
     }
+
+
 
     /**
      * Add a probe to the list of probes after initialisation
@@ -82,18 +89,6 @@ export class Irradiance {
         this._promise = this._createPromise();
     }
 
-    /**
-     * Method called when we have a uniform volume.
-     * It will change the part where we create the irradiance light map, mainly because of the tricubic interpolation
-     * @param numberProbes
-     * @param bottomLeft
-     * @param size
-     */
-    public setUniform(numberProbes : Vector3, bottomLeft : Vector3, size : Vector3) : void {
-        this._uniformNumberProbes = numberProbes;
-        this._uniformBottomLeft = bottomLeft;
-        this._uniformBoxSize = size;
-    }
 
     /**
      * Function that launch all the render needed to create the final light map of irradiance that contains
@@ -124,7 +119,6 @@ export class Irradiance {
 
     private _renderBounce(currentBounce : number) {
         for (let probe of this.probeList) {
-            probe.updateBounce(currentBounce);
             probe.tempBounce.render();
         }
 
@@ -333,7 +327,7 @@ export class Irradiance {
         var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
 
         // var uniform = ["world", "rotation", "numberLightmap"];
-        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap", "bounce", "weightIrradiance", "weightRadiance"];
+        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);
