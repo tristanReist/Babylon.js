@@ -99,6 +99,11 @@ export class Probe {
      */
     public sphericalHarmonicChanged : boolean;
 
+    private _currentBounce : number;
+
+    private _weightIrradiance = 1.5;
+    private _weightRadiance = 1.;
+
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -217,9 +222,12 @@ export class Probe {
                         effect.setBool("hasTexture", false);
                     }
                 }
-
+                effect.setInt("bounce", this._currentBounce);
                 effect.setVector3("probePosition", this.sphere.position);
-
+                console.log(this._weightIrradiance);
+                console.log(this._weightRadiance)
+                effect.setFloat("weightRadiance", this._weightRadiance);
+                effect.setFloat("weightIrradiance", this._weightIrradiance);
                 let value = this.dictionary.getValue(mesh);
                 if (value != null) {
 
@@ -442,6 +450,10 @@ export class Probe {
         this.sphericalHarmonic.l22 = this.sphericalHarmonic.l22.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l2_1 = this.sphericalHarmonic.l2_1.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
+    }
+
+    public updateBounce( bounceNumber : number) {
+        this._currentBounce = bounceNumber;
     }
 
 }

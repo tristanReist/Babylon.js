@@ -7,6 +7,10 @@ uniform vec3 probePosition;
 uniform vec3 albedoColor;
 uniform sampler2D albedoTexture;
 uniform bool hasTexture;
+uniform int bounce;
+uniform float weightIrradiance;
+uniform float weightRadiance;
+
 
 uniform sampler2D irradianceMap;
 uniform sampler2D directIlluminationLightmap;
@@ -24,14 +28,11 @@ void main ( void ) {
         diffuseColor = vec4(albedoColor, 1.);
     }
 
-
-
     vec4 irradiance = texture(irradianceMap, vUV2);
-    
-    vec4 directIllumination = clamp(texture(directIlluminationLightmap, vec2(vUV2.x, vUV2.y)) * 1.5, 0., 1.);
+    vec4 directIllumination = texture(directIlluminationLightmap, vec2(vUV2.x, vUV2.y));
 
 
-    gl_FragColor = (irradiance + directIllumination) * diffuseColor;
+    gl_FragColor = (irradiance * weightIrradiance + directIllumination * weightRadiance) * diffuseColor;
    
 }
 

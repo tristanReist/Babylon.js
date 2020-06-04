@@ -124,6 +124,7 @@ export class Irradiance {
 
     private _renderBounce(currentBounce : number) {
         for (let probe of this.probeList) {
+            probe.updateBounce(currentBounce);
             probe.tempBounce.render();
         }
 
@@ -332,7 +333,7 @@ export class Irradiance {
         var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
 
         // var uniform = ["world", "rotation", "numberLightmap"];
-        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap"];
+        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap", "bounce", "weightIrradiance", "weightRadiance"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);
