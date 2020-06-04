@@ -389,6 +389,12 @@ export class Irradiance {
                     engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
                     engine.unBindFramebuffer(internal);
                 }
+                internal = value.cumulativeLightmap.getInternalTexture();
+                if (internal != null){
+                    engine.bindFramebuffer(internal);
+                    engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
+                    engine.unBindFramebuffer(internal);
+                }
             }
 
             if (this.numberBounces == 0){

@@ -8,7 +8,7 @@ import { PBRMaterial } from '../../Materials';
 import { Color4 } from '../../Maths/math.color';
 
 export interface IMeshesGroup {
-    directLightmap : Texture;
+    directLightmap : Nullable<Texture>;
     irradianceLightmap : RenderTargetTexture;
     cumulativeLightmap : RenderTargetTexture;
     tempLightmap : RenderTargetTexture;
