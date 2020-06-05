@@ -4,23 +4,41 @@ import { Nullable } from '../../types';
 import { Texture } from '../../Materials/Textures/texture';
 import { Scene } from '../../scene';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
-import { Material } from '../../Materials/material';
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 import { VertexData } from '../../Meshes/mesh.vertexData';
 
+/**
+ * Interface that contains the different textures that are linked to a mesh
+ */
 export interface IMeshesGroup {
+    //The lightmap that contains information about direct illumination
     directLightmap : Nullable<Texture>;
+    //The lightmap that contains information about the inidrect illumination
     irradianceLightmap : RenderTargetTexture;
+    //The lightmap that contains the sum of both previous texture
     sumOfBoth : RenderTargetTexture;
 }
 
+
+/**
+ * This dictionary contains meshes as key and textures are value
+ * In our implementation, we create one lightmap per mesh
+ * The dictionary allows to find quickly the texture linked to the meshes
+ */
 export class MeshDictionary {
+
     private _keys : Mesh[];
     private _values : IMeshesGroup[];
     private _scene : Scene;
     private _sumOfBothMaterial : ShaderMaterial;
     private _irradianceLightmapMaterial : ShaderMaterial;
 
+    /**
+     * Create the dictionary
+     * Each mesh of meshes will be a key
+     * @param meshes The meshes that are stored inside the dictionary
+     * @param scene The scene
+     */
     constructor(meshes : Mesh[], scene : Scene) {
         this._keys = [];
         this._values = [];
@@ -37,6 +55,10 @@ export class MeshDictionary {
 
     }
 
+    /**
+     * Initialize the lightmap that are not the directIllumination
+     * Must be called once
+     */
     public initLightmapTextures() : void {
         for (let mesh of this._keys) {
             let value = this.getValue(mesh);
@@ -46,6 +68,7 @@ export class MeshDictionary {
                 value.sumOfBoth = new RenderTargetTexture("sumOfBoth", size, this._scene);
             }
         }
+        //Init the material for the sumOfBoth lightmap
         this._initSumOfBoth();
     }
 
@@ -71,8 +94,6 @@ export class MeshDictionary {
         for (let value of this._values){
             value.sumOfBoth.renderList = [customMesh];
             value.sumOfBoth.coordinatesIndex = 1;        
-            // let previousMaterial : Nullable<Material>;   
-
 
             value.sumOfBoth.onBeforeRenderObservable.add(() => {
                 if (value != null && value.directLightmap != null) {
@@ -89,25 +110,35 @@ export class MeshDictionary {
                     (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
                 }
             });
-
-            
+   
         }
     }
 
+    /**
+     * Functions called to check if the materials are ready for rendering
+     */
     public areMaterialReady() : boolean {
         return( this._sumOfBothMaterial.isReady() && this._irradianceLightmapMaterial.isReady());
      }
     
-
-
+    /**
+     * Return the list of meshes that are present in the dictionary
+     */
     public keys() : Mesh[] {
         return this._keys;
     }
 
+    /**
+     * Return the list of light maps presents in the dictionary
+     */
     public values() : IMeshesGroup[] {
         return this._values;
     }
 
+    /**
+     * Get the lightmaps associated to a mesh
+     * @param mesh The mesh we want the value from
+     */
     public getValue(mesh : Mesh) : Nullable<IMeshesGroup> {
         let index = this._containsKey(mesh);
         if (index != -1) {
@@ -134,6 +165,11 @@ export class MeshDictionary {
         return -1;
     }
 
+    /**
+     * Update the value from the directlightmap
+     * @param mesh The mesh we wants its lightmap to be update
+     * @param lightmap The lightmap with which we are going to replace the previous one
+     */
     public addDirectLightmap(mesh : Mesh, lightmap : Texture) : void {
         let value = this.getValue(mesh);
         if (value != null) {
@@ -141,6 +177,10 @@ export class MeshDictionary {
         }
     }
 
+    /**
+     * Init the material of the irradianceLightmap
+     * @param shaderMaterial The new material
+     */
     public initIrradianceLightmapMaterial(shaderMaterial : ShaderMaterial) : void {
         this._irradianceLightmapMaterial = shaderMaterial;
     }

@@ -8,32 +8,43 @@ import { Irradiance } from './Irradiance';
 
 /**
  * Class that represent the irradiance volume
- * It contains all the probe used to render the scene, and is responsible of pre rendering the irradiance
+ * It contains all the probe used to render the scene, and is responsible of rendering the irradiance
+ * 
  */
 export class IrradianceVolume {
 
-    private _scene : Scene;
+    /**
+     * List of probes that are used to render the scene
+     */
     public probeList : Array<Probe>;
+    /**
+     * The dictionary that contains the lightmaps for each scene
+     */
     public meshForIrradiance : Array<Mesh>;
+    /**
+     * Instance of the irradiance class that aims to comput irradiance
+     */
     public irradiance : Irradiance;
-
+    /**
+     * The dictionary that store the lightmaps
+     */
     public dictionary : MeshDictionary;
 
+    private _scene : Scene;
     private _probesDispotion : Vector3;
     private _lowerLeft : Vector3;
     private _volumeSize : Vector3;
 
 
     /**
-     * Creation of the irradiance volume where the probes are equireparted in the scene
+     * Creation of the irradiance volume
      * @param meshes  The meshes that need to be rendered by the probes
-     * @param scene  The meshes that need to be rendered by the probes
-     * @param dictionary 
-     * @param probeRes 
-     * @param numberProbeX 
-     * @param numberProbeY 
-     * @param numberProbeZ 
-     * @param numberBounces 
+     * @param scene  The scene
+     * @param probeRes The resolution that is used for rendering the probes
+     * @param numberProbeX The number of probes wanted on the x axis
+     * @param numberProbeY The number of probes wanted on the y axis
+     * @param numberProbeZ The number of probes wanted on the z axis
+     * @param numberBounces the number of bounces wanted
      */
     constructor(meshes : Array<Mesh>, scene : Scene, probeRes : number, numberProbeX : number,
             numberProbeY : number, numberProbeZ : number, numberBounces : number) {
@@ -41,6 +52,7 @@ export class IrradianceVolume {
         this.meshForIrradiance = meshes;
         this.probeList = [];
         this._probesDispotion = new Vector3(numberProbeX, numberProbeY, numberProbeZ);
+        //Create and dispatch the probes inside the irradiance volume
         this._createProbeList(probeRes);
         this.dictionary = new MeshDictionary(meshes, scene);
         this.irradiance = new Irradiance(this._scene, this.probeList, this.meshForIrradiance, this.dictionary,
@@ -102,6 +114,10 @@ export class IrradianceVolume {
         }
     }
 
+    /**
+     * Called to change the directLightmap of the dictionary
+     * Must ba called when the radiosity has been updates, othermwise, it does not do anything
+     */
     public updateDicoDirectLightmap(){
         for (let mesh of this.dictionary.keys()){
             let value = this.dictionary.getValue(mesh);
@@ -111,6 +127,9 @@ export class IrradianceVolume {
         }
     }
 
+    /**
+     * Start rendering the irradiance volume
+     */
     public render() {
         this.irradiance.render();
     }
