@@ -121,40 +121,30 @@ export class Irradiance {
     }
 
     private _renderBounce(currentBounce : number) {
+        let beginBounce = new Date().getTime();
         for (let probe of this.probeList) {
             probe.tempBounce.render();
         }
+        let endProbeEnv = new Date().getTime();
 
-        let shCoefPromise = new Promise((resolve, reject) => {
-            let interval = setInterval(() => {
-                let readyStates = [
-                    this._areShCoeffReady()
-                ];
-                for (let i = 0 ; i < readyStates.length; i++) {
-                    if (!readyStates[i]) {
-                        return ;
-                    }
-                }
-                clearInterval(interval);
-                resolve();
-            }, 200);
-        });
-        shCoefPromise.then(() => {
-            for (let probe of this.probeList) {
-                probe.sphericalHarmonicChanged = false;
-            }
-            this.updateShTexture();
-            for (let value of this.dictionary.values()) {
-                value.irradianceLightmap.render();
-            }
-            this._shTexture.readPixels();
-            if (currentBounce < this.numberBounces) {
-                this._renderBounce(currentBounce + 1);
-            }
-            else {
-                this.finish = true;
-            }
-        });
+        this.updateShTexture();
+        for (let value of this.dictionary.values()) {
+            value.irradianceLightmap.render();
+        }
+
+        let endBounce = new Date().getTime();
+        console.log("bounce : " + currentBounce);
+        console.log(endBounce - beginBounce);
+        console.log(endProbeEnv - beginBounce);
+        console.log(endBounce - endProbeEnv);
+
+        if (currentBounce < this.numberBounces) {
+            this._renderBounce(currentBounce + 1);
+        }
+        else {
+            this.finish = true;
+        }
+    
 
     }
 

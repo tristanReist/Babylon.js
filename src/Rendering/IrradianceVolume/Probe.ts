@@ -348,7 +348,7 @@ export class Probe {
 */
     }
 
-    
+
     /**
      * Render one bounce of the light from the point of view of a probe
      *
