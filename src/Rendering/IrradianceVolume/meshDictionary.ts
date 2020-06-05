@@ -4,8 +4,9 @@ import { Nullable } from '../../types';
 import { Texture } from '../../Materials/Textures/texture';
 import { Scene } from '../../scene';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
-import { PBRMaterial, Material } from '../../Materials/material';
-import { glowBlurPostProcessPixelShader } from '../../Shaders/glowBlurPostProcess.fragment';
+import { Material } from '../../Materials/material';
+import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
+import { VertexData } from '../../Meshes/mesh.vertexData';
 
 export interface IMeshesGroup {
     directLightmap : Nullable<Texture>;
@@ -52,37 +53,44 @@ export class MeshDictionary {
 
     private _initSumOfBoth() : void {
         this._sumOfBothMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/irradianceVolumeMixTwoTextures", {
-            attributes: ["uv2"],
+            attributes: ["position"],
             uniforms: ["test"],
             samplers: ["texture1", "texture2"]
         });
+        
+        let customMesh = new Mesh("custom", this._scene);
+        let position = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0];
+        let indices = [0, 1, 2, 3, 4, 5];
+        let vertexData = new VertexData();
+        customMesh.visibility = 0;
+        vertexData.positions = position;
+        vertexData.indices = indices;
+
+        vertexData.applyToMesh(customMesh);
         this._sumOfBothMaterial.backFaceCulling = false;
-        for (const mesh of this._keys){
-            let value = this.getValue(mesh);
-            if (value != null) {
-                value.sumOfBoth.renderList = [mesh];
-                value.sumOfBoth.coordinatesIndex = 1;        
-                let previousMaterial : Nullable<Material>;   
+        for (let value of this._values){
+            value.sumOfBoth.renderList = [customMesh];
+            value.sumOfBoth.coordinatesIndex = 1;        
+            // let previousMaterial : Nullable<Material>;   
 
- 
-                value.sumOfBoth.onBeforeRenderObservable.add(() => {
-                    if (value != null && value.directLightmap != null) {
-                        this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
-                        this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
-                        this._sumOfBothMaterial.setFloat("test", 1.);
-                    }
-                    previousMaterial = mesh.material;
-                    mesh.material = this._sumOfBothMaterial;
-                });
 
-                value.sumOfBoth.onAfterRenderObservable.add(() => {
-                    mesh.material = previousMaterial;
-                    if (value != null){
-                        (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
-                    }
-                });
+            value.sumOfBoth.onBeforeRenderObservable.add(() => {
+                if (value != null && value.directLightmap != null) {
+                    this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
+                    this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
+                    this._sumOfBothMaterial.setFloat("test", 1.);
+                }
+                customMesh.material = this._sumOfBothMaterial;
+            });
 
-            }
+            value.sumOfBoth.onAfterRenderObservable.add(() => {
+                let mesh = this._getMesh(value);
+                if (mesh != null) {
+                    (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
+                }
+            });
+
+            
         }
     }
 
@@ -104,6 +112,15 @@ export class MeshDictionary {
         let index = this._containsKey(mesh);
         if (index != -1) {
             return this._values[index];
+        }
+        return null;
+    }
+
+    private _getMesh(value : IMeshesGroup) : Nullable<Mesh> {
+        for (let i = 0; i < this._values.length; i++){
+            if (this._values[i] == value){
+                return this._keys[i];
+            }
         }
         return null;
     }

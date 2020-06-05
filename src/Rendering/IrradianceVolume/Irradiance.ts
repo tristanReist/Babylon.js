@@ -1,6 +1,5 @@
 import { Scene } from '../../scene';
 import { Probe } from './Probe';
-import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
 import { Mesh } from '../../Meshes/mesh';
 import { Material } from '../../Materials/material';
 import { Nullable } from '../../types';
@@ -206,8 +205,6 @@ export class Irradiance {
     }
 
     private _initIrradianceLightMap() : void {
-        
-        
         let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene,
         "./../../src/Shaders/irradianceVolumeIrradianceLightmap", {
             attributes : ["position", "normal", "uv2"],
@@ -247,19 +244,14 @@ export class Irradiance {
                     //Add the right material to the mesh
                     previousMaterial = mesh.material;
                     mesh.material = irradianceMaterial;
-
                 });
 
                 value.irradianceLightmap.onAfterRenderObservable.add(() => {
                     //Put the previous material on the meshes
                     mesh.material = previousMaterial;
-
                 });
-
             }
-
         }
-
     }
 
     private _createPromise() : Promise<void> {
