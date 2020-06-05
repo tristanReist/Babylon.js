@@ -107,7 +107,7 @@ export class Probe {
      * @param albedoName the path to the albedo
      * @param isCube Is the texture we want to use a cube or not ?
      */
-    constructor(position : Vector3, scene : Scene) {
+    constructor(position : Vector3, scene : Scene, resolution : number) {
         this._scene = scene;
         this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
         this.sphere.visibility = 1;
@@ -151,6 +151,7 @@ export class Probe {
 
         this.sphere.translate(position, 1);
         this.sphericalHarmonicChanged = false;
+        this._resolution = resolution;
     }
 
     /**
@@ -347,6 +348,7 @@ export class Probe {
 */
     }
 
+    
     /**
      * Render one bounce of the light from the point of view of a probe
      *
@@ -358,7 +360,6 @@ export class Probe {
         ground.visibility = 0;
         ground.translate(new Vector3(0, 1, 0), 1.);
 */
-
         this.tempBounce.renderList = meshes;
         this._scene.customRenderTargets.push(this.tempBounce);
 
@@ -412,9 +413,8 @@ export class Probe {
         //We use a shader to add this texture to the probe
         let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/irradianceVolumeComputeIrradiance", {
             attributes : ["position", "normal"],
-            uniforms : ["worldViewProjection"]
+            uniforms : ["worldViewProjection", "L00", "L10", "L11", "L1m1", "L20", "L21", "L22", "L2m1", "L2m2"]
         });
-
         shaderMaterial.setVector3("L00", this.sphericalHarmonic.l00);
 
         shaderMaterial.setVector3("L10", this.sphericalHarmonic.l10);

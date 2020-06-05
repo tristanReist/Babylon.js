@@ -4,13 +4,12 @@ import { Nullable } from '../../types';
 import { Texture } from '../../Materials/Textures/texture';
 import { Scene } from '../../scene';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
-import { PBRMaterial } from '../../Materials';
+import { PBRMaterial, Material } from '../../Materials/material';
+import { glowBlurPostProcessPixelShader } from '../../Shaders/glowBlurPostProcess.fragment';
 
 export interface IMeshesGroup {
-    directLightmap : Texture;
+    directLightmap : Nullable<Texture>;
     irradianceLightmap : RenderTargetTexture;
-    cumulativeLightmap : RenderTargetTexture;
-    tempLightmap : RenderTargetTexture;
     sumOfBoth : RenderTargetTexture;
 }
 
@@ -19,8 +18,7 @@ export class MeshDictionary {
     private _values : IMeshesGroup[];
     private _scene : Scene;
     private _sumOfBothMaterial : ShaderMaterial;
-    private _cumulativeLightmapMaterial : ShaderMaterial;
-    private _tempLightmapMaterial : ShaderMaterial;
+    private _irradianceLightmapMaterial : ShaderMaterial;
 
     constructor(meshes : Mesh[], scene : Scene) {
         this._keys = [];
@@ -44,74 +42,19 @@ export class MeshDictionary {
             if (value != null) {
                 let size = 256;
                 value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene); 
-                value.tempLightmap = new RenderTargetTexture("tempLightmap", size, this._scene);
-                value.cumulativeLightmap = new RenderTargetTexture("sumLightmap", size, this._scene); 
                 value.sumOfBoth = new RenderTargetTexture("sumOfBoth", size, this._scene);
             }
         }
-        this._initTempLightmap();
-        this._initCumulativeLightmap();
         this._initSumOfBoth();
     }
 
-
-   private _initTempLightmap() : void {
-        this._tempLightmapMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/irradianceVolumeMixTwoTextures", {
-            attributes: ["uv2"],
-            uniforms: []
-        });
-        this._tempLightmapMaterial.backFaceCulling = false;
-        for (let mesh of this._keys){
-            let value = this.getValue(mesh);
-            if (value != null) {
-                value.tempLightmap.renderList = [mesh];       
-                let previousMaterial = mesh.material;
-                value.tempLightmap.onBeforeRenderObservable.add(() => {
-                    if (value != null){
-                        this._tempLightmapMaterial.setTexture( "texture1", value.cumulativeLightmap);
-                        this._tempLightmapMaterial.setTexture( "texture2", value.irradianceLightmap);
-                    }
-                    mesh.material = this._tempLightmapMaterial;
-                });
-
-                value.tempLightmap.onAfterRenderObservable.add(() => {
-                    mesh.material = previousMaterial;
-                });
-            }
-        }
-   }
-
-
-   private _initCumulativeLightmap() : void {
-    this._cumulativeLightmapMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/irradianceVolumeCopyTexture", {
-        attributes: ["uv2"],
-        uniforms: []
-    });
-    this._cumulativeLightmapMaterial.backFaceCulling = false;
-    for (let mesh of this._keys){
-        let value = this.getValue(mesh);
-        if (value != null) {
-            value.cumulativeLightmap.renderList = [mesh];   
-            let previousMaterial = mesh.material;
-            value.cumulativeLightmap.onBeforeRenderObservable.add(() => {
-                if (value != null){
-                    this._cumulativeLightmapMaterial.setTexture( "texture1", value.tempLightmap);
-                }
-                mesh.material = this._cumulativeLightmapMaterial;
-            });
-
-            value.cumulativeLightmap.onAfterRenderObservable.add(() => {
-                mesh.material = previousMaterial;
-            });
-        }
-    }
-}
 
 
     private _initSumOfBoth() : void {
         this._sumOfBothMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/irradianceVolumeMixTwoTextures", {
             attributes: ["uv2"],
-            uniforms: []
+            uniforms: ["test"],
+            samplers: ["texture1", "texture2"]
         });
         this._sumOfBothMaterial.backFaceCulling = false;
         for (const mesh of this._keys){
@@ -119,32 +62,35 @@ export class MeshDictionary {
             if (value != null) {
                 value.sumOfBoth.renderList = [mesh];
                 value.sumOfBoth.coordinatesIndex = 1;        
-                let previousMaterial = mesh.material;   
-                this._scene.customRenderTargets.push(value.sumOfBoth);
-                value.sumOfBoth.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+                let previousMaterial : Nullable<Material>;   
+
+ 
                 value.sumOfBoth.onBeforeRenderObservable.add(() => {
-                    if (value != null){
+                    if (value != null && value.directLightmap != null) {
                         this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
                         this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
+                        this._sumOfBothMaterial.setFloat("test", 1.);
                     }
-                    
+                    previousMaterial = mesh.material;
                     mesh.material = this._sumOfBothMaterial;
                 });
 
                 value.sumOfBoth.onAfterRenderObservable.add(() => {
                     mesh.material = previousMaterial;
-                    if (value != null)
-                    (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
+                    if (value != null){
+                        (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
+                    }
                 });
 
             }
         }
-     }
+    }
 
     public areMaterialReady() : boolean {
-        return( this._sumOfBothMaterial.isReady() && this._cumulativeLightmapMaterial.isReady() && this._tempLightmapMaterial.isReady());
+        return( this._sumOfBothMaterial.isReady() && this._irradianceLightmapMaterial.isReady());
      }
     
+
 
     public keys() : Mesh[] {
         return this._keys;
@@ -176,6 +122,10 @@ export class MeshDictionary {
         if (value != null) {
             value.directLightmap = lightmap;
         }
+    }
+
+    public initIrradianceLightmapMaterial(shaderMaterial : ShaderMaterial) : void {
+        this._irradianceLightmapMaterial = shaderMaterial;
     }
 
 }

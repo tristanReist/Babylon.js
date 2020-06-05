@@ -1,6 +1,6 @@
 uniform sampler2D texture1;
 uniform sampler2D texture2;
-
+uniform float test;
 
 varying vec2 vUV2;
 
