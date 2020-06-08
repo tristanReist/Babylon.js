@@ -6,11 +6,15 @@ import { Nullable } from '../../types';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
-import { Vector3 } from '../../Maths/math.vector';
+import { Vector3, Matrix } from '../../Maths/math.vector';
 import { MeshDictionary } from './meshDictionary';
 import { RawTexture } from '../../Materials/Textures/rawTexture';
 import { Engine } from '../../Engines/engine';
 import { Color4 } from '../../Maths/math.color';
+import { SmartArray } from '../../Misc/smartArray';
+import { SubMesh } from '../../Meshes/subMesh';
+import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
+import { InternalTexture } from '../../Materials';
 
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volume 
@@ -63,6 +67,8 @@ export class Irradiance {
 
     private _shTexture : RawTexture;
 
+    public allProbesEnv : RenderTargetTexture;
+
     /**
      * Initializer of the irradiance class
      * @param scene The scene of the meshes
@@ -103,7 +109,10 @@ export class Irradiance {
                 probe.render(this.meshes, this.dictionary, this.uvEffect, this.bounceEffect);
                 probe.renderBounce(this.meshes);
             }
-
+            for (let probe of this.probeList) {
+                probe.cubicMRT.render();
+            }
+         
             let currentBounce = 0;
             for (let probe of this.probeList) {
                 // Set these value to false to ensure that the promess will finish when we want it too
@@ -122,10 +131,18 @@ export class Irradiance {
 
     private _renderBounce(currentBounce : number) {
         let beginBounce = new Date().getTime();
-        for (let probe of this.probeList) {
-            probe.tempBounce.render();
-        }
+        // for (let value of this.dictionary.values()){
+        //     value.irradianceLightmap.readPixels();
+        // }
+        let readPixels = new Date().getTime();
         let endProbeEnv = new Date().getTime();
+        for (let probe of this.probeList) {
+            readPixels = new Date().getTime();
+            probe.tempBounce.render();
+            endProbeEnv = new Date().getTime();
+            console.log("with Sh coef computation");
+            console.log(endProbeEnv - readPixels);
+        }
 
         this.updateShTexture();
         for (let value of this.dictionary.values()) {
@@ -135,7 +152,7 @@ export class Irradiance {
         let endBounce = new Date().getTime();
         console.log("bounce : " + currentBounce);
         console.log(endBounce - beginBounce);
-        console.log(endProbeEnv - beginBounce);
+        console.log(readPixels - beginBounce); 
         console.log(endBounce - endProbeEnv);
 
         if (currentBounce < this.numberBounces) {
@@ -258,6 +275,7 @@ export class Irradiance {
             this._initProbesPromise();
             let initArray = new Float32Array(this.probeList.length * 9 * 4);
             this._shTexture = new RawTexture(initArray, 9, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
+            this.allProbesEnv = new RenderTargetTexture("allProbesEnv", {width : 16 * 6, height : 16 * this.probeList.length}, this._scene);
             let interval = setInterval(() => {
                 let readyStates = [
                     this._isRawTextReady(),
@@ -265,7 +283,8 @@ export class Irradiance {
                     this._areProbesReady(),
                     this._isUVEffectReady(),
                     this._isBounceEffectReady(),
-                    this.dictionary.areMaterialReady()
+                    this.dictionary.areMaterialReady(),
+                    this._isAllProbeReady()
                 ];
                 for (let i = 0 ; i < readyStates.length; i++) {
                     if (!readyStates[i]) {
@@ -299,10 +318,16 @@ export class Irradiance {
         return true;
     }
 
+
+    private _isAllProbeReady() : boolean {
+        return this.allProbesEnv.isReady();
+    }
+
+
     private _isUVEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind, VertexBuffer.UV2Kind];
         var uniforms = ["world", "projection", "view", "probePosition", "albedoColor", "hasTexture", "lightmapNumber"];
-        var samplers = ["albedoTexture"];
+        var samplers = ["albedoTexture", "lightmapTexture"];
         this.uvEffect = this._scene.getEngine().createEffect("irradianceVolumeProbeEnv",
             attribs,
             uniforms,
@@ -315,10 +340,10 @@ export class Irradiance {
         // var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind, VertexBuffer.UV2Kind];
         // var samplers = ["envMap", "envMapUV", "irradianceMapArray", "directIlluminationLightMapArray"];
-        var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
+        var samplers = ["envMap", "envMapUV", "envMapLight"];
 
         // var uniform = ["world", "rotation", "numberLightmap"];
-        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap"];
+        var uniform = ["world",  "rotation"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);
@@ -338,7 +363,7 @@ export class Irradiance {
         return true;
     }
 
-/*
+
     private  _areProbesEnvMapReady() : boolean {
         for (let probe of this.probeList) {
             if (probe.envCubeMapRendered == false) {
@@ -347,8 +372,9 @@ export class Irradiance {
         }
         return true;
     }
-*/
 
+
+/*
     private _areShCoeffReady() : boolean {
         for (let probe of this.probeList) {
             if (! probe.sphericalHarmonicChanged) {
@@ -357,7 +383,7 @@ export class Irradiance {
         }
         return true;
     }
-
+*/
     
     /**
      * Method to call when you want to update the number of bounces, after the irradiance rendering has been done
@@ -410,4 +436,72 @@ export class Irradiance {
         });
     }
 
+/*
+    private _drawAllProbesEnvironment(subMeshes : SmartArray<SubMesh>, isMRT : boolean) : void {
+
+        var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix) => {
+            let mesh = subMesh.getRenderingMesh();
+
+            mesh._bind(subMesh, effect, Material.TriangleFillMode);
+            mesh.cullingStrategy = 2;
+            if (subMesh.verticesCount === 0) {
+                return;
+            }
+            else {
+
+
+                effect.setTexture("envMap", this.cubicMRT.textures[1]);
+                effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
+                effect.setTexture("envMapLight", this.cubicMRT.textures[2]);
+                effect.setMatrix("rotation", rotation);
+
+            }
+            var batch = mesh._getInstancesRenderList(subMesh._id);
+            if (batch.mustReturn) {
+                return ;
+            }
+            var hardwareInstanceRendering = (engine.getCaps().instancedArrays) &&
+            (batch.visibleInstances[subMesh._id] !== null);
+            
+            mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstanceRendering,
+                (isInstance, world) => effect.setMatrix("world", world));
+        };
+
+        let scene = this._scene;
+        let engine = scene.getEngine();
+        let gl = engine._gl;
+
+        let internalTexture = <InternalTexture> this.allProbesEnv._texture;
+        let effect = this._allProbesEffect;
+
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, internalTexture._framebuffer);
+        engine.setState(false, 0, true, scene.useRightHandedSystem);
+
+
+        
+        let viewMatrices = [ this.cameraList[Probe.PX].getViewMatrix(),
+            this.cameraList[Probe.NX].getViewMatrix(),
+            this.cameraList[Probe.PY].getViewMatrix(),
+            this.cameraList[Probe.NY].getViewMatrix(),
+            this.cameraList[Probe.PZ].getViewMatrix(),
+            this.cameraList[Probe.NZ].getViewMatrix()
+        ];
+
+        let projectionMatrix =  Matrix.PerspectiveFovLH(Math.PI / 2, 1, 0.1, this.cameraList[0].maxZ);
+
+
+        engine.enableEffect(effect);
+
+        engine.setDirectViewport(0, 0, this.allProbesEnv.getRenderWidth(), this.allProbesEnv.getRenderHeight());
+        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, internalTexture._webGLTexture, 0);
+        engine.clear(new Color4(0, 0, 0, 0), true, true);
+        for (let i = 0; i < subMeshes.length; i++) {
+            renderSubMesh(subMeshes.data[i], effect, viewMatrices, projectionMatrix);
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    }
+*/  
 }

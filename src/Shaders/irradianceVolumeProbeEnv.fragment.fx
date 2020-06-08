@@ -3,7 +3,7 @@ precision highp float;
 precision highp int;
 
 
-out vec4 glFragData[2];
+out vec4 glFragData[3];
 
 in vec2 vUV;
 in vec2 vUV2;
@@ -13,6 +13,7 @@ in vec3 wPosition;
 uniform vec3 probePosition;
 uniform vec3 albedoColor;
 uniform sampler2D albedoTexture;
+uniform sampler2D lightmapTexture;
 
 uniform float lightmapNumber; 
 
@@ -29,7 +30,8 @@ void main( void )
         glFragData[1] = vec4(0., 0., 0., 1.);
     }
     else {    
-        glFragData[0] = vec4(uv2, lightmapNumber, 1);
+        // glFragData[0] = vec4(uv2, lightmapNumber, 1);
+        glFragData[0] = vec4(uv2, 0., 1.);
         if (hasTexture) {
             glFragData[1]= vec4(texture(albedoTexture, uv).rgb, 1.);
         }
@@ -38,4 +40,7 @@ void main( void )
         }
 
     }
+
+    glFragData[2] = vec4(texture(lightmapTexture, uv2).rgb, 1.);
+
 }

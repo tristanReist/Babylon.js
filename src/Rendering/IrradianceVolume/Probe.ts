@@ -22,6 +22,7 @@ import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment";
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 
 import { MeshDictionary } from './meshDictionary';
+import { MeshBuilder } from '../../Meshes/meshBuilder';
 
 /**
  * The probe is what is used for irradiance volume
@@ -204,47 +205,22 @@ export class Probe {
                     }
                 }
                 effect.setVector3("probePosition", this.sphere.position);
-            }
-            else {
-                effect.setMatrix("view", view);
-                effect.setMatrix("projection", projection);
-                if (mesh.material != null) {
-                    let color = (<PBRMaterial> (mesh.material)).albedoColor;
-                    effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
-                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null) {
-                        effect.setBool("hasTexture", true);
-                        effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
-                    }
-                    else {
-                        effect.setBool("hasTexture", false);
-                    }
-                }
-                effect.setVector3("probePosition", this.sphere.position);
                 let value = this.dictionary.getValue(mesh);
                 if (value != null) {
-
-                    effect.setTexture("irradianceMap", value.irradianceLightmap);
-                    effect.setTexture("directIlluminationLightmap", value.directLightmap);
+                    effect.setTexture("lightmapTexture", value.directLightmap);
                 }
+
+            }
+            else {
+
 
                 /*
                 To add when we want the upgrade, where we render only one mesh
                 */
-                // effect.setTexture("envMap", this.cubicMRT.textures[1]);
-                // effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
-                // effect.setInt("numberLightmap", this.dictionary.values().length);
-                // let irradianceArray = new Array<BaseTexture>();
-                // let directLightArray = new Array<BaseTexture>();
-                // for (let value of this.dictionary.values()){
-                //     irradianceArray.push(<BaseTexture> value.irradianceLightmap);
-                //     if (value.directLightmap != null){
-                //         directLightArray.push(<BaseTexture> value.directLightmap);
-                //     }
-                // }
-                // effect.setTextureArray("irradianceMapArray",[irradianceArray[0],irradianceArray[0] ]);
-                // effect.setTextureArray("directIlluminationLightMapArray", [directLightArray[0], directLightArray[0]]);
-
-                // effect.setMatrix("rotation", rotation);
+                effect.setTexture("envMap", this.cubicMRT.textures[1]);
+                effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
+                effect.setTexture("envMapLight", this.cubicMRT.textures[2]);
+                effect.setMatrix("rotation", rotation);
 
             }
             var batch = mesh._getInstancesRenderList(subMesh._id);
@@ -253,6 +229,7 @@ export class Probe {
             }
             var hardwareInstanceRendering = (engine.getCaps().instancedArrays) &&
             (batch.visibleInstances[subMesh._id] !== null);
+            
             mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstanceRendering,
                 (isInstance, world) => effect.setMatrix("world", world));
         };
@@ -329,23 +306,18 @@ export class Probe {
         this.dictionary = dictionary;
         this.uvEffect = uvEffet;
         this.bounceEffect = bounceEffect;
-        /*
+        
         for (let texture of this.cubicMRT.textures) {
             texture.isRenderTarget = true;
         }
+
         this.cubicMRT.renderList = meshes;
-        this._scene.customRenderTargets.push(this.cubicMRT);
         this.cubicMRT.boundingBoxPosition = this.sphere.position;
-        this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
+
 
         this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(opaqueSubMeshes, true);
         };
-
-        this.cubicMRT.onAfterRenderObservable.add(() => {
-            this.envCubeMapRendered = true;
-        });
-*/
     }
 
 
@@ -355,21 +327,33 @@ export class Probe {
      * @param irradianceLightMap THe irradiance lightmap use to render the bounces
      */
     public renderBounce(meshes : Array<Mesh>) : void {
-/*
+
         let ground = MeshBuilder.CreateGround("test", {width : 2, height : 2}, this._scene);
         ground.visibility = 0;
         ground.translate(new Vector3(0, 1, 0), 1.);
-*/
-        this.tempBounce.renderList = meshes;
-        this._scene.customRenderTargets.push(this.tempBounce);
 
-        this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+        this.tempBounce.renderList = [ground];
+
+        let begin = new Date().getTime();
+        let end = new Date().getTime();       
+        let count = 0; 
         this.tempBounce.boundingBoxPosition = this.sphere.position;
         this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-            this._renderCubeTexture(opaqueSubMeshes, false);
+            begin = new Date().getTime();
+            this._renderCubeTexture(transparentSubMeshes, false);
+
         };
         this.tempBounce.onAfterRenderObservable.add(() => {
+            count += 1;
+            end =  new Date().getTime();
+            console.log("render :");
+            console.log(end - begin);
+            begin = new Date().getTime();
             this._CPUcomputeSHCoeff();
+            end =  new Date().getTime();
+            console.log("sh :");
+            console.log(end - begin);
+            console.log(count);
         });
     }
 
@@ -378,7 +362,7 @@ export class Probe {
      * Is called in irradiance for the creation of the promise
      */
     public initPromise() : void {
-        this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
+        this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 3, this._scene, {isCube : true});
         this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
     }
 
