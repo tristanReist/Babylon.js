@@ -121,11 +121,16 @@ export class Irradiance {
     }
 
     private _renderBounce(currentBounce : number) {
+        let renderTime = 0;
+        let shTime = 0;
         let beginBounce = new Date().getTime();
+        
         for (let probe of this.probeList) {
             probe.tempBounce.isCube = false;
             probe.tempBounce.render();
             probe.tempBounce.isCube = true;
+            renderTime += probe.renderTime;
+            shTime += probe.shTime;
         }
         let endProbeEnv = new Date().getTime();
 
@@ -135,10 +140,14 @@ export class Irradiance {
         }
 
         let endBounce = new Date().getTime();
-        console.log("bounce : " + currentBounce);
-        console.log(endBounce - beginBounce); 
-        console.log(endProbeEnv - beginBounce);
-        console.log(endBounce - endProbeEnv);
+
+        console.log("___________________ \n bounce : " + currentBounce);
+        console.log("Temps total : " + (endBounce - beginBounce)); 
+        console.log("Rendu de tous les environnements des probes : " + (endProbeEnv - beginBounce));
+        console.log("Rendu de l'irradiance sur la scène : " + (endBounce - endProbeEnv));
+        console.log("Temps total capture environnement : " + renderTime);
+        console.log("Temps total sh coef : " + shTime);
+
 
         if (currentBounce < this.numberBounces) {
             this._renderBounce(currentBounce + 1);

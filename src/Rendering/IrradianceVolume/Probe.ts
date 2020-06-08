@@ -99,7 +99,8 @@ export class Probe {
      */
     public sphericalHarmonicChanged : boolean;
 
-
+    public renderTime  = 0;
+    public shTime = 0;
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -360,22 +361,26 @@ export class Probe {
         this.tempBounce.boundingBoxPosition = this.sphere.position;
 
 
+        let begin = new Date().getTime();
+        let end =  new Date().getTime();
 
-        
+
         this.tempBounce.onBeforeRenderObservable.add(() => {
             this.tempBounce.isCube = true;
+            begin = new Date().getTime();
         });
         this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(opaqueSubMeshes, false);
         };
         this.tempBounce.onAfterRenderObservable.add(() => {
+            end =  new Date().getTime();
+            this.renderTime = end - begin;
 
-
-
-
+            begin = new Date().getTime();
             this._CPUcomputeSHCoeff();
-   
- 
+            end =  new Date().getTime();
+            this.shTime = end - begin;
+
         });
     }
 
@@ -405,11 +410,12 @@ export class Probe {
     }
 
     private _CPUcomputeSHCoeff() : void {
-        //Possible problem, y can be inverted
+
         let sp = CubeMapToSphericalPolynomialTools.ConvertCubeMapTextureToSphericalPolynomial(this.tempBounce);
+
         if (sp != null) {
             this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
-            this._weightSHCoeff();
+            // this._weightSHCoeff();
             this.sphericalHarmonicChanged = true;
         }
         this._computeProbeIrradiance();
