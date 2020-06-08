@@ -355,21 +355,27 @@ export class Probe {
      * @param irradianceLightMap THe irradiance lightmap use to render the bounces
      */
     public renderBounce(meshes : Array<Mesh>) : void {
-/*
-        let ground = MeshBuilder.CreateGround("test", {width : 2, height : 2}, this._scene);
-        ground.visibility = 0;
-        ground.translate(new Vector3(0, 1, 0), 1.);
-*/
-        this.tempBounce.renderList = meshes;
-        this._scene.customRenderTargets.push(this.tempBounce);
 
-        this.tempBounce.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
+        this.tempBounce.renderList = meshes;
         this.tempBounce.boundingBoxPosition = this.sphere.position;
+
+
+
+        
+        this.tempBounce.onBeforeRenderObservable.add(() => {
+            this.tempBounce.isCube = true;
+        });
         this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
             this._renderCubeTexture(opaqueSubMeshes, false);
         };
         this.tempBounce.onAfterRenderObservable.add(() => {
+
+
+
+
             this._CPUcomputeSHCoeff();
+   
+ 
         });
     }
 

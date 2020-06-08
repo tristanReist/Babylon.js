@@ -123,7 +123,9 @@ export class Irradiance {
     private _renderBounce(currentBounce : number) {
         let beginBounce = new Date().getTime();
         for (let probe of this.probeList) {
+            probe.tempBounce.isCube = false;
             probe.tempBounce.render();
+            probe.tempBounce.isCube = true;
         }
         let endProbeEnv = new Date().getTime();
 
@@ -134,7 +136,7 @@ export class Irradiance {
 
         let endBounce = new Date().getTime();
         console.log("bounce : " + currentBounce);
-        console.log(endBounce - beginBounce);
+        console.log(endBounce - beginBounce); 
         console.log(endProbeEnv - beginBounce);
         console.log(endBounce - endProbeEnv);
 
