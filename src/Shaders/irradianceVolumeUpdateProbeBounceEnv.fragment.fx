@@ -26,7 +26,7 @@ void main ( void ) {
     }
 
     vec4 irradiance = texture(irradianceMap, vUV2);
-    vec4 directIllumination = texture(directIlluminationLightmap, vec2(vUV2.x, vUV2.y));
+    vec4 directIllumination = texture(directIlluminationLightmap, vec2(vUV2.x, vUV2.y)) * 1.3;
 
 
     gl_FragColor = (irradiance + directIllumination ) * diffuseColor;

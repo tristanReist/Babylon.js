@@ -111,7 +111,7 @@ export class Probe {
     constructor(position : Vector3, scene : Scene, resolution : number) {
         this._scene = scene;
         this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
-        this.sphere.visibility = 1;
+        this.sphere.visibility = 0;
 
         this.cameraList = new Array<UniversalCamera>();
 

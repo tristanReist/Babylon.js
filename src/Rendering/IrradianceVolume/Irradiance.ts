@@ -236,9 +236,8 @@ export class Irradiance {
         for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
+                value.irradianceLightmap.clearColor = new Color4(1., 0., 0., 1.);
                 value.irradianceLightmap.renderList = [mesh];
-                // this._scene.customRenderTargets.push(value.irradianceLightmap);
-                // value.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
                 let previousMaterial : Nullable<Material>;
                 value.irradianceLightmap.onBeforeRenderObservable.add(() => {
                     let probePosition = [];
@@ -259,6 +258,7 @@ export class Irradiance {
                 value.irradianceLightmap.onAfterRenderObservable.add(() => {
                     //Put the previous material on the meshes
                     mesh.material = previousMaterial;
+                    value.sumOfBoth.render();
                 });
             }
         }
@@ -395,7 +395,7 @@ export class Irradiance {
             }
 
             if (this.numberBounces == 0){
-                this.finish = true;
+                 this.finish = true;
             }
             else {
                 this._renderBounce(1);

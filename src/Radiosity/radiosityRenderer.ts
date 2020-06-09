@@ -766,13 +766,23 @@ export class RadiosityRenderer {
             }
         }
 
-        for (let i = 0; i < this._patchMaps.length; i++) {
-            this.postProcessLightmap(this._patchMaps[i]);
-        }
+        // for (let i = 0; i < this._patchMaps.length; i++) {
+        //     this.postProcessLightmap(this._patchMaps[i]);
+        // }
 
         this.cleanAfterRender();
         return hasShot;
     }
+
+    public toneMapIrradianceLightmap(defTexture : Texture, i : number) {
+        
+        this._patchMaps[i].textures[4] = defTexture;
+
+        this.postProcessLightmap(this._patchMaps[i]);
+
+        this.cleanAfterRender();
+    }
+
 
     /**
      * Gathers radiance the next "most bright" mesh

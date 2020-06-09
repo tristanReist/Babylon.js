@@ -17,6 +17,8 @@ export interface IMeshesGroup {
     irradianceLightmap : RenderTargetTexture;
     //The lightmap that contains the sum of both previous texture
     sumOfBoth : RenderTargetTexture;
+    // Lightmap for toneMapping
+    toneMappingLightmap : RenderTargetTexture;
 }
 
 
@@ -32,6 +34,7 @@ export class MeshDictionary {
     private _scene : Scene;
     private _sumOfBothMaterial : ShaderMaterial;
     private _irradianceLightmapMaterial : ShaderMaterial;
+    private _toneMappingMaterial : ShaderMaterial;
 
     /**
      * Create the dictionary
@@ -66,10 +69,12 @@ export class MeshDictionary {
                 let size = 256;
                 value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene); 
                 value.sumOfBoth = new RenderTargetTexture("sumOfBoth", size, this._scene);
+                value.toneMappingLightmap = new RenderTargetTexture("toneMap", size, this._scene);
             }
         }
         //Init the material for the sumOfBoth lightmap
         this._initSumOfBoth();
+        this._initToneMapping();
     }
 
 
@@ -88,12 +93,13 @@ export class MeshDictionary {
         customMesh.visibility = 0;
         vertexData.positions = position;
         vertexData.indices = indices;
-
         vertexData.applyToMesh(customMesh);
+
         this._sumOfBothMaterial.backFaceCulling = false;
         for (let value of this._values){
             value.sumOfBoth.renderList = [customMesh];
             value.sumOfBoth.coordinatesIndex = 1;        
+            // value.sumOfBoth.clearColor = new Color4(0., 0., 0., 1.);
 
             value.sumOfBoth.onBeforeRenderObservable.add(() => {
                 if (value != null && value.directLightmap != null) {
@@ -105,9 +111,56 @@ export class MeshDictionary {
             });
 
             value.sumOfBoth.onAfterRenderObservable.add(() => {
+                value.toneMappingLightmap.render();
                 let mesh = this._getMesh(value);
                 if (mesh != null) {
-                    (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
+                    let i = this._containsKey(mesh);
+                    // (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
+                }
+            });
+   
+        }
+    }
+
+    private _initToneMapping() {
+        this._toneMappingMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/radiosityPostProcess", {
+            attributes: ["position"],
+            uniforms: ["_ExposureAdjustment"],
+            samplers: ["inputTexture"]
+        });
+
+        let customMesh = new Mesh("custom", this._scene);
+        let position = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0];
+        let indices = [0, 1, 2, 3, 4, 5];
+        let vertexData = new VertexData();
+        customMesh.visibility = 0;
+        vertexData.positions = position;
+        vertexData.indices = indices;
+        vertexData.applyToMesh(customMesh);
+        
+        
+
+        this._toneMappingMaterial.backFaceCulling = false;
+        for (let value of this._values){
+            value.toneMappingLightmap.renderList = [customMesh];
+            value.toneMappingLightmap.coordinatesIndex = 1;        
+
+            // value.toneMappingLightmap.clearColor = new Color4(0., 0., 0., 1.);
+
+            // this._scene.customRenderTargets.push(value.toneMappingLightmap);
+
+            value.toneMappingLightmap.onBeforeRenderObservable.add(() => {
+                if (value != null) {
+                    this._toneMappingMaterial.setTexture( "inputTexture", value.sumOfBoth);
+                    this._toneMappingMaterial.setFloat("_ExposureAdjustment", 2.);
+                }
+                customMesh.material = this._toneMappingMaterial;
+            });
+
+            value.toneMappingLightmap.onAfterRenderObservable.add(() => {
+                let mesh = this._getMesh(value);
+                if (mesh != null) {
+                    (<PBRMaterial> (mesh.material)).lightmapTexture =  value.toneMappingLightmap;
                 }
             });
    
@@ -118,7 +171,7 @@ export class MeshDictionary {
      * Functions called to check if the materials are ready for rendering
      */
     public areMaterialReady() : boolean {
-        return( this._sumOfBothMaterial.isReady() && this._irradianceLightmapMaterial.isReady());
+        return( this._sumOfBothMaterial.isReady() && this._irradianceLightmapMaterial.isReady() && this._toneMappingMaterial.isReady());
      }
     
     /**
