@@ -132,6 +132,8 @@ export class Irradiance {
             probe.tempBounce.isCube = true;
             renderTime += probe.renderTime;
             shTime += probe.shTime;
+            
+            probe.setVisibility(1);
         }
         let endProbeEnv = new Date().getTime();
 
@@ -404,6 +406,9 @@ export class Irradiance {
             }
 
             if (this.numberBounces == 0){
+                for (let probe of this.probeList){
+                    probe.setVisibility(0);
+                }
                 this.finish = true;
             }
             else {
