@@ -1,11 +1,12 @@
-attribute vec2 uv2;
+attribute vec3 position;
 
-varying vec2 vUV2;
+varying vec2 vPosition;
 
 
 void main( void )
 {
-    vUV2 = uv2;
-    gl_Position = vec4(uv2 * 2. - 1., 0, 1.0);
+    vPosition = position.xy;
+    gl_Position = vec4(position, 1.);
+    // gl_Position = vec4(uv2 * 2. - 1., 0, 1.0);
 
 }

@@ -1,208 +1,137 @@
-// import * as GUI from './../../../gui/src';
-
 import { Scene } from '../../scene';
 import { Mesh } from '../../Meshes/mesh';
+import { VertexBuffer } from '../../Meshes/buffer';
 import { Vector3 } from '../../Maths/math.vector';
-import { RadiosityRenderer } from '../../Radiosity/radiosityRenderer';
-import { UvMapper } from '../../Misc/uvMapper';
-import { StandardMaterial } from '../../Materials/standardMaterial';
+import { Probe } from './Probe';
 import { MeshDictionary } from './meshDictionary';
-import { UniformVolume } from './uniformVolume';
-/*
-import {AdvancedDynamicTexture} from './../../../gui/src/2D/advancedDynamicTexture';
-import {Slider} from  './../../../gui/src/2D/controls/sliders/slider';
-import {TextBlock} from  './../../../gui/src/2D/controls/textBlock';
-import {StackPanel} from  './../../../gui/src/2D/controls/stackPanel';
-import {Control} from './../../../gui/src/2D/controls/control';
-*/
+import { Irradiance } from './Irradiance';
+
+/**
+ * Class that represent the irradiance volume
+ * It contains all the probe used to render the scene, and is responsible of rendering the irradiance
+ * 
+ */
 export class IrradianceVolume {
 
-    private _lightSources : Array<Mesh>;
-    private _meshForIrradiance : Array<Mesh>;
-    private _meshForRadiance : Array<Mesh>;
+    /**
+     * List of probes that are used to render the scene
+     */
+    public probeList : Array<Probe>;
+    /**
+     * The dictionary that contains the lightmaps for each scene
+     */
+    public meshForIrradiance : Array<Mesh>;
+    /**
+     * Instance of the irradiance class that aims to comput irradiance
+     */
+    public irradiance : Irradiance;
+    /**
+     * The dictionary that store the lightmaps
+     */
+    public dictionary : MeshDictionary;
+
     private _scene : Scene;
-    private _numberBounces : number;
-    private _probesDisposition : Vector3;
-    private _dictionary : MeshDictionary;
-    private _volume : UniformVolume;
+    private _probesDispotion : Vector3;
+    private _lowerLeft : Vector3;
+    private _volumeSize : Vector3;
 
 
-    constructor(meshes : Array<Mesh>, lightSources : Array<Mesh>, scene : Scene,  numberProbeX : number, numberProbeY : number, numberProbeZ : number, numberBounces : number) {
-        this._lightSources = lightSources;
+    /**
+     * Creation of the irradiance volume
+     * @param meshes  The meshes that need to be rendered by the probes
+     * @param scene  The scene
+     * @param probeRes The resolution that is used for rendering the probes
+     * @param numberProbeX The number of probes wanted on the x axis
+     * @param numberProbeY The number of probes wanted on the y axis
+     * @param numberProbeZ The number of probes wanted on the z axis
+     * @param numberBounces the number of bounces wanted
+     */
+    constructor(meshes : Array<Mesh>, scene : Scene, probeRes : number, numberProbeX : number,
+            numberProbeY : number, numberProbeZ : number, numberBounces : number) {
         this._scene = scene;
-        this._numberBounces = numberBounces;
-        this._probesDisposition = new Vector3(numberProbeX, numberProbeY, numberProbeZ);
-        this._sortMeshes(meshes);
-        this._dictionary = new MeshDictionary(this._meshForIrradiance, this._scene);
-        this._computeRadiosity();   // Will lead to the computation of irradiance
+        this.meshForIrradiance = meshes;
+        this.probeList = [];
+        this._probesDispotion = new Vector3(numberProbeX, numberProbeY, numberProbeZ);
+        //Create and dispatch the probes inside the irradiance volume
+        this._createProbeList(probeRes);
+        this.dictionary = new MeshDictionary(meshes, scene);
+        this.irradiance = new Irradiance(this._scene, this.probeList, this.meshForIrradiance, this.dictionary,
+            numberBounces, this._probesDispotion, this._lowerLeft, this._volumeSize);
     }
 
-    private _sortMeshes(meshes : Array<Mesh>) {
-        this._meshForIrradiance = [];
-        for (let mesh of meshes) {
-            if (mesh.name != "ground" && mesh.name != "earth" && mesh.name != "skybox" && mesh.name != "avatar" && mesh.name != "__root__"){
-                this._meshForIrradiance.push(mesh);
-                if (mesh.material != null) {
-                    mesh.material = mesh.material.clone(mesh.material.name);
+    private _createProbeList(probeRes : number) {
+        let positions = [];
+        for (let mesh of this.meshForIrradiance) {
+            let wMatrix = mesh.getWorldMatrix();
+            let meshVertices = mesh.getVerticesData(VertexBuffer.PositionKind);
+            if (meshVertices != null) {
+                for (let i = 0; i < meshVertices.length; i += 3) {
+                    let vertexPosition = new Vector3(meshVertices[i], meshVertices[i + 1], meshVertices[i + 2]);
+                    let res = Vector3.TransformCoordinates(vertexPosition, wMatrix);
+                    positions.push(res);
                 }
-            }      
-        }
-
-        this._meshForRadiance = [];
-        for (let mesh of this._meshForIrradiance) {
-            this._meshForRadiance.push(mesh);
-        }
-        for (let mesh of this._lightSources) {
-            this._meshForRadiance.push(mesh);
-        }
-    }
-
-    private _computeRadiosity() {
-        let pr = new RadiosityRenderer(this._scene, this._meshForRadiance,  { bias: 0.000002, normalBias: 0.000002 });
-        this._mapNewUV2();
-        pr.createMaps();
-        let observer = this._scene.onAfterRenderTargetsRenderObservable.add(() => {
-            if (!pr.isReady()) {
-                return;
             }
-            pr.gatherDirectLightOnly();
-            this._scene.onAfterRenderTargetsRenderObservable.remove(observer);
-            console.log("end compute radiosity");
+        }
+        let minVec = new Vector3(Infinity, Infinity, Infinity);
+        let maxVec = new Vector3(- Infinity, - Infinity, - Infinity);
+        for (let vertex of positions) {
+            if (vertex.x <= minVec.x) {
+                minVec.x = vertex.x;
+            }
+            else if (vertex.x >= maxVec.x) {
+                maxVec.x = vertex.x;
+            }
+            if (vertex.y <= minVec.y) {
+                minVec.y = vertex.y;
+            }
+            else if (vertex.y >= maxVec.y) {
+                maxVec.y = vertex.y;
+            }
+            if (vertex.z <= minVec.z) {
+                minVec.z = vertex.z;
+            }
+            else if (vertex.z >= maxVec.z) {
+                maxVec.z = vertex.z;
+            }
+        }
+        this._volumeSize = new Vector3(maxVec.x - minVec.x, maxVec.y - minVec.y, maxVec.z - minVec.z);
 
-            //Update material of the light sources
-            for (let light of this._lightSources){
-                if (light.material != null) {
-                    (<StandardMaterial> light.material).emissiveTexture = light.getRadiosityTexture();
-                    light.material.backFaceCulling = false; 
+        this._lowerLeft = new Vector3();
+        this._lowerLeft.x = minVec.x + this._volumeSize.x / (2 * this._probesDispotion.x);
+        this._lowerLeft.y = minVec.y + this._volumeSize.y / (2 * this._probesDispotion.y);
+        this._lowerLeft.z = minVec.z + this._volumeSize.z / (2 * this._probesDispotion.z);
+
+        for (let z = 0; z < this._probesDispotion.z  ; z += 1) {
+            for (let y = 0; y <  this._probesDispotion.y ; y += 1) {
+                for (let x = 0; x <  this._probesDispotion.x ; x += 1) {
+                    this.probeList.push(new Probe(new Vector3(
+                        this._lowerLeft.x + x * this._volumeSize.x / this._probesDispotion.x,
+                        this._lowerLeft.y + y * this._volumeSize.y / this._probesDispotion.y,
+                        this._lowerLeft.z + z * this._volumeSize.z / this._probesDispotion.z),
+                         this._scene, probeRes));
                 }
-
             }
-
-            //Update directLight of dictionaries
-            for (let mesh of this._meshForIrradiance) {
-                let value = this._dictionary.getValue(mesh);
-                if ( value != null ) {
-                    value.directLightmap = mesh.getRadiosityTexture();
-                }
-            } 
-
-            this._computeIrradiance();
-        });
-    }
-
-    private _mapNewUV2() {
-        const uvMapper = new UvMapper();
-        for (let mesh of this._meshForRadiance) {
-            let [worldToUVRatio, polygonsArea] = uvMapper.map([mesh]);
-            mesh.initForRadiosity();
-            let indexLightMesh = this._lightSources.indexOf(mesh);
-            if (indexLightMesh > -1){
-                let light = this._lightSources[indexLightMesh];
-                light.radiosityInfo.lightmapSize = {width : 16, height : 16};
-                light.radiosityInfo.color = new Vector3(10., 10., 10.);
-            }
-            else {
-                mesh.radiosityInfo.lightmapSize = {width : 256, height : 256};
-            }
-            mesh.radiosityInfo.texelWorldSize = 1 / ( worldToUVRatio * mesh.radiosityInfo.lightmapSize.width);   
-            mesh.radiosityInfo.polygonWorldArea = polygonsArea[0];     
         }
     }
 
-    private _computeIrradiance() {
-
-        this._dictionary.initLightmapTextures();
-
-        console.log(this._probesDisposition);
-        this._volume = new UniformVolume(this._meshForIrradiance, this._scene, this._dictionary, 16, 
-            this._probesDisposition.x , this._probesDisposition.y, this._probesDisposition.z, this._numberBounces);
-
-        this._volume.render();
-
-
-        let finsihPromise = new Promise((resolve, reject) => {
-            let interval = setInterval(() => {
-                if ( ! this._volume.irradiance.finish ) {
-                        return ;
-                    }                
-                clearInterval(interval);
-                resolve();
-            }, 200);
-        });
-
-        finsihPromise.then( () => {
-            for (let value of this._dictionary.values()) {
-                value.sumOfBoth.render();
+    /**
+     * Called to change the directLightmap of the dictionary
+     * Must ba called when the radiosity has been updates, othermwise, it does not do anything
+     */
+    public updateDicoDirectLightmap(){
+        for (let mesh of this.dictionary.keys()){
+            let value = this.dictionary.getValue(mesh);
+            if (value != null) {
+                value.directLightmap = mesh.getRadiosityTexture();
             }
-            // this._initializeSlider();
-        });
-
-
+        }
     }
 
-    /*
-    private _initializeSlider() {
-        // var advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
-        // var panel = new GUI.StackPanel();
-        // panel.width = "220px";
-        // panel.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
-        // panel.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_CENTER;
-        // advancedTexture.addControl(panel);
-
-        // var header = new GUI.TextBlock();
-        // header.text = "Number of bounces : " + this._numberBounces;
-        // header.height = "30px";
-        // header.color = "white";
-        // panel.addControl(header); 
-
-        // var slider = new GUI.Slider();
-        // slider.minimum = 0;
-        // slider.maximum = 10;
-        // slider.value = this._numberBounces;
-        // slider.height = "20px";
-        // slider.width = "200px";
-        // slider.step = 1;
-        // slider.onValueChangedObservable.add((value: number) =>  {
-        //     header.text = "Number of bounces : " + slider.value;
-        // });
-        // slider.onPointerUpObservable.add((value : number) =>  {
-        //     this._numberBounces = slider.value;
-        //     header.text = "Number of bounces : " + this._numberBounces;
-        //     this._volume.updateNumberBounces(this._numberBounces);
-        // });
-        // panel.addControl(slider);  
-        var advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
-        var panel = new StackPanel();
-        panel.width = "220px";
-        panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-        panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
-        advancedTexture.addControl(panel);
-
-        var header = new TextBlock();
-        header.text = "Number of bounces : " + this._numberBounces;
-        header.height = "30px";
-        header.color = "white";
-        panel.addControl(header); 
-
-        var slider = new Slider();
-        slider.minimum = 0;
-        slider.maximum = 10;
-        slider.value = this._numberBounces;
-        slider.height = "20px";
-        slider.width = "200px";
-        slider.step = 1;
-        slider.onValueChangedObservable.add((value: number) =>  {
-            header.text = "Number of bounces : " + slider.value;
-        });
-        slider.onPointerUpObservable.add((value : number) =>  {
-            this._numberBounces = slider.value;
-            header.text = "Number of bounces : " + this._numberBounces;
-            this._volume.updateNumberBounces(this._numberBounces);
-        });
-        panel.addControl(slider);  
+    /**
+     * Start rendering the irradiance volume
+     */
+    public render() {
+        this.irradiance.render();
     }
-*/
 
 }

@@ -1,6 +1,5 @@
 import { Scene } from '../../scene';
 import { Probe } from './Probe';
-import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
 import { Mesh } from '../../Meshes/mesh';
 import { Material } from '../../Materials/material';
 import { Nullable } from '../../types';
@@ -14,15 +13,15 @@ import { Engine } from '../../Engines/engine';
 import { Color4 } from '../../Maths/math.color';
 
 /**
- * Class that aims to take care of everything with regard to the irradiance for the irradiance volum
+ * Class that aims to take care of everything with regard to the irradiance for the irradiance volume 
  */
 export class Irradiance {
 
     private _scene : Scene;
 
-    private _uniformNumberProbes: Vector3;  // Only need to use when the box is uniform
-    private _uniformBottomLeft : Vector3;   //Only need to use when the box is uniform
-    private _uniformBoxSize : Vector3;  //Only need to use when the box is uniform
+    private _uniformNumberProbes: Vector3;
+    private _uniformBottomLeft : Vector3;
+    private _uniformBoxSize : Vector3;
 
     /**
      * The list of probes that are part of this irradiance volume
@@ -46,122 +45,127 @@ export class Irradiance {
      */
     public bounceEffect : Effect;
 
+    /**
+     * The dictionary that stores the lightmaps linked to each mesh
+     */
     public dictionary : MeshDictionary;
 
     /**
-     * The number of bounces we want to render on our scene. (1 == only direct light)
+     * The number of bounces we want to add to the scene
      */
     public numberBounces : number;
 
+    /**
+     * Value that will be set to true once the rendering is finish.
+     * Can be used to check if the rendering is finished outiside of this class, because we use Promess
+     */
     public finish = false;
 
     private _shTexture : RawTexture;
 
     /**
-     * Initiate a new Iradiance
-     * @param scene The scene the irradiance is
-     * @param probes The probes that are used to render the irradiance
-     * @param meshes The meshes that are rendered by the probes
+     * Initializer of the irradiance class
+     * @param scene The scene of the meshes
+     * @param probes The probes that are used to render irradiance
+     * @param meshes The meshes that are used to render irradiance
+     * @param dictionary The dictionary that contains information about meshes
+     * @param numberBounces The number of bounces we want to render
+     * @param probeDisposition A vec3 representing the number of probes on each axis of the volume
+     * @param bottomLeft    A position representing the position of the probe on the bottom left of the irradiance volume
+     * @param volumeSize A vec3 containing the volume width, height and depth
      */
-    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, dictionary : MeshDictionary, numberBounces : number) {
+    constructor(scene : Scene, probes : Array<Probe>, meshes : Array<Mesh>, dictionary : MeshDictionary, numberBounces : number,
+        probeDisposition : Vector3, bottomLeft : Vector3, volumeSize : Vector3 ) {
         this._scene = scene;
         this.probeList = probes;
         this.meshes = meshes;
         this.dictionary = dictionary;
         this.numberBounces = numberBounces;
-        this._promise = this._createPromise();
-    }
-
-    /**
-     * Add a probe to the list of probes after initialisation
-     * @param probe The probe to be added
-     */
-    public addProbe(probe : Probe) {
-        this.probeList.push(probe);
-        //We have to recreate the promise because the values have changed
-        this._promise = this._createPromise();
-    }
-
-    /**
-     * Method called when we have a uniform volume.
-     * It will change the part where we create the irradiance light map, mainly because of the tricubic interpolation
-     * @param numberProbes
-     * @param bottomLeft
-     * @param size
-     */
-    public setUniform(numberProbes : Vector3, bottomLeft : Vector3, size : Vector3) : void {
-        this._uniformNumberProbes = numberProbes;
+        this._uniformNumberProbes = probeDisposition;
         this._uniformBottomLeft = bottomLeft;
-        this._uniformBoxSize = size;
+        this._uniformBoxSize = volumeSize;
+        dictionary.initLightmapTextures();
+        //We can only initialize the irradiance lightmap after setting the uniforms attributes, as it is needed for the material
+        this._initIrradianceLightMap();
+        this._promise = this._createPromise();
     }
 
+
     /**
-     * Function that launch all the render needed to create the final light map of irradiance that contains
-     * global illumination
+     * Function that launch the render process
      */
     public render() : void {
 
         // When all we need is ready
         this._promise.then(() => {
             for (let probe of this.probeList) {
+                // Init the renderTargetTexture needed for each probes
                 probe.render(this.meshes, this.dictionary, this.uvEffect, this.bounceEffect);
                 probe.renderBounce(this.meshes);
             }
 
             let currentBounce = 0;
             for (let probe of this.probeList) {
+                // Set these value to false to ensure that the promess will finish when we want it too
                 probe.sphericalHarmonicChanged = false;
             }
-            this._initIrradianceLightMap();
             if (this.numberBounces > 0){
+                // Call the recursive function that will render each bounce
                 this._renderBounce(currentBounce + 1);
             }
             else {
+                // We are done with the rendering process, finish has to be set to true
                 this.finish = true;
             }
         });
     }
 
     private _renderBounce(currentBounce : number) {
+        let renderTime = 0;
+        let shTime = 0;
+        let beginBounce = new Date().getTime();
+        
         for (let probe of this.probeList) {
             probe.setBounce(currentBounce);
+            probe.tempBounce.isCube = false;
             probe.tempBounce.render();
+            probe.tempBounce.isCube = true;
+            renderTime += probe.renderTime;
+            shTime += probe.shTime;
+        }
+        let endProbeEnv = new Date().getTime();
+
+        this.updateShTexture();
+        for (let value of this.dictionary.values()) {
+            value.irradianceLightmap.render();
+            value.tempLightmap.render();
+            value.cumulativeLightmap.render();
         }
 
-        let shCoefPromise = new Promise((resolve, reject) => {
-            let interval = setInterval(() => {
-                let readyStates = [
-                    this._areShCoeffReady()
-                ];
-                for (let i = 0 ; i < readyStates.length; i++) {
-                    if (!readyStates[i]) {
-                        return ;
-                    }
-                }
-                clearInterval(interval);
-                resolve();
-            }, 200);
-        });
-        shCoefPromise.then(() => {
-            for (let probe of this.probeList) {
-                probe.sphericalHarmonicChanged = false;
-            }
-            this.updateShTexture();
-            for (let value of this.dictionary.values()) {
-                value.irradianceLightmap.render();
-                value.tempLightmap.render();
-                value.cumulativeLightmap.render();
-            }
-            if (currentBounce < this.numberBounces) {
-                this._renderBounce(currentBounce + 1);
-            }
-            else {
-                this.finish = true;
-            }
-        });
+        let endBounce = new Date().getTime();
+
+        console.log("___________________ \n bounce : " + currentBounce);
+        console.log("Temps total : " + (endBounce - beginBounce)); 
+        console.log("Rendu de tous les environnements des probes : " + (endProbeEnv - beginBounce));
+        console.log("Rendu de l'irradiance sur la scène : " + (endBounce - endProbeEnv));
+        console.log("Temps total capture environnement : " + renderTime);
+        console.log("Temps total sh coef : " + shTime);
+
+
+        if (currentBounce < this.numberBounces) {
+            this._renderBounce(currentBounce + 1);
+        }
+        else {
+            this.finish = true;
+        }
+    
 
     }
 
+    /**
+     * Method called to store the spherical harmonics coefficient into a texture,
+     * allowing to have less uniforms in our shader
+     */
     public updateShTexture() : void {
         let shArray = new Float32Array(this.probeList.length * 9  * 4);
         for (let i = 0; i < this.probeList.length; i++) {
@@ -219,27 +223,25 @@ export class Irradiance {
         let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene,
         "./../../src/Shaders/irradianceVolumeIrradianceLightmap", {
             attributes : ["position", "normal", "uv2"],
-            uniforms : ["world"],
-            defines : ["#define NUM_PROBES " + this.probeList.length]
+            uniforms : ["world", "isUniform", "numberProbesInSpace", "boxSize", "bottomLeft", "probePosition"],
+            defines : ["#define NUM_PROBES " + this.probeList.length],
+            samplers : ["shText"]
         });
 
-        if (this._uniformBottomLeft != null) {
-            irradianceMaterial.setInt("isUniform", 1);
-            irradianceMaterial.setVector3("numberProbesInSpace", this._uniformNumberProbes);
-            irradianceMaterial.setVector3("boxSize", this._uniformBoxSize);
-            irradianceMaterial.setVector3("bottomLeft", this._uniformBottomLeft);
-
-        }
+        irradianceMaterial.setInt("isUniform", 1);
+        irradianceMaterial.setVector3("numberProbesInSpace", this._uniformNumberProbes);
+        irradianceMaterial.setVector3("boxSize", this._uniformBoxSize);
+        irradianceMaterial.setVector3("bottomLeft", this._uniformBottomLeft);
         irradianceMaterial.backFaceCulling = false;
+
+        this.dictionary.initIrradianceLightmapMaterial(irradianceMaterial);
 
         for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
                 value.irradianceLightmap.renderList = [mesh];
-                this._scene.customRenderTargets.push(value.irradianceLightmap);
-                value.irradianceLightmap.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE;
-                let previousMaterial : Nullable<Material>;
 
+                let previousMaterial : Nullable<Material>;
                 value.irradianceLightmap.onBeforeRenderObservable.add(() => {
                     let probePosition = [];
                     // let shCoef = [];
@@ -254,18 +256,15 @@ export class Irradiance {
                     //Add the right material to the mesh
                     previousMaterial = mesh.material;
                     mesh.material = irradianceMaterial;
-
                 });
 
                 value.irradianceLightmap.onAfterRenderObservable.add(() => {
                     //Put the previous material on the meshes
                     mesh.material = previousMaterial;
-
+                    value.tempLightmap.render();
                 });
             }
-
         }
-
     }
 
     private _createPromise() : Promise<void> {
@@ -352,6 +351,7 @@ export class Irradiance {
         }
         return true;
     }
+
 /*
     private  _areProbesEnvMapReady() : boolean {
         for (let probe of this.probeList) {
@@ -362,6 +362,7 @@ export class Irradiance {
         return true;
     }
 */
+
     private _areShCoeffReady() : boolean {
         for (let probe of this.probeList) {
             if (! probe.sphericalHarmonicChanged) {
@@ -371,6 +372,11 @@ export class Irradiance {
         return true;
     }
 
+    
+    /**
+     * Method to call when you want to update the number of bounces, after the irradiance rendering has been done
+     * @param numberBounces 
+     */
     public updateNumberBounces(numberBounces : number) {
         if (this.numberBounces < numberBounces){
             this.finish = false;
@@ -408,8 +414,6 @@ export class Irradiance {
             console.log("same");
             return;
         }
-
-
         let finsihPromise = new Promise((resolve, reject) => {
             let interval = setInterval(() => {
                 if ( ! this.finish ) {
@@ -419,12 +423,11 @@ export class Irradiance {
                 resolve();
             }, 200);
         });
-
         finsihPromise.then( () => {
             for (let value of this.dictionary.values()){
                 value.sumOfBoth.render();
             }
         });
-
     }
+
 }
