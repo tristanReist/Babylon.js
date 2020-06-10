@@ -35,6 +35,9 @@ export class MeshDictionary {
     private _sumOfBothMaterial : ShaderMaterial;
     private _irradianceLightmapMaterial : ShaderMaterial;
     private _toneMappingMaterial : ShaderMaterial;
+    public globalIllumStrength = 1;
+    public directIllumStrength = 1;
+     
 
     /**
      * Create the dictionary
@@ -82,7 +85,7 @@ export class MeshDictionary {
     private _initSumOfBoth() : void {
         this._sumOfBothMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/irradianceVolumeMixTwoTextures", {
             attributes: ["position"],
-            uniforms: ["test"],
+            uniforms: ["directIllumStrength", "globalIllumStrength"],
             samplers: ["texture1", "texture2"]
         });
         
@@ -105,7 +108,8 @@ export class MeshDictionary {
                 if (value != null && value.directLightmap != null) {
                     this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
                     this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
-                    this._sumOfBothMaterial.setFloat("test", 1.);
+                    this._sumOfBothMaterial.setFloat("directIllumStrength", this.directIllumStrength);
+                    this._sumOfBothMaterial.setFloat("globalIllumStrength", this.globalIllumStrength);
                 }
                 customMesh.material = this._sumOfBothMaterial;
             });

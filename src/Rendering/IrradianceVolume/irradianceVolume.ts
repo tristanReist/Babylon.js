@@ -5,6 +5,7 @@ import { Vector3 } from '../../Maths/math.vector';
 import { Probe } from './Probe';
 import { MeshDictionary } from './meshDictionary';
 import { Irradiance } from './Irradiance';
+import { irradianceVolumeCompleteIlluminationPixelShader } from '../../Shaders/irradianceVolumeCompleteIllumination.fragment';
 
 /**
  * Class that represent the irradiance volume
@@ -134,4 +135,23 @@ export class IrradianceVolume {
         this.irradiance.render();
     }
 
+
+    public updateGlobalIllumStrength(value : number){
+        this.dictionary.globalIllumStrength = value;
+        for (let value of this.dictionary.values()){
+            value.sumOfBoth.render();
+        }
+    }
+
+    public updateDirectIllumStrength(value : number){
+        this.dictionary.directIllumStrength = value;
+        for (let value of this.dictionary.values()){
+            value.sumOfBoth.render();
+        }
+    }
+
+    public updateDirectIllumForEnv(envMultiplicator : number){     
+        this.irradiance.updateDirectIllumForEnv(envMultiplicator);
+
+    }
 }

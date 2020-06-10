@@ -100,7 +100,11 @@ export class Probe {
     public sphericalHarmonicChanged : boolean;
 
     public renderTime  = 0;
+    
     public shTime = 0;
+
+    public envMultiplicator = 1.3;
+
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -220,6 +224,7 @@ export class Probe {
                         effect.setBool("hasTexture", false);
                     }
                 }
+                effect.setFloat("envMultiplicator", this.envMultiplicator);
                 effect.setVector3("probePosition", this.sphere.position);
                 let value = this.dictionary.getValue(mesh);
                 if (value != null) {

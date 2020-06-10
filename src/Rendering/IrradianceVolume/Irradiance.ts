@@ -236,7 +236,7 @@ export class Irradiance {
         for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
-                value.irradianceLightmap.clearColor = new Color4(1., 0., 0., 1.);
+                // value.irradianceLightmap.clearColor = new Color4(1., 0., 0., 1.);
                 value.irradianceLightmap.renderList = [mesh];
                 let previousMaterial : Nullable<Material>;
                 value.irradianceLightmap.onBeforeRenderObservable.add(() => {
@@ -329,7 +329,7 @@ export class Irradiance {
         var samplers = ["envMap", "envMapUV", "irradianceMap", "albedoTexture", "directIlluminationLightmap"];
 
         // var uniform = ["world", "rotation", "numberLightmap"];
-        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap"];
+        var uniform = ["projection", "view", "probePosition", "albedoColor", "hasTexture", "world",  "numberLightmap", "envMultiplicator"];
         this.bounceEffect = this._scene.getEngine().createEffect("irradianceVolumeUpdateProbeBounceEnv",
             attribs, uniform,
             samplers);
@@ -395,7 +395,9 @@ export class Irradiance {
             }
 
             if (this.numberBounces == 0){
-                 this.finish = true;
+                for (let value of this.dictionary.values()){
+                    value.sumOfBoth.render();
+                }
             }
             else {
                 this._renderBounce(1);
@@ -405,20 +407,16 @@ export class Irradiance {
             console.log("same");
             return;
         }
-        let finsihPromise = new Promise((resolve, reject) => {
-            let interval = setInterval(() => {
-                if ( ! this.finish ) {
-                        return ;
-                    }                
-                clearInterval(interval);
-                resolve();
-            }, 200);
-        });
-        finsihPromise.then( () => {
-            for (let value of this.dictionary.values()){
-                value.sumOfBoth.render();
-            }
-        });
+ 
+    }
+
+    public updateDirectIllumForEnv(envMultiplicator : number){
+        for (let probe of this.probeList) {
+            probe.envMultiplicator = envMultiplicator;
+        }
+        if (this.numberBounces > 0){
+            this._renderBounce(1);
+        }
     }
 
 }
