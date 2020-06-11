@@ -169,7 +169,7 @@ class Face {
      * @param idx the vertex index, between 0 and 2 included
      */
     public pushVertexToVertexData(vertexData: VertexData, idx: number) {
-        if (this.vNormals) {
+        if (this.vNormals && this.vNormals.length != 0) {
             for (let i = 0; i < this.vNormals[idx].length; i++) {
                 (<number[]>vertexData.normals).push(this.vNormals[idx][i]);
             }

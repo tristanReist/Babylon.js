@@ -115,6 +115,9 @@ export class Irradiance {
             }
             else {
                 // We are done with the rendering process, finish has to be set to true
+                for (let value of this.dictionary.values()){
+                    value.sumOfBoth.render();
+                }
                 this.finish = true;
             }
         });

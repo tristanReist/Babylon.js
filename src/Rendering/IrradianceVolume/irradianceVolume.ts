@@ -5,7 +5,6 @@ import { Vector3 } from '../../Maths/math.vector';
 import { Probe } from './Probe';
 import { MeshDictionary } from './meshDictionary';
 import { Irradiance } from './Irradiance';
-import { irradianceVolumeCompleteIlluminationPixelShader } from '../../Shaders/irradianceVolumeCompleteIllumination.fragment';
 
 /**
  * Class that represent the irradiance volume
@@ -47,12 +46,12 @@ export class IrradianceVolume {
      * @param numberProbeZ The number of probes wanted on the z axis
      * @param numberBounces the number of bounces wanted
      */
-    constructor(meshes : Array<Mesh>, scene : Scene, probeRes : number, numberProbeX : number,
-            numberProbeY : number, numberProbeZ : number, numberBounces : number) {
+    constructor(meshes : Array<Mesh>, scene : Scene, probeRes : number, 
+        probeDisposition : Vector3, numberBounces : number) {
         this._scene = scene;
         this.meshForIrradiance = meshes;
         this.probeList = [];
-        this._probesDispotion = new Vector3(numberProbeX, numberProbeY, numberProbeZ);
+        this._probesDispotion = probeDisposition;
         //Create and dispatch the probes inside the irradiance volume
         this._createProbeList(probeRes);
         this.dictionary = new MeshDictionary(meshes, scene);
