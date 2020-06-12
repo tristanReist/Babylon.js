@@ -239,7 +239,10 @@ export class Irradiance {
         for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
-                // value.irradianceLightmap.clearColor = new Color4(1., 0., 0., 1.);
+
+                // value.irradianceLightmap.wrapU = 2;
+                // value.irradianceLightmap.wrapV = 2;
+                value.irradianceLightmap.clearColor = new Color4(1., 0., 0., 0.);
                 value.irradianceLightmap.renderList = [mesh];
                 let previousMaterial : Nullable<Material>;
                 value.irradianceLightmap.onBeforeRenderObservable.add(() => {
@@ -261,7 +264,8 @@ export class Irradiance {
                 value.irradianceLightmap.onAfterRenderObservable.add(() => {
                     //Put the previous material on the meshes
                     mesh.material = previousMaterial;
-                    value.sumOfBoth.render();
+                    // value.sumOfBoth.render();
+                    value.dilateLightmap.render();
                 });
             }
         }

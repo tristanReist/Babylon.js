@@ -6,6 +6,7 @@ import { Scene } from '../../scene';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 import { VertexData } from '../../Meshes/mesh.vertexData';
+import { Vector2 } from '../../Maths/math.vector';
 
 /**
  * Interface that contains the different textures that are linked to a mesh
@@ -19,6 +20,8 @@ export interface IMeshesGroup {
     sumOfBoth : RenderTargetTexture;
     // Lightmap for toneMapping
     toneMappingLightmap : RenderTargetTexture;
+    // Lightmap for dilatte
+    dilateLightmap : RenderTargetTexture;
 }
 
 
@@ -35,6 +38,7 @@ export class MeshDictionary {
     private _sumOfBothMaterial : ShaderMaterial;
     private _irradianceLightmapMaterial : ShaderMaterial;
     private _toneMappingMaterial : ShaderMaterial;
+    private _dilateMaterial : ShaderMaterial;
     public globalIllumStrength = 1;
     public directIllumStrength = 1;
      
@@ -73,11 +77,13 @@ export class MeshDictionary {
                 value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene); 
                 value.sumOfBoth = new RenderTargetTexture("sumOfBoth", size, this._scene);
                 value.toneMappingLightmap = new RenderTargetTexture("toneMap", size, this._scene);
+                value.dilateLightmap = new RenderTargetTexture("dilate", size, this._scene);
             }
         }
         //Init the material for the sumOfBoth lightmap
         this._initSumOfBoth();
         this._initToneMapping();
+        this._initDilate();
     }
 
 
@@ -107,7 +113,7 @@ export class MeshDictionary {
             value.sumOfBoth.onBeforeRenderObservable.add(() => {
                 if (value != null && value.directLightmap != null) {
                     this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
-                    this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
+                    this._sumOfBothMaterial.setTexture( "texture2", value.dilateLightmap);
                     this._sumOfBothMaterial.setFloat("directIllumStrength", this.directIllumStrength);
                     this._sumOfBothMaterial.setFloat("globalIllumStrength", this.globalIllumStrength);
                 }
@@ -117,10 +123,10 @@ export class MeshDictionary {
             value.sumOfBoth.onAfterRenderObservable.add(() => {
                 value.toneMappingLightmap.render();
                 let mesh = this._getMesh(value);
-                if (mesh != null) {
-                    let i = this._containsKey(mesh);
+                // if (mesh != null) {
+                //     let i = this._containsKey(mesh);
                     // (<PBRMaterial> (mesh.material)).lightmapTexture =  value.sumOfBoth;
-                }
+                // }
             });
    
         }
@@ -142,17 +148,16 @@ export class MeshDictionary {
         vertexData.indices = indices;
         vertexData.applyToMesh(customMesh);
         
-        
+   
+
 
         this._toneMappingMaterial.backFaceCulling = false;
         for (let value of this._values){
             value.toneMappingLightmap.renderList = [customMesh];
             value.toneMappingLightmap.coordinatesIndex = 1;        
 
-            // value.toneMappingLightmap.clearColor = new Color4(0., 0., 0., 1.);
 
             // this._scene.customRenderTargets.push(value.toneMappingLightmap);
-
             value.toneMappingLightmap.onBeforeRenderObservable.add(() => {
                 if (value != null) {
                     this._toneMappingMaterial.setTexture( "inputTexture", value.sumOfBoth);
@@ -166,16 +171,64 @@ export class MeshDictionary {
                 if (mesh != null) {
                     (<PBRMaterial> (mesh.material)).lightmapTexture =  value.toneMappingLightmap;
                 }
+                // value.dilateLightmap.render();
             });
    
         }
     }
 
+    private _initDilate(){
+        this._dilateMaterial = new ShaderMaterial("", this._scene, "./../../src/Shaders/dilate", {
+            attributes: ["position"],
+            uniforms: ["texelSize"],
+            samplers: ["inputTexture"]
+        });
+
+        let customMesh = new Mesh("custom", this._scene);
+        let position = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0];
+        let indices = [0, 1, 2, 3, 4, 5];
+        let vertexData = new VertexData();
+        customMesh.visibility = 0;
+        vertexData.positions = position;
+        vertexData.indices = indices;
+        vertexData.applyToMesh(customMesh);
+        
+        this._dilateMaterial.backFaceCulling = false;
+        for (let value of this._values){
+            value.dilateLightmap.renderList = [customMesh];
+            value.dilateLightmap.coordinatesIndex = 1;        
+
+            // value.toneMappingLightmap.clearColor = new Color4(0., 0., 0., 1.);
+
+            // this._scene.customRenderTargets.push(value.dilateLightmap);
+
+            value.dilateLightmap.onBeforeRenderObservable.add(() => {
+                if (value != null) {
+                    this._dilateMaterial.setTexture( "inputTexture", value.irradianceLightmap);
+                    // let a = new Vector2(1 / value.dilateLightmap.getSize().width, 1 / value.dilateLightmap.getSize().height);
+                    // console.log(a);
+                    this._dilateMaterial.setVector2("texelSize", new Vector2(2 / value.dilateLightmap.getSize().width, 2 / value.dilateLightmap.getSize().height));
+                }
+                customMesh.material = this._dilateMaterial;
+            });
+
+            value.dilateLightmap.onAfterRenderObservable.add(() => {
+                value.sumOfBoth.render();
+                // let mesh = this._getMesh(value);
+                // if (mesh != null) {
+                //     (<PBRMaterial> (mesh.material)).lightmapTexture =  value.dilateLightmap;
+                // }
+            });
+   
+        }
+    }
+
+
     /**
      * Functions called to check if the materials are ready for rendering
      */
     public areMaterialReady() : boolean {
-        return( this._sumOfBothMaterial.isReady() && this._irradianceLightmapMaterial.isReady() && this._toneMappingMaterial.isReady());
+        return( this._sumOfBothMaterial.isReady() && this._irradianceLightmapMaterial.isReady() && this._toneMappingMaterial.isReady() && this._dilateMaterial.isReady());
      }
     
     /**

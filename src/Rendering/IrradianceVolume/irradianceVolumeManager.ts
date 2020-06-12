@@ -19,6 +19,32 @@ export class IrradianceVolumeManager {
     private _probesDisposition : Vector3;
     private _pr : RadiosityRenderer;
 
+    private _forbiddenNames = ["ground", "earth", "skybox", "avatar", "__root__", 
+        "originArrow1_line1_0",
+         "originArrow1_line2_0",
+         "originArrow1_originArrow1_0",
+         "originArrow1_originArrow2_0",
+         "originArrow1_endArrow1_0",
+         "originArrow1_endArrow2_0",
+         "originArrow1_line1_1",
+         "originArrow1_line2_1",
+         "originArrow1_originArrow1_1",
+         "originArrow1_originArrow2_1",
+         "originArrow1_endArrow1_1",
+         "originArrow1_endArrow2_1",
+         "originArrow1_line1_2",
+         "originArrow1_line2_2",
+         "originArrow1_originArrow1_2",
+         "originArrow1_originArrow2_2",
+         "originArrow1_endArrow1_2",
+         "originArrow1_endArrow2_2",
+         "originArrow1_line1_3",
+         "originArrow1_line2_3",
+         "originArrow1_originArrow1_3",
+         "originArrow1_originArrow2_3",
+         "originArrow1_endArrow1_3",
+         "originArrow1_endArrow2_3"];
+
     constructor( meshes : Array<Mesh>, lights : Array<Mesh>, scene : Scene, numberProbesX : number,
         numberProbesY : number, numberProbesZ : number, numberBounces : number){
         this._scene = scene;
@@ -50,7 +76,7 @@ export class IrradianceVolumeManager {
         this._meshForIrradiance = [];
         this._meshForRadiance = [];
         for (let mesh of meshes) {
-            if (mesh.name != "ground" && mesh.name != "earth" && mesh.name != "skybox" && mesh.name != "avatar" && mesh.name != "__root__"){
+            if (this._forbiddenNames.indexOf(mesh.name) == -1){
                 this._meshForIrradiance.push(mesh);
                 this._meshForRadiance.push(mesh);
                 if (mesh.material != null){
@@ -68,7 +94,7 @@ export class IrradianceVolumeManager {
     private _mapNewUV(){
         const uvm = new UvMapper();
         for ( let mesh of this._meshForRadiance ) {
-            let [worldToUVRatio, polygonsArea] = uvm.map([mesh]);
+            let [worldToUVRatio, polygonsArea] = uvm.map([mesh], 10);
             mesh.initForRadiosity();
             if (this._lightSources.indexOf(mesh) != -1){
                 mesh.radiosityInfo.lightmapSize = {width : 16, height : 16};
