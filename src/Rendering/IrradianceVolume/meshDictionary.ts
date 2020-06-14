@@ -7,6 +7,7 @@ import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 import { VertexData } from '../../Meshes/mesh.vertexData';
 import { Vector2 } from '../../Maths/math.vector';
+import { Color4 } from '../../Maths/math.color';
 
 /**
  * Interface that contains the different textures that are linked to a mesh
@@ -146,9 +147,7 @@ export class MeshDictionary {
         customMesh.visibility = 0;
         vertexData.positions = position;
         vertexData.indices = indices;
-        vertexData.applyToMesh(customMesh);
-        
-   
+        vertexData.applyToMesh(customMesh);   
 
 
         this._toneMappingMaterial.backFaceCulling = false;
@@ -193,12 +192,14 @@ export class MeshDictionary {
         vertexData.indices = indices;
         vertexData.applyToMesh(customMesh);
         
+
+
         this._dilateMaterial.backFaceCulling = false;
         for (let value of this._values){
             value.dilateLightmap.renderList = [customMesh];
             value.dilateLightmap.coordinatesIndex = 1;        
 
-            // value.toneMappingLightmap.clearColor = new Color4(0., 0., 0., 1.);
+            value.dilateLightmap.clearColor = new Color4(0., 1., 0., 1.);
 
             // this._scene.customRenderTargets.push(value.dilateLightmap);
 
@@ -207,7 +208,7 @@ export class MeshDictionary {
                     this._dilateMaterial.setTexture( "inputTexture", value.irradianceLightmap);
                     // let a = new Vector2(1 / value.dilateLightmap.getSize().width, 1 / value.dilateLightmap.getSize().height);
                     // console.log(a);
-                    this._dilateMaterial.setVector2("texelSize", new Vector2(2 / value.dilateLightmap.getSize().width, 2 / value.dilateLightmap.getSize().height));
+                    this._dilateMaterial.setVector2("texelSize", new Vector2(1 / value.dilateLightmap.getSize().width, 1 / value.dilateLightmap.getSize().height));
                 }
                 customMesh.material = this._dilateMaterial;
             });
