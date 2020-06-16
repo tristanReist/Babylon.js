@@ -115,6 +115,7 @@ export class MeshDictionary {
                 if (value != null && value.directLightmap != null) {
                     this._sumOfBothMaterial.setTexture( "texture1", value.directLightmap);
                     this._sumOfBothMaterial.setTexture( "texture2", value.dilateLightmap);
+                    // this._sumOfBothMaterial.setTexture( "texture2", value.irradianceLightmap);
                     this._sumOfBothMaterial.setFloat("directIllumStrength", this.directIllumStrength);
                     this._sumOfBothMaterial.setFloat("globalIllumStrength", this.globalIllumStrength);
                 }

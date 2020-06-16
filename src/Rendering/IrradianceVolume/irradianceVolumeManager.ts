@@ -94,7 +94,7 @@ export class IrradianceVolumeManager {
     private _mapNewUV(){
         const uvm = new UvMapper();
         for ( let mesh of this._meshForRadiance ) {
-            let [worldToUVRatio, polygonsArea] = uvm.map([mesh], 10);
+            let [worldToUVRatio, polygonsArea] = uvm.map([mesh], 0);
             mesh.initForRadiosity();
             if (this._lightSources.indexOf(mesh) != -1){
                 mesh.radiosityInfo.lightmapSize = {width : 16, height : 16};

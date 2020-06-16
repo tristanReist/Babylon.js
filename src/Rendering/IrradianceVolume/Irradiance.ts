@@ -242,7 +242,7 @@ export class Irradiance {
 
                 // value.irradianceLightmap.wrapU = 2;
                 // value.irradianceLightmap.wrapV = 2;
-                value.irradianceLightmap.clearColor = new Color4(0., 0.,1., 0.);
+                value.irradianceLightmap.clearColor = new Color4(0., 0.,0., 0.);
                 value.irradianceLightmap.renderList = [mesh];
                 let previousMaterial : Nullable<Material>;
                 value.irradianceLightmap.onBeforeRenderObservable.add(() => {
