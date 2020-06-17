@@ -13,6 +13,8 @@ import { IrradiancePostProcessEffectManager } from './irradiancePostProcessEffec
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Material } from '../../Materials/material';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
+import { SmartArray } from '../../Misc/smartArray';
+import { SubMesh } from '../../Meshes/subMesh';
 
 /**
  * Interface that contains the different textures that are linked to a mesh
@@ -88,6 +90,7 @@ export class MeshDictionary {
     }
 
     public render() {
+        console.log(this._values.length);
         for (let value of this._values){
             this.renderValue(value);
         }
@@ -117,7 +120,8 @@ export class MeshDictionary {
         engine.enableEffect(effect);
         engine.setState(false);
         let gl = engine._gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, dest._texture._framebuffer);
+        console.log(gl.checkFramebufferStatus( dest._texture._framebuffer))
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,  (<InternalTexture>dest._texture)._webGLTexture, 0);
         
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
@@ -128,7 +132,6 @@ export class MeshDictionary {
         effect.setFloat("directIllumStrength", this.directIllumStrength);
         effect.setFloat("globalIllumStrength", this.globalIllumStrength);
         engine.bindBuffers(vb, this._postProcessManager.screenQuadIB, effect);
-
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
         engine.drawElementsType(Material.TriangleFillMode, 0, 6);
@@ -145,7 +148,7 @@ export class MeshDictionary {
         engine.enableEffect(effect);
         engine.setState(false);
         let gl = engine._gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, dest._texture._framebuffer);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,(<InternalTexture>dest._texture)._webGLTexture, 0);
         
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
@@ -171,7 +174,7 @@ export class MeshDictionary {
         engine.enableEffect(effect);
         engine.setState(false);
         let gl = engine._gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, dest._texture._framebuffer);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (<InternalTexture>dest._texture)._webGLTexture, 0);
         
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
