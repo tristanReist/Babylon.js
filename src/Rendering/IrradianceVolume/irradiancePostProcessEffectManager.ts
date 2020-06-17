@@ -111,8 +111,8 @@ export class IrradiancePostProcessEffectManager {
     public isSumOfBothEffectReady(): boolean {
         this.sumOfBothEffect = this._scene.getEngine().createEffect("irradianceVolumeMixTwoTextures",
             [VertexBuffer.PositionKind],
-            ["globalIllumStrength, directIllumStrength"],
-            ["texture1, texture2"], "");
+            ["globalIllumStrength", "directIllumStrength"],
+            ["texture1", "texture2"], "");
         return this.sumOfBothEffect.isReady();
     }
 

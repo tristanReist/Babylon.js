@@ -5,16 +5,12 @@ import { Texture } from '../../Materials/Textures/texture';
 import { Scene } from '../../scene';
 import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
-import { VertexData } from '../../Meshes/mesh.vertexData';
-import { Vector2 } from '../../Maths/math.vector';
 import { Color4 } from '../../Maths/math.color';
 import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { IrradiancePostProcessEffectManager } from './irradiancePostProcessEffectManager';
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Material } from '../../Materials/material';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
-import { SmartArray } from '../../Misc/smartArray';
-import { SubMesh } from '../../Meshes/subMesh';
 
 /**
  * Interface that contains the different textures that are linked to a mesh
@@ -47,8 +43,7 @@ export class MeshDictionary {
     public globalIllumStrength = 1;
     public directIllumStrength = 1;
 
-    private _frameBuffer1 : WebGLFramebuffer;
-     
+    private _frameBuffer1 : WebGLFramebuffer;;
 
     /**
      * Create the dictionary
@@ -90,14 +85,14 @@ export class MeshDictionary {
     }
 
     public render() {
-        console.log(this._values.length);
         for (let value of this._values){
             this.renderValue(value);
         }
     }
 
     public renderValue(value : IMeshesGroup){
-        this._dilateRendering(value);
+        
+        // this._dilateRendering(value);
         this._sumOfBothRendering(value);
         this._toneMappingRendering(value);
         value.postProcessLightmap.textures[1].coordinatesIndex = 1;
@@ -120,15 +115,15 @@ export class MeshDictionary {
         engine.enableEffect(effect);
         engine.setState(false);
         let gl = engine._gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, dest._texture._framebuffer);
-        console.log(gl.checkFramebufferStatus( dest._texture._framebuffer))
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,  (<InternalTexture>dest._texture)._webGLTexture, 0);
         
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
         effect.setTexture("texture1", value.directLightmap);
-        effect.setTexture("texture2", mrt.textures[2]);
+        // effect.setTexture("texture2", mrt.textures[2]);
+        effect.setTexture("texture2", value.irradianceLightmap);
         effect.setFloat("directIllumStrength", this.directIllumStrength);
         effect.setFloat("globalIllumStrength", this.globalIllumStrength);
         engine.bindBuffers(vb, this._postProcessManager.screenQuadIB, effect);
@@ -148,7 +143,7 @@ export class MeshDictionary {
         engine.enableEffect(effect);
         engine.setState(false);
         let gl = engine._gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, dest._texture._framebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,(<InternalTexture>dest._texture)._webGLTexture, 0);
         
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
@@ -167,17 +162,17 @@ export class MeshDictionary {
     private _dilateRendering( value : IMeshesGroup ){
         let mrt = value.postProcessLightmap; 
         let engine = this._scene.getEngine();
-        let effect = this._postProcessManager.toneMappingEffect;
+        let effect = this._postProcessManager.dilateEffect;
 
         let dest = mrt.textures[2];
 
         engine.enableEffect(effect);
         engine.setState(false);
         let gl = engine._gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, dest._texture._framebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (<InternalTexture>dest._texture)._webGLTexture, 0);
         
-        engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
+        engine.clear(new Color4(1.0, 0.0, 0.0, 1.0), true, true, true);
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
         effect.setTexture("inputTexture", value.irradianceLightmap);

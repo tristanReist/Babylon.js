@@ -101,7 +101,7 @@ export class IrradianceVolumeManager {
                 mesh.radiosityInfo.color = new Vector3(10., 10., 10.);
             }
             else {
-                mesh.radiosityInfo.lightmapSize = {width : 256, height : 256};           
+                mesh.radiosityInfo.lightmapSize = {width : 32, height : 32};           
             }
             mesh.radiosityInfo.texelWorldSize = 1 / ( worldToUVRatio * mesh.radiosityInfo.lightmapSize.width);   
             mesh.radiosityInfo.polygonWorldArea = polygonsArea[0];    

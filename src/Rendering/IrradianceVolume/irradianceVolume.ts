@@ -137,16 +137,12 @@ export class IrradianceVolume {
 
     public updateGlobalIllumStrength(value : number){
         this.dictionary.globalIllumStrength = value;
-        for (let value of this.dictionary.values()){
-            value.sumOfBoth.render();
-        }
+        this.dictionary.render();
     }
 
     public updateDirectIllumStrength(value : number){
         this.dictionary.directIllumStrength = value;
-        for (let value of this.dictionary.values()){
-            value.sumOfBoth.render();
-        }
+        this.dictionary.render();
     }
 
     public updateDirectIllumForEnv(envMultiplicator : number){     

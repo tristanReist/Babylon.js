@@ -418,6 +418,15 @@ export class Irradiance {
             probe.envMultiplicator = envMultiplicator;
         }
         if (this.numberBounces > 0){
+            let engine = this._scene.getEngine();
+            for (let value of this.dictionary.values()){
+                let internal = value.irradianceLightmap.getInternalTexture();
+                if (internal != null){
+                    engine.bindFramebuffer(internal);
+                    engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
+                    engine.unBindFramebuffer(internal);
+                }
+            }
             this._renderBounce(1);
         }
     }
