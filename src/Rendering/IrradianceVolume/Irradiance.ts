@@ -115,9 +115,7 @@ export class Irradiance {
             }
             else {
                 // We are done with the rendering process, finish has to be set to true
-                for (let value of this.dictionary.values()){
-                    value.sumOfBoth.render();
-                }
+                this.dictionary.render();
                 this.finish = true;
             }
         });
@@ -156,6 +154,7 @@ export class Irradiance {
             this._renderBounce(currentBounce + 1);
         }
         else {
+            this.dictionary.render();
             this.finish = true;
         }
     
@@ -265,7 +264,6 @@ export class Irradiance {
                     //Put the previous material on the meshes
                     mesh.material = previousMaterial;
                     // value.sumOfBoth.render();
-                    value.dilateLightmap.render();
                 });
             }
         }
@@ -402,9 +400,7 @@ export class Irradiance {
             }
 
             if (this.numberBounces == 0){
-                for (let value of this.dictionary.values()){
-                    value.dilateLightmap.render();
-                }
+                this.dictionary.render();
             }
             else {
                 this._renderBounce(1);
