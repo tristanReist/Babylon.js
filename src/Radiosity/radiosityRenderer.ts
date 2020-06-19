@@ -413,7 +413,7 @@ export class RadiosityRenderer {
         // mesh._processRendering(mesh, subMesh, effect, Material.WireFrameFillMode, batch, false,
         //     (isInstance, world) => effect.setMatrix("world", world));
 
-        // // // render points
+        // render points
         // mesh._bind(subMesh, effect, Material.PointFillMode);
         // mesh._processRendering(mesh, subMesh, effect, Material.PointFillMode, batch, false,
         //     (isInstance, world) => effect.setMatrix("world", world));
