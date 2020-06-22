@@ -61,6 +61,7 @@ float visible()
   return step(depth, shadow);
 }
 
+// Implementation source : http://jcgt.org/published/0003/04/08/paper-lowres.pdf
 float visibleAdpativeBias()
 {
   // Look up projected point
