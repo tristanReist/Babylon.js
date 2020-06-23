@@ -67574,6 +67574,20 @@ declare module BABYLON {
     };
 }
 declare module BABYLON {
+    /** @hidden */
+    export var lightmapCombinePixelShader: {
+        name: string;
+        shader: string;
+    };
+}
+declare module BABYLON {
+    /** @hidden */
+    export var lightmapCombineVertexShader: {
+        name: string;
+        shader: string;
+    };
+}
+declare module BABYLON {
     /**
       * Creates various effects to solve radiosity.
       */
@@ -67602,6 +67616,7 @@ declare module BABYLON {
           * Effect to tonemap the lightmap. Necessary to map the dynamic range into 0;1.
           */
         radiosityPostProcessEffect: Effect;
+        lightmapCombineEffect: Effect;
         private _vertexBuffer;
         private _indexBuffer;
         private _scene;
@@ -67658,6 +67673,7 @@ declare module BABYLON {
          * @returns true if the tonemap effect is ready
          */
         isRadiosityPostProcessReady(): boolean;
+        isLightmapCombineEffectReady(): boolean;
     }
 }
 declare module BABYLON {
@@ -67687,7 +67703,10 @@ declare module BABYLON {
         /**
           * Size of the patch
           */
-        size: number;
+        size: {
+            width: number;
+            height: number;
+        };
         /**
          * Parent surface id
          */
@@ -67758,7 +67777,10 @@ declare module BABYLON {
                     height: number;
                 };
                 /** How much world units a texel represents */
-                texelWorldSize: number;
+                texelWorldSize: {
+                    width: number;
+                    height: number;
+                };
                 /** Encoded id of the surface as a color. Internal */
                 _lightMapId: Vector3;
                 /** Internal */
@@ -67771,6 +67793,8 @@ declare module BABYLON {
                 residualTexture: Nullable<MultiRenderTarget>;
                 /** Radiosity patches */
                 radiosityPatches: Patch[];
+                /** Total area of the polygon in world unit */
+                polygonWorldArea: number;
             };
             /** Inits the `radiosityInfo` object */
             initForRadiosity(): void;
@@ -67842,7 +67866,7 @@ declare module BABYLON {
         private _renderState;
         private getCurrentRenderWidth;
         private getCurrentRenderHeight;
-        private squareToDiskArea;
+        private rectangleToDiskArea;
         /**
          * Instanciates a radiosity renderer
          * @param scene The current scene
@@ -67862,6 +67886,13 @@ declare module BABYLON {
          * Prepare textures for radiosity
          */
         createMaps(): void;
+        private renderToCombineLightmaps;
+        /**
+         * Combine meshes lightmaps into one texture in order to debug the full lighting computations
+         * @param {Mesh[]} meshes the meshes you want the lightmaps to be combine in the returned RT
+         * @returns {RenderTargetTexture}
+         */
+        generateCombinedLightmap(meshes: Mesh[]): RenderTargetTexture;
         private renderToRadiosityTexture;
         private swap;
         private cleanAfterRender;
@@ -69923,6 +69954,7 @@ declare module BABYLON {
         private convexhull2d;
         private fitAabb2d;
         private boxFit2D;
+        debugUvs(position: Vector2, size: Vector2, uvsArray: FloatArray[], indicesArray: IndicesArray[]): void;
         private optiRotateUvIsland;
         private mergeUvIslands;
         private getUvIslands;
@@ -69939,10 +69971,11 @@ declare module BABYLON {
          * @param removeDoubles If some vertices share the same position, mergin them reduces the number of islands in uv space, thus saving space and reducing seams
          * set to true to activate the vertex merging.
          * @returns An average world space to uv space ratio, resulting of the uv layout.
+         * @returns And an array of the input meshes areas in world unit
          */
         map(obList: Mesh[], islandMargin?: number, projectionLimit?: number, userAreaWeight?: number, useAspect?: boolean, // TODO
         strechToBounds?: boolean, // TODO
-        removeDoubles?: boolean): number;
+        removeDoubles?: boolean): any[];
         private packIslands;
     }
 }
@@ -71129,6 +71162,7 @@ declare module BABYLON {
         shader: string;
     };
 }
+
 // Mixins
 interface Window {
     mozIndexedDB: IDBFactory;
