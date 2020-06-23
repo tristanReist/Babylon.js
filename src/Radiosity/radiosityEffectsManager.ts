@@ -174,7 +174,7 @@ export class RadiosityEffectsManager {
      */
     public isShootEffectReady(): boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.UV2Kind];
-        var uniforms = ["view", "shootPos", "shootNormal", "shootEnergy", "shootDArea", "nearFar", "gatheringScale", "residualScale", "normalBias"];
+        var uniforms = ["view", "shootPos", "shootNormal", "shootEnergy", "shootDArea", "nearFar", "gatheringScale", "residualScale", "normalBias", "texelSize", "texelOffset"];
         var samplers = ["itemBuffer", "worldPosBuffer", "worldNormalBuffer", "idBuffer", "residualBuffer", "gatheringBuffer"];
 
         this.shootEffect = this._scene.getEngine().createEffect("radiosity",
@@ -195,7 +195,7 @@ export class RadiosityEffectsManager {
 
         this.radiosityEffect = this._scene.getEngine().createEffect("buildRadiosity",
             attribs,
-            ["world", "texSize", "worldTexelRatio", "patchOffset", "color", "lightStrength"],
+            ["world", "texSize", "worldTexelRatio", "patchOffset", "color", "lightStrength", "texelSize", "texelOffset"],
             []);
 
         return this.radiosityEffect.isReady();

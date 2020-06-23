@@ -10,7 +10,7 @@ import { InternalTexture } from "../Materials/Textures/internalTexture";
 import { Effect } from "../Materials/effect";
 import { Material } from "../Materials/material";
 import { Constants } from "../Engines/constants";
-import { Vector3 } from "../Maths/math";
+import { Vector2, Vector3 } from "../Maths/math";
 import { Color4, Color3 } from "../Maths/math";
 import { Matrix } from "../Maths/math";
 import { Camera } from "../Cameras/camera";
@@ -37,7 +37,10 @@ class Patch {
         this.normal = n.clone().normalize();
         this.id = id;
         this.residualEnergy = residualEnergy;
-        this.size = 0;
+        this.size = {
+            width: 0,
+            height: 0
+        };
 
         this.viewMatrix = Matrix.LookAtLH(this.position, this.position.add(this.normal), Vector3.Up());
         let xAxis = new Vector3(this.viewMatrix.m[0], this.viewMatrix.m[4], this.viewMatrix.m[8]); // Tangent
@@ -80,14 +83,18 @@ class Patch {
             .add(Vector3.Cross(randomVector, this.normal).scale(Math.sin(randomAngle)))
             .add(this.normal.scale((1 - Math.cos(randomAngle) * Vector3.Dot(this.normal, randomVector))));
         // scale between 0 and patch size / 2
-        randomVector.scaleInPlace(Math.random() * 0.5 * this.size);
+        randomVector.multiplyInPlace(new Vector3(Math.random() * 0.5 * this.size.width, Math.random() * 0.5 * this.size.height, Math.random() * 0.5 * 2));
         return this.position.add(randomVector);
     }
 
     /**
       * Size of the patch
       */
-    public size: number;
+    // public size: number;
+    public size: {
+        width: number,
+        height: number
+    };
     /**
      * Parent surface id
      */
@@ -161,7 +168,11 @@ declare module "../Meshes/mesh" {
                 height: number
             };
             /** How much world units a texel represents */
-            texelWorldSize: number;
+            // texelWorldSize: number;
+            texelWorldSize: {
+                width: number,
+                height: number
+            };
             /** Encoded id of the surface as a color. Internal */
             _lightMapId: Vector3;
             /** Internal */
@@ -194,7 +205,11 @@ Mesh.prototype.initForRadiosity = function() {
             width: 256,
             height: 256
         },
-        texelWorldSize: 1,
+        // texelWorldSize: 1,
+        texelWorldSize: {
+            width: 1,
+            height: 1,
+        },
         color: new Vector3(0, 0, 0),
         lightStrength: new Vector3(0, 0, 0),
         _lightMapId: new Vector3(0, 0, 0),
@@ -296,8 +311,12 @@ export class RadiosityRenderer {
         return this._currentRenderedMap.getRenderHeight();
     }
 
-    private squareToDiskArea(a: number) {
-        return a * a * Math.PI / 4;
+    // private squareToDiskArea(a: number) {
+    //     return a * a * Math.PI / 4;
+    // }
+
+    private rectangleToDiskArea(a: number, b: number = a) {
+        return a * b * Math.PI / 4;
     }
 
     /**
@@ -404,8 +423,46 @@ export class RadiosityRenderer {
         uniformCallback(effect, args);
 
         // Draw triangles
-        mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
-            (isInstance, world) => effect.setMatrix("world", world));
+        const uvOffset =
+        [
+            -2, -2,
+            2, -2,
+            -2, 2,
+            2, 2,
+
+            -1, -2,
+            1, -2,
+            -2, -1,
+            2, -1,
+            -2, 1,
+            2, 1,
+            -1, 2,
+            1, 2,
+
+            -2, 0,
+            2, 0,
+            0, -2,
+            0, 2,
+
+            -1, -1,
+            1, -1,
+            -1, 0,
+            1, 0,
+            -1, 1,
+            1, 1,
+            0, -1,
+            0, 1,
+
+            0, 0
+        ];
+
+        for (let i = 0; i < uvOffset.length; i += 2) {
+            mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
+                (isInstance, world) => {
+                    effect.setMatrix("world", world);
+                    effect.setVector2("texelOffset", new Vector2(uvOffset[i], uvOffset[i + 1]));
+                });
+        }
 
         // Commented as it looks like it adds an ssao effect
         // render edges
@@ -464,6 +521,8 @@ export class RadiosityRenderer {
                 var width = mesh.radiosityInfo.lightmapSize.width;
 
                 effect.setFloat("texSize", width);
+                effect.setVector2("texelSize", new Vector2(1 / mesh.radiosityInfo.lightmapSize.width, 1 / mesh.radiosityInfo.lightmapSize.height));
+                // effect.setVector2("texelSize", new Vector2(mesh.radiosityInfo.texelWorldSize.width, mesh.radiosityInfo.texelWorldSize.height));
                 effect.setFloat("patchOffset", mesh.radiosityInfo._patchOffset);
 
                 if (mesh.radiosityInfo.color) {
@@ -575,61 +634,98 @@ export class RadiosityRenderer {
     }
 
     private renderToRadiosityTexture(mesh: Mesh, patch: Patch, patchArea: number, doNotWriteToGathering = false) {
+        const uvOffset =
+        [
+            -2, -2,
+            2, -2,
+            -2, 2,
+            2, 2,
+
+            -1, -2,
+            1, -2,
+            -2, -1,
+            2, -1,
+            -2, 1,
+            2, 1,
+            -1, 2,
+            1, 2,
+
+            -2, 0,
+            2, 0,
+            0, -2,
+            0, 2,
+
+            -1, -1,
+            1, -1,
+            -1, 0,
+            1, 0,
+            -1, 1,
+            1, 1,
+            0, -1,
+            0, 1,
+
+            0, 0
+        ];
         var deltaArea = patchArea;
         var mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
         var destResidualTexture = mrt.textures[5]._texture as InternalTexture;
         var destGatheringTexture = mrt.textures[6]._texture as InternalTexture;
         var engine = this._scene.getEngine();
         engine.enableEffect(this._radiosityEffectsManager.shootEffect);
+        const gl = engine._gl;
 
-        this._radiosityEffectsManager.shootEffect.setTexture("itemBuffer", this._patchMap);
-        this._radiosityEffectsManager.shootEffect.setTexture("worldPosBuffer", mrt.textures[0]);
-        this._radiosityEffectsManager.shootEffect.setTexture("worldNormalBuffer", mrt.textures[1]);
-        this._radiosityEffectsManager.shootEffect.setTexture("idBuffer", mrt.textures[2]);
-        this._radiosityEffectsManager.shootEffect.setTexture("residualBuffer", mrt.textures[3]);
-        this._radiosityEffectsManager.shootEffect.setFloat("gatheringScale", doNotWriteToGathering ? 0.0 : 1.0);
-        this._radiosityEffectsManager.shootEffect.setFloat("residualScale", 1.0);
-        this._radiosityEffectsManager.shootEffect.setTexture("gatheringBuffer", mrt.textures[4]);
-        this._radiosityEffectsManager.shootEffect.setFloat2("nearFar", this._near, this._far);
 
-        this._radiosityEffectsManager.shootEffect.setVector3("shootPos", this.randomizePosition ? patch.perturbPosition() : patch.position);
-        this._radiosityEffectsManager.shootEffect.setVector3("shootNormal", patch.normal);
-        this._radiosityEffectsManager.shootEffect.setVector3("shootEnergy", patch.residualEnergy);
-        this._radiosityEffectsManager.shootEffect.setFloat("shootDArea", deltaArea);
-        this._radiosityEffectsManager.shootEffect.setFloat("normalBias", this._normalBias);
-        this._radiosityEffectsManager.shootEffect.setMatrix("view", patch.viewMatrix);
+        for (let i = 0; i < uvOffset.length; i += 2) {
+            this._radiosityEffectsManager.shootEffect.setTexture("itemBuffer", this._patchMap);
+            this._radiosityEffectsManager.shootEffect.setTexture("worldPosBuffer", mrt.textures[0]);
+            this._radiosityEffectsManager.shootEffect.setTexture("worldNormalBuffer", mrt.textures[1]);
+            this._radiosityEffectsManager.shootEffect.setTexture("idBuffer", mrt.textures[2]);
+            this._radiosityEffectsManager.shootEffect.setTexture("residualBuffer", mrt.textures[3]);
+            this._radiosityEffectsManager.shootEffect.setFloat("gatheringScale", doNotWriteToGathering ? 0.0 : 1.0);
+            this._radiosityEffectsManager.shootEffect.setFloat("residualScale", 1.0);
+            this._radiosityEffectsManager.shootEffect.setTexture("gatheringBuffer", mrt.textures[4]);
+            this._radiosityEffectsManager.shootEffect.setFloat2("nearFar", this._near, this._far);
 
-        if (RadiosityRenderer.PERFORMANCE_LOGS_LEVEL >= 3) {
-            console.log(`Lightmap size for this submesh : ${mrt.getSize().width} x ${mrt.getSize().height}`);
-        }
+            this._radiosityEffectsManager.shootEffect.setVector3("shootPos", this.randomizePosition ? patch.perturbPosition() : patch.position);
+            this._radiosityEffectsManager.shootEffect.setVector3("shootNormal", patch.normal);
+            this._radiosityEffectsManager.shootEffect.setVector3("shootEnergy", patch.residualEnergy);
+            this._radiosityEffectsManager.shootEffect.setFloat("shootDArea", deltaArea);
+            this._radiosityEffectsManager.shootEffect.setFloat("normalBias", this._normalBias);
+            this._radiosityEffectsManager.shootEffect.setMatrix("view", patch.viewMatrix);
+            this._radiosityEffectsManager.shootEffect.setVector2("texelSize", new Vector2(1 / mesh.radiosityInfo.lightmapSize.width, 1 / mesh.radiosityInfo.lightmapSize.height));
+            this._radiosityEffectsManager.shootEffect.setVector2("texelOffset", new Vector2(uvOffset[i], uvOffset[i + 1]));
 
-        engine.setDirectViewport(0, 0, destResidualTexture.width, destResidualTexture.height);
-        engine.setState(false);
-        var gl = engine._gl;
-        let fb = this._frameBuffer0;
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, destResidualTexture._webGLTexture, 0);
-        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, destGatheringTexture._webGLTexture, 0);
-        gl.drawBuffers([
-            gl.COLOR_ATTACHMENT0,
-            gl.COLOR_ATTACHMENT1
-        ]);
-
-        var subMeshes = mesh.subMeshes;
-
-        for (let i = 0; i < subMeshes.length; i++) {
-            var subMesh = subMeshes[i];
-            var batch = mesh._getInstancesRenderList(subMesh._id);
-
-            if (batch.mustReturn) {
-                return;
+            if (RadiosityRenderer.PERFORMANCE_LOGS_LEVEL >= 3) {
+                console.log(`Lightmap size for this submesh : ${mrt.getSize().width} x ${mrt.getSize().height}`);
             }
 
-            var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
-            mesh._bind(subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode);
-            mesh._processRendering(mesh, subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
-                (isInstance, world) => this._radiosityEffectsManager.shootEffect.setMatrix("world", world));
+            engine.setDirectViewport(0, 0, destResidualTexture.width, destResidualTexture.height);
+            engine.setState(false);
+            let fb = this._frameBuffer0;
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, destResidualTexture._webGLTexture, 0);
+            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, destGatheringTexture._webGLTexture, 0);
+            gl.drawBuffers([
+                gl.COLOR_ATTACHMENT0,
+                gl.COLOR_ATTACHMENT1
+            ]);
+
+            var subMeshes = mesh.subMeshes;
+
+            for (let i = 0; i < subMeshes.length; i++) {
+                var subMesh = subMeshes[i];
+                var batch = mesh._getInstancesRenderList(subMesh._id);
+
+                if (batch.mustReturn) {
+                    return;
+                }
+
+                var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
+                mesh._bind(subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode);
+                mesh._processRendering(mesh, subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
+                    (isInstance, world) => this._radiosityEffectsManager.shootEffect.setMatrix("world", world));
+            }
         }
 
         // Twice, for mipmaps
@@ -638,7 +734,9 @@ export class RadiosityRenderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         // Dilates to origin, swapping buffers in the process
-        this.dilate(1, mrt.textures[6], mrt.textures[4]);
+        // this.dilate(1, mrt.textures[6], mrt.textures[4]);
+        this.swap(mrt.textures, 4, 6);
+        this.swap(mrt.internalTextures, 4, 6);
 
         // Swap buffers that should not be dilated
         this.swap(mrt.textures, 3, 5);
@@ -730,6 +828,10 @@ export class RadiosityRenderer {
     private postProcessLightmap(texture: MultiRenderTarget) {
         var textureArray = texture.textures;
 
+        this.dilate(1, textureArray[6], textureArray[4]);
+        this.swap(textureArray, 4, 6);
+        this.swap(texture.internalTextures, 4, 6);
+
         this.toneMap(textureArray[4], textureArray[6]);
         this.swap(textureArray, 4, 6);
         this.swap(texture.internalTextures, 4, 6);
@@ -755,6 +857,7 @@ export class RadiosityRenderer {
         // Shooting ALL direct light in no particular order
         let shooter;
         let hasShot = false;
+        console.log("Shooting");
         for (let k = 0; k < emissiveMeshes.length; k++) {
             shooter = emissiveMeshes[k];
 
@@ -856,7 +959,7 @@ export class RadiosityRenderer {
         for (let i = indexBegin; i < indexEnd; i++) {
             this._currentPatch = patches[i];
 
-            if (this._filterMinEnergy && !this._cachePatches && this._currentPatch.getResidualEnergySum() * shooter.radiosityInfo.texelWorldSize * shooter.radiosityInfo.texelWorldSize < this._filterMinEnergy) {
+            if (this._filterMinEnergy && !this._cachePatches && this._currentPatch.getResidualEnergySum() * shooter.radiosityInfo.texelWorldSize.width * shooter.radiosityInfo.texelWorldSize.height < this._filterMinEnergy) {
                 if (RadiosityRenderer.PERFORMANCE_LOGS_LEVEL >= 1) {
                     this._renderState.shooterIndex = patches.length;
                     console.log(`Ended pass early after treating ${i} shooters amongst ${patches.length} shooters.`);
@@ -880,7 +983,7 @@ export class RadiosityRenderer {
             for (let j = 0; j < this._patchedMeshes.length; j++) {
 
                 let subMeshDate = Date.now();
-                this.renderToRadiosityTexture(this._patchedMeshes[j], patches[i], this.squareToDiskArea(patches[i].size));
+                this.renderToRadiosityTexture(this._patchedMeshes[j], patches[i], this.rectangleToDiskArea(patches[i].size.width, patches[i].size.height));
 
                 if (RadiosityRenderer.PERFORMANCE_LOGS_LEVEL >= 3) {
                     duration = Date.now() - subMeshDate;
@@ -935,7 +1038,7 @@ export class RadiosityRenderer {
         for (let i = 0; i < this.meshes.length; i++) {
             const mesh = this.meshes[i];
             const mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
-            const texelWorldArea : number = mesh.radiosityInfo.texelWorldSize * mesh.radiosityInfo.texelWorldSize;
+            const texelWorldArea : number = mesh.radiosityInfo.texelWorldSize.width * mesh.radiosityInfo.texelWorldSize.height;
             const polygonTexelCount = mesh.radiosityInfo.polygonWorldArea / texelWorldArea;
             const texelArea = (1 / mesh.radiosityInfo.lightmapSize.width) / (1 / mesh.radiosityInfo.lightmapSize.height);
             const polygonArea: number = (polygonTexelCount * texelArea) || (mrt.getRenderWidth() * mrt.getRenderHeight());
@@ -1130,7 +1233,7 @@ export class RadiosityRenderer {
             currentIndex++;
         }
 
-        energyLeft *= this.squareToDiskArea(mesh.radiosityInfo.texelWorldSize);
+        energyLeft *= this.rectangleToDiskArea(mesh.radiosityInfo.texelWorldSize.width, mesh.radiosityInfo.texelWorldSize.height);
         if (RadiosityRenderer.RADIOSITY_INFO_LOGS_LEVEL >= 1) {
             console.log("Residual energy gathered from surface : " + energyLeft);
         }

@@ -1443,7 +1443,8 @@ export class UvMapper {
         let collectedIslandMesh: Mesh[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
-        let worldToUVRatio = 0;
+        let xFactor = 0;
+        let yFactor = 0;
 
         if (USER_SHARE_SPACE) {
             // Sort by name so we get consistent results
@@ -1492,7 +1493,6 @@ export class UvMapper {
             for (const face of meshFaces) {
                 polygonsArea[i] += face.area;
             }
-
 
             let projectVecs: Vector3[] = [];
             let newProjectVec: Vector3 = meshFaces[0].no;
@@ -1634,12 +1634,12 @@ export class UvMapper {
                     collectedIslandMesh[meshIndex] = m;
                 }
 
-                worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
+                [xFactor, yFactor] = this.packIslands(collectedIslandList, collectedIslandMesh);
             }
         }
 
         if (USER_SHARE_SPACE) {
-            worldToUVRatio = this.packIslands(collectedIslandList, collectedIslandMesh);
+            [xFactor, yFactor] = this.packIslands(collectedIslandList, collectedIslandMesh);
         }
 
         let newUvs: FloatArray[] = [];
@@ -1738,10 +1738,10 @@ export class UvMapper {
 
         // this.debugUvs(Vector2.Zero(), new Vector2(256, 256), newUvs, indices);
 
-        return [worldToUVRatio, polygonsArea];
+        return [[xFactor, yFactor], polygonsArea];
     }
 
-    private packIslands(islandList: Island[], islandMeshes: Mesh[]) : number {
+    private packIslands(islandList: Island[], islandMeshes: Mesh[]) : [number, number] {
         if (USER_FILL_HOLES) {
             this.mergeUvIslands(islandList);
         }
@@ -1795,8 +1795,9 @@ export class UvMapper {
         let xFactor = 1, yFactor = 1;
 
         if (islandIdx) {
-            xFactor = 1.0 / Math.max(packDimension.w, packDimension.h);
-            yFactor = xFactor;
+            xFactor = 1.0 / packDimension.w;
+            yFactor = 1.0 / packDimension.h;
+            // yFactor = xFactor;
         }
 
         for (let boxIdx = 0; boxIdx < packBoxes.length; boxIdx++) {
@@ -1820,7 +1821,7 @@ export class UvMapper {
 
         }
 
-        return xFactor;
+        return [xFactor, yFactor];
     }
 }
 
