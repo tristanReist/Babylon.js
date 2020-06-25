@@ -674,7 +674,6 @@ export class RadiosityRenderer {
         engine.enableEffect(this._radiosityEffectsManager.shootEffect);
         const gl = engine._gl;
 
-
         for (let i = 0; i < uvOffset.length; i += 2) {
             this._radiosityEffectsManager.shootEffect.setTexture("itemBuffer", this._patchMap);
             this._radiosityEffectsManager.shootEffect.setTexture("worldPosBuffer", mrt.textures[0]);
