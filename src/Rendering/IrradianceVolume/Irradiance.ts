@@ -12,6 +12,8 @@ import { RawTexture } from '../../Materials/Textures/rawTexture';
 import { Engine } from '../../Engines/engine';
 import { Color4 } from '../../Maths/math.color';
 
+import "./../../Shaders/irradianceVolumeIrradianceLightmap.fragment";
+import "./../../Shaders/irradianceVolumeIrradianceLightmap.vertex";
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volume 
  */
@@ -78,7 +80,11 @@ export class Irradiance {
         probeDisposition : Vector3, bottomLeft : Vector3, volumeSize : Vector3 ) {
         this._scene = scene;
         this.probeList = probes;
-        this.meshes = meshes;
+        this.meshes = [];
+        for (let mesh of meshes){
+            this.meshes.push(mesh);
+        }
+
         this.dictionary = dictionary;
         this.numberBounces = numberBounces;
         this._uniformNumberProbes = probeDisposition;
@@ -169,58 +175,66 @@ export class Irradiance {
         let shArray = new Float32Array(this.probeList.length * 9  * 4);
         for (let i = 0; i < this.probeList.length; i++) {
             let probe = this.probeList[i];
-            let index = i * 9 * 4;
+            if(probe.isInsideHouse){
+                let index = i * 9 * 4;
 
-            shArray[index] =  probe.sphericalHarmonic.l00.x;
-            shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
-            shArray[index + 2] = probe.sphericalHarmonic.l00.z;
-            shArray[index + 3] = 1;
-
-            shArray[index + 4] = probe.sphericalHarmonic.l11.x;
-            shArray[index + 5] = probe.sphericalHarmonic.l11.y;
-            shArray[index + 6] = probe.sphericalHarmonic.l11.z;
-            shArray[index + 7] = 1;
-
-            shArray[index + 8] = probe.sphericalHarmonic.l10.x;
-            shArray[index + 9] =  probe.sphericalHarmonic.l10.y;
-            shArray[index + 10] =  probe.sphericalHarmonic.l10.z;
-            shArray[index + 11] = 1;
-
-            shArray[index + 12] =  probe.sphericalHarmonic.l1_1.x;
-            shArray[index + 13] =  probe.sphericalHarmonic.l1_1.y;
-            shArray[index + 14] = probe.sphericalHarmonic.l1_1.z;
-            shArray[index + 15] = 1;
-
-            shArray[index + 16] =  probe.sphericalHarmonic.l22.x;
-            shArray[index + 17] =  probe.sphericalHarmonic.l22.y;
-            shArray[index + 18] =  probe.sphericalHarmonic.l22.z;
-            shArray[index + 19] = 1;
-
-            shArray[index + 20] =  probe.sphericalHarmonic.l21.x;
-            shArray[index + 21] =  probe.sphericalHarmonic.l21.y;
-            shArray[index + 22] =  probe.sphericalHarmonic.l21.z;
-            shArray[index + 23] = 1;
-
-            shArray[index + 24] =  probe.sphericalHarmonic.l20.x;
-            shArray[index + 25] =  probe.sphericalHarmonic.l20.y;
-            shArray[index + 26] =  probe.sphericalHarmonic.l20.z;
-            shArray[index + 27] = 1;
-
-            shArray[index + 28] =  probe.sphericalHarmonic.l2_1.x;
-            shArray[index + 29] =  probe.sphericalHarmonic.l2_1.y;
-            shArray[index + 30] =  probe.sphericalHarmonic.l2_1.z;
-            shArray[index + 31] = 1;
-
-            shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
-            shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
-
+                shArray[index] =  probe.sphericalHarmonic.l00.x;
+                shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
+                shArray[index + 2] = probe.sphericalHarmonic.l00.z;
+                shArray[index + 3] = 1;
+    
+                shArray[index + 4] = probe.sphericalHarmonic.l11.x;
+                shArray[index + 5] = probe.sphericalHarmonic.l11.y;
+                shArray[index + 6] = probe.sphericalHarmonic.l11.z;
+                shArray[index + 7] = 1;
+    
+                shArray[index + 8] = probe.sphericalHarmonic.l10.x;
+                shArray[index + 9] =  probe.sphericalHarmonic.l10.y;
+                shArray[index + 10] =  probe.sphericalHarmonic.l10.z;
+                shArray[index + 11] = 1;
+    
+                shArray[index + 12] =  probe.sphericalHarmonic.l1_1.x;
+                shArray[index + 13] =  probe.sphericalHarmonic.l1_1.y;
+                shArray[index + 14] = probe.sphericalHarmonic.l1_1.z;
+                shArray[index + 15] = 1;
+    
+                shArray[index + 16] =  probe.sphericalHarmonic.l22.x;
+                shArray[index + 17] =  probe.sphericalHarmonic.l22.y;
+                shArray[index + 18] =  probe.sphericalHarmonic.l22.z;
+                shArray[index + 19] = 1;
+    
+                shArray[index + 20] =  probe.sphericalHarmonic.l21.x;
+                shArray[index + 21] =  probe.sphericalHarmonic.l21.y;
+                shArray[index + 22] =  probe.sphericalHarmonic.l21.z;
+                shArray[index + 23] = 1;
+    
+                shArray[index + 24] =  probe.sphericalHarmonic.l20.x;
+                shArray[index + 25] =  probe.sphericalHarmonic.l20.y;
+                shArray[index + 26] =  probe.sphericalHarmonic.l20.z;
+                shArray[index + 27] = 1;
+    
+                shArray[index + 28] =  probe.sphericalHarmonic.l2_1.x;
+                shArray[index + 29] =  probe.sphericalHarmonic.l2_1.y;
+                shArray[index + 30] =  probe.sphericalHarmonic.l2_1.z;
+                shArray[index + 31] = 1;
+    
+                shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
+                shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
+            }
+            else {
+                let index = i + 9 * 4;
+                for (let j = 0; j < 34; j++){
+                    shArray[index + j] = 0.;
+                }
+            }
+            
         }
         this._shTexture.update(shArray);
     }
 
     private _initIrradianceLightMap() : void {
         let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene,
-        "./../../src/Shaders/irradianceVolumeIrradianceLightmap", {
+        "irradianceVolumeIrradianceLightmap", {
             attributes : ["position", "normal", "uv2"],
             uniforms : ["world", "isUniform", "numberProbesInSpace", "boxSize", "bottomLeft", "probePosition"],
             defines : ["#define NUM_PROBES " + this.probeList.length],
@@ -251,8 +265,14 @@ export class Irradiance {
                         probePosition.push(probe.sphere.position.x);
                         probePosition.push(probe.sphere.position.y);
                         probePosition.push(probe.sphere.position.z);
+                        if (probe.isInsideHouse){
+                            probePosition.push(1.);
+                        }
+                        else {
+                            probePosition.push(0.);
+                        }
                     }
-                    irradianceMaterial.setArray3("probePosition", probePosition);
+                    irradianceMaterial.setArray4("probePosition", probePosition);
                     irradianceMaterial.setTexture("shText", this._shTexture);
 
                     //Add the right material to the mesh
@@ -364,7 +384,7 @@ export class Irradiance {
         return true;
     }
 */
-
+/*
     private _areShCoeffReady() : boolean {
         for (let probe of this.probeList) {
             if (! probe.sphericalHarmonicChanged) {
@@ -373,7 +393,7 @@ export class Irradiance {
         }
         return true;
     }
-
+*/
     
     /**
      * Method to call when you want to update the number of bounces, after the irradiance rendering has been done

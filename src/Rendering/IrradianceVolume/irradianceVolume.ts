@@ -1,7 +1,6 @@
 import { Scene } from '../../scene';
 import { Mesh } from '../../Meshes/mesh';
-import { VertexBuffer } from '../../Meshes/buffer';
-import { Vector3 } from '../../Maths/math.vector';
+import { Vector3, Vector4 } from '../../Maths/math.vector';
 import { Probe } from './Probe';
 import { MeshDictionary } from './meshDictionary';
 import { Irradiance } from './Irradiance';
@@ -47,18 +46,27 @@ export class IrradianceVolume {
      * @param numberBounces the number of bounces wanted
      */
     constructor(meshes : Array<Mesh>, scene : Scene, probeRes : number, 
-        probeDisposition : Vector3, numberBounces : number) {
+        probeDisposition : Vector3, numberBounces : number, probeDisp : Array<Vector4>) {
         this._scene = scene;
         this.meshForIrradiance = meshes;
         this.probeList = [];
         this._probesDispotion = probeDisposition;
         //Create and dispatch the probes inside the irradiance volume
-        this._createProbeList(probeRes);
+        // this._createProbeList(probeRes);
+        this._createProbeFromProbeDisp(probeDisp);
         this.dictionary = new MeshDictionary(meshes, scene);
         this.irradiance = new Irradiance(this._scene, this.probeList, this.meshForIrradiance, this.dictionary,
             numberBounces, this._probesDispotion, this._lowerLeft, this._volumeSize);
     }
 
+
+    private _createProbeFromProbeDisp(probeDisp : Array<Vector4>) {
+        for (let probePos of probeDisp){
+            this.probeList.push(new Probe(new Vector3(probePos.x, probePos.y, probePos.z),
+            this._scene, 16, probePos.w));
+        }
+    }
+/*
     private _createProbeList(probeRes : number) {
         let positions = [];
         for (let mesh of this.meshForIrradiance) {
@@ -108,12 +116,12 @@ export class IrradianceVolume {
                         this._lowerLeft.x + x * this._volumeSize.x / this._probesDispotion.x,
                         this._lowerLeft.y + y * this._volumeSize.y / this._probesDispotion.y,
                         this._lowerLeft.z + z * this._volumeSize.z / this._probesDispotion.z),
-                         this._scene, probeRes));
+                         this._scene, probeRes, 1));
                 }
             }
         }
     }
-
+*/
     /**
      * Called to change the directLightmap of the dictionary
      * Must ba called when the radiosity has been updates, othermwise, it does not do anything

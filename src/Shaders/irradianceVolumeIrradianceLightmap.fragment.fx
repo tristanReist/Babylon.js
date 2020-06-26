@@ -3,7 +3,7 @@ varying vec3 vNormal;
 
 uniform mat4 world;
 
-uniform vec3 probePosition[NUM_PROBES];
+uniform vec4 probePosition[NUM_PROBES];
 // uniform vec3 shCoef[NUM_PROBES * 9];
 
 uniform sampler2D shText;
@@ -135,7 +135,7 @@ vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
     vec3 L2m2 = texture(shText, vec2( 8. * xSize + xSize / 2., textY + ySize / 2. )).rgb;
 
 
-    vec4 direction = position - vec4(probePosition[probe], 1.);
+    vec4 direction = position - vec4(probePosition[probe].rgb, 1.);
     if (dot(direction, normal) >= 0.){
         return vec4(0., 0., 0., 0.);
     }
@@ -171,7 +171,6 @@ vec4 probeContribution(int probe, float weight, vec4 position, vec4 normal) {
     x3 = L22.rgb * vC;
 
     return vec4( weight * (x1 + x2 + x3) , weight);    
-    // return vec4( x1 + x2 + x3 , 1.);
 }
 
 
@@ -184,7 +183,8 @@ void main(){
     if (isUniform == 1){
         vec2 probeIndices[] = responsibleProbesUniform(wPosition);
         for (int i = 0 ; i < 8 ; i++){
-            if (int(probeIndices[i].x) != -1){
+            // If == -1, the probes doesn't exist (either not in house, or the point is on border)
+            if (int(probeIndices[i].x) != -1 && probePosition[int(probeIndices[i].x)].a == 1.){
                 color += probeContribution(int(probeIndices[i].x), probeIndices[i].y, wPosition, normalizeNormal);
             }
         }

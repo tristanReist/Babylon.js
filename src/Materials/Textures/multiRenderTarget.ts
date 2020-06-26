@@ -6,6 +6,7 @@ import { RenderTargetTexture } from "../../Materials/Textures/renderTargetTextur
 import { Constants } from "../../Engines/constants";
 
 import "../../Engines/Extensions/engine.multiRender";
+import "../../Engines/Extensions/engine.multiRenderCube";
 import { Matrix } from '../../Maths/math.vector';
 
 /**

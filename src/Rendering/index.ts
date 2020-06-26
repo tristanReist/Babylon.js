@@ -7,7 +7,6 @@ export * from "./geometryBufferRendererSceneComponent";
 export * from "./IrradianceVolume/Probe";
 export * from "./IrradianceVolume/Irradiance";
 export * from "./IrradianceVolume/irradianceVolume";
-export * from "./IrradianceVolume/directLightMapGeneration";
 export * from "./IrradianceVolume/meshDictionary";
 export * from "./IrradianceVolume/irradianceVolumeManager";
 export * from "./IrradianceVolume/irradiancePostProcessEffectManager";

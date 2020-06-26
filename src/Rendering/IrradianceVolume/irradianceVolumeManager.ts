@@ -14,9 +14,9 @@ export class IrradianceVolumeManager {
     private _meshForIrradiance : Array<Mesh>;
     
     private _irradianceVolumes : Array<IrradianceVolume>;
-    private _numberBounces : number;
+    // private _numberBounces : number;
 
-    private _probesDisposition : Vector3;
+    // private _probesDisposition : Vector3;
     private _pr : RadiosityRenderer;
 
     private _forbiddenNames = ["ground", "earth", "skybox", "avatar", "__root__", 
@@ -49,8 +49,8 @@ export class IrradianceVolumeManager {
         numberProbesY : number, numberProbesZ : number, numberBounces : number){
         this._scene = scene;
         this._lightSources = lights;
-        this._probesDisposition = new Vector3(numberProbesX, numberProbesY, numberProbesZ);
-        this._numberBounces = numberBounces;
+        // this._probesDisposition = new Vector3(numberProbesX, numberProbesY, numberProbesZ);
+        // this._numberBounces = numberBounces;
 
         this._createMeshesArray(meshes);
 
@@ -59,8 +59,8 @@ export class IrradianceVolumeManager {
         console.log("TODO");
 
         // Creating the IrradianceVolumes with the previously definies rooms
-        this._irradianceVolumes = [new IrradianceVolume(this._meshForIrradiance,
-             this._scene, 16, this._probesDisposition, this._numberBounces)];
+        // this._irradianceVolumes = [new IrradianceVolume(this._meshForIrradiance,
+        //      this._scene, 16, this._probesDisposition, this._numberBounces)];
 
         this._pr = new RadiosityRenderer(scene, this._meshForRadiance, { bias: 0.000002, normalBias: 0.000002 });
         //
@@ -101,7 +101,7 @@ export class IrradianceVolumeManager {
                 mesh.radiosityInfo.color = new Vector3(10., 10., 10.);
             }
             else {
-                mesh.radiosityInfo.lightmapSize = {width : 32, height : 32};           
+                mesh.radiosityInfo.lightmapSize = {width : 256, height : 256};           
             }
             mesh.radiosityInfo.texelWorldSize = 1 / ( worldToUVRatio * mesh.radiosityInfo.lightmapSize.width);   
             mesh.radiosityInfo.polygonWorldArea = polygonsArea[0];    

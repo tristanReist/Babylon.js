@@ -76,9 +76,11 @@ export class MeshDictionary {
         for (let mesh of this._keys) {
             let value = this.getValue(mesh);
             if (value != null) {
-                let size = 256;
-                value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene); 
-                value.postProcessLightmap = new MultiRenderTarget("postProcess", size, 4, this._scene);
+                let size = 128;
+                value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene, false, true, 1); 
+                value.postProcessLightmap = new MultiRenderTarget("postProcess", size, 4, this._scene, {
+                    samplingModes: [2, 2, 2, 2],
+                    types: [1, 1, 1, 1]});
             }
         }
 
@@ -92,7 +94,7 @@ export class MeshDictionary {
 
     public renderValue(value : IMeshesGroup){
         
-        // this._dilateRendering(value);
+        this._dilateRendering(value);
         this._sumOfBothRendering(value);
         this._toneMappingRendering(value);
         value.postProcessLightmap.textures[1].coordinatesIndex = 1;
@@ -122,8 +124,8 @@ export class MeshDictionary {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
         effect.setTexture("texture1", value.directLightmap);
-        // effect.setTexture("texture2", mrt.textures[2]);
-        effect.setTexture("texture2", value.irradianceLightmap);
+        effect.setTexture("texture2", mrt.textures[2]);
+        // effect.setTexture("texture2", value.irradianceLightmap);
         effect.setFloat("directIllumStrength", this.directIllumStrength);
         effect.setFloat("globalIllumStrength", this.globalIllumStrength);
         engine.bindBuffers(vb, this._postProcessManager.screenQuadIB, effect);
@@ -163,7 +165,6 @@ export class MeshDictionary {
         let mrt = value.postProcessLightmap; 
         let engine = this._scene.getEngine();
         let effect = this._postProcessManager.dilateEffect;
-
         let dest = mrt.textures[2];
 
         engine.enableEffect(effect);
@@ -171,8 +172,9 @@ export class MeshDictionary {
         let gl = engine._gl;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (<InternalTexture>dest._texture)._webGLTexture, 0);
-        
+  
         engine.clear(new Color4(1.0, 0.0, 0.0, 1.0), true, true, true);
+        gl.clearColor(1., 0., 0., 1.);
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
         effect.setTexture("inputTexture", value.irradianceLightmap);

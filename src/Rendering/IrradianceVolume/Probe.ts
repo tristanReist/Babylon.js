@@ -19,9 +19,12 @@ import "../../Shaders/irradianceVolumeProbeEnv.vertex";
 import "../../Shaders/irradianceVolumeProbeEnv.fragment";
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.vertex";
 import "../../Shaders/irradianceVolumeUpdateProbeBounceEnv.fragment";
+import "../../Shaders/irradianceVolumeComputeIrradiance.fragment";
+import "../../Shaders/irradianceVolumeComputeIrradiance.vertex";
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 
 import { MeshDictionary } from './meshDictionary';
+
 
 /**
  * The probe is what is used for irradiance volume
@@ -105,6 +108,8 @@ export class Probe {
 
     public envMultiplicator = 1.3;
 
+    public isInsideHouse = true;
+
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -112,10 +117,16 @@ export class Probe {
      * @param albedoName the path to the albedo
      * @param isCube Is the texture we want to use a cube or not ?
      */
-    constructor(position : Vector3, scene : Scene, resolution : number) {
+    constructor(position : Vector3, scene : Scene, resolution : number, inRoom : number) {
         this._scene = scene;
         this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
-        this.sphere.visibility = 0;
+        this.sphere.visibility = 1;
+        if (inRoom == 1){
+            this.isInsideHouse = true;
+        }
+        else {
+            this.isInsideHouse = false;
+        }
 
         this.cameraList = new Array<UniversalCamera>();
 
@@ -180,7 +191,9 @@ export class Probe {
      * @param visisble The visibility of the probe
      */
     public setVisibility(visisble : number) : void {
-        this.sphere.visibility = visisble;
+        if (this.isInsideHouse){
+            this.sphere.visibility = visisble;
+        }
     }
 
     private _renderCubeTexture(subMeshes : SmartArray<SubMesh>, isMRT : boolean) : void {
@@ -361,32 +374,32 @@ export class Probe {
      * @param irradianceLightMap THe irradiance lightmap use to render the bounces
      */
     public renderBounce(meshes : Array<Mesh>) : void {
-
-        this.tempBounce.renderList = meshes;
-        this.tempBounce.boundingBoxPosition = this.sphere.position;
-
-
-        let begin = new Date().getTime();
-        let end =  new Date().getTime();
-
-
-        this.tempBounce.onBeforeRenderObservable.add(() => {
-            this.tempBounce.isCube = true;
-            begin = new Date().getTime();
-        });
-        this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-            this._renderCubeTexture(opaqueSubMeshes, false);
-        };
-        this.tempBounce.onAfterRenderObservable.add(() => {
-            end =  new Date().getTime();
-            this.renderTime = end - begin;
-
-            begin = new Date().getTime();
-            this._CPUcomputeSHCoeff();
-            end =  new Date().getTime();
-            this.shTime = end - begin;
-
-        });
+        if (this.isInsideHouse){
+            this.tempBounce.renderList = meshes;
+            this.tempBounce.boundingBoxPosition = this.sphere.position;
+    
+    
+            let begin = new Date().getTime();
+            let end =  new Date().getTime();
+    
+    
+            this.tempBounce.onBeforeRenderObservable.add(() => {
+                    this.tempBounce.isCube = true;
+                    begin = new Date().getTime();
+            });
+            this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
+                    this._renderCubeTexture(opaqueSubMeshes, false);
+            };
+            this.tempBounce.onAfterRenderObservable.add(() => {
+                    end =  new Date().getTime();
+                    this.renderTime = end - begin;
+        
+                    begin = new Date().getTime();
+                    this._CPUcomputeSHCoeff();
+                    end =  new Date().getTime();
+                    this.shTime = end - begin;
+            });
+        }
     }
 
     /**
@@ -394,15 +407,20 @@ export class Probe {
      * Is called in irradiance for the creation of the promise
      */
     public initPromise() : void {
-        this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
-        this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
+        if (this.isInsideHouse){
+            this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
+            this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
+        }
     }
 
     /**
      * Return if the probe is ready to be render
      */
     public isProbeReady() : boolean {
-        return this._isMRTReady() && this._isTempBounceReady();
+        if (this.isInsideHouse){
+            return this._isMRTReady() && this._isTempBounceReady();
+        }
+        return true;
     }
 
     private _isMRTReady() : boolean {
@@ -428,7 +446,7 @@ export class Probe {
 
     private _computeProbeIrradiance() : void {
         //We use a shader to add this texture to the probe
-        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "./../../src/Shaders/irradianceVolumeComputeIrradiance", {
+        let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "irradianceVolumeComputeIrradiance", {
             attributes : ["position", "normal"],
             uniforms : ["worldViewProjection", "L00", "L10", "L11", "L1m1", "L20", "L21", "L22", "L2m1", "L2m2"]
         });
@@ -446,7 +464,7 @@ export class Probe {
         this.sphere.material = shaderMaterial;
 
     }
-
+/*
     private _weightSHCoeff() {
         let weight = 0.5;
         this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
@@ -459,5 +477,5 @@ export class Probe {
         this.sphericalHarmonic.l2_1 = this.sphericalHarmonic.l2_1.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
     }
-
+*/
 }
