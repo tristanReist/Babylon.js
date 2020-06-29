@@ -9,8 +9,8 @@ import "../Shaders/dilate.fragment";
 import "../Shaders/dilate.vertex";
 import "../Shaders/radiosityPostProcess.fragment";
 import "../Shaders/radiosityPostProcess.vertex";
-import "../Shaders/shadowmapping.fragment";
-import "../Shaders/shadowmapping.vertex";
+import "../Shaders/shadowMapping.fragment";
+import "../Shaders/shadowMapping.vertex";
 
 /**
   * Creates various effects to solve radiosity.
@@ -137,8 +137,8 @@ export class DirectEffectsManager {
      * @returns true if the visibility effect is ready
      */
     public isVisiblityEffectReady(): boolean {
-        let attribs = [VertexBuffer.PositionKind, VertexBuffer.UV2Kind];
-        let uniforms = ["world", "view", "projection", "nearFar", "bias"];
+        const attribs = [VertexBuffer.PositionKind, VertexBuffer.UV2Kind];
+        const uniforms = ["world", "view", "projection", "nearFar", "bias"];
 
         this.visibilityEffect = this._scene.getEngine().createEffect("visibility",
             attribs,
@@ -179,11 +179,11 @@ export class DirectEffectsManager {
      * @returns true if the tonemap effect is ready
      */
     public isShadowMappingEffectReady(): boolean {
-        var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
-        var uniforms = [];
-        var samplers = ["depthMap"];
+        const attribs: string[] = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
+        const uniforms: string[] = ["world", "view", "projection", "nearFar"];
+        const samplers: string[] = ["depthMap"];
 
-        this.shadowMappingEffect = this._scene.getEngine().createEffect("shadowmapping",
+        this.shadowMappingEffect = this._scene.getEngine().createEffect("shadowMapping",
             attribs,
             uniforms,
             samplers, "");
