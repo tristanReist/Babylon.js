@@ -137,8 +137,8 @@ export class DirectEffectsManager {
      * @returns true if the visibility effect is ready
      */
     public isVisiblityEffectReady(): boolean {
-        const attribs = [VertexBuffer.PositionKind, VertexBuffer.UV2Kind];
-        const uniforms = ["world", "view", "projection", "nearFar", "bias"];
+        const attribs = [VertexBuffer.PositionKind];
+        const uniforms = ["world", "view", "projection", "nearFar"];
 
         this.visibilityEffect = this._scene.getEngine().createEffect("visibility",
             attribs,
@@ -180,7 +180,7 @@ export class DirectEffectsManager {
      */
     public isShadowMappingEffectReady(): boolean {
         const attribs: string[] = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
-        const uniforms: string[] = ["world", "view", "projection", "nearFar"];
+        const uniforms: string[] = ["world", "view", "projection", "nearFar", "lightPos"];
         const samplers: string[] = ["depthMap"];
 
         this.shadowMappingEffect = this._scene.getEngine().createEffect("shadowMapping",

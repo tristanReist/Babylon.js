@@ -1439,7 +1439,6 @@ export class UvMapper {
         USER_ISLAND_MARGIN = islandMargin;
 
         let collectedIslandList: Island[] = [];
-        let polygonsArea: number[] = [];
         let collectedIslandMesh: Mesh[] = [];
         let deletedFaces: Face[] = [];
         let equivalencies = [];
@@ -1454,7 +1453,6 @@ export class UvMapper {
         for (let i = 0; i < obList.length; i++) {
             let meshFaces: Face[] = [];
             let m = obList[i];
-            polygonsArea[i] = 0;
 
             if (!m.isVerticesDataPresent(VertexBuffer.PositionKind)) {
                 continue;
@@ -1488,10 +1486,6 @@ export class UvMapper {
 
             if (!meshFaces.length) {
                 continue;
-            }
-
-            for (const face of meshFaces) {
-                polygonsArea[i] += face.area;
             }
 
             let projectVecs: Vector3[] = [];
@@ -1738,7 +1732,7 @@ export class UvMapper {
 
         // this.debugUvs(Vector2.Zero(), new Vector2(256, 256), newUvs, indices);
 
-        return [[xFactor, yFactor], polygonsArea];
+        return [xFactor, yFactor];
     }
 
     private packIslands(islandList: Island[], islandMeshes: Mesh[]) : [number, number] {

@@ -1,4 +1,5 @@
 import { Mesh } from "../Meshes/mesh";
+import { VertexBuffer } from "../Meshes/buffer";
 import { SubMesh } from "../Meshes/subMesh";
 import { Scene } from "../scene";
 import { Texture } from "../Materials/Textures/texture";
@@ -6,9 +7,7 @@ import { RenderTargetTexture } from "../Materials/Textures/renderTargetTexture";
 import { Effect } from "../Materials/effect";
 import { Material } from "../Materials/material";
 import { Constants } from "../Engines/constants";
-import { Vector3 } from "../Maths/math";
-import { Color4 } from "../Maths/math";
-import { Matrix } from "../Maths/math";
+import { Vector2, Vector3, Color4, Matrix } from "../Maths/math";
 import { DirectEffectsManager } from "./directEffectManager";
 
 import { Nullable } from "../types";
@@ -23,22 +22,8 @@ declare module "../Meshes/mesh" {
                 height: number
             };
 
-            /** How much world units a texel represents */
-            // texelWorldSize: number;
-            texelWorldSize: {
-                width: number,
-                height: number
-            };
-
-            /** Emissive color of the surface */
-            color: Nullable<Vector3>; // TODO color 3
-
-            /** Unused for now. Color multiplier. */
-            lightStrength: Vector3; // TODO unused
-
-            depthMap: Nullable<RenderTargetTexture>;
-
             shadowMap: Nullable<RenderTargetTexture>;
+            tempTexture: Nullable<RenderTargetTexture>;
         };
 
         /** Inits the `directInfo` object */
@@ -57,14 +42,6 @@ Mesh.prototype.initForDirect = function() {
             width: 256,
             height: 256
         },
-        // texelWorldSize: 1,
-        texelWorldSize: {
-            width: 1,
-            height: 1,
-        },
-
-        color: null,
-        lightStrength: new Vector3(0, 0, 0),
 
         depthMap: null,
         shadowMap: null,
@@ -74,6 +51,42 @@ Mesh.prototype.initForDirect = function() {
 Mesh.prototype.getShadowMap = function() {
     return this.directInfo.shadowMap;
 };
+
+export class Arealight {
+    public position: Vector3;
+
+    public normal: Vector3;
+
+    public size: Vector2;
+
+    public depthMapSize: {
+        width: number,
+        height: number
+    };
+
+    public depthMap: RenderTargetTexture;
+
+    constructor(position: Vector3, normal: Vector3, size: Vector2, depthMapSize: { width: number, height: number }, scene: Scene) {
+        this.position = position;
+        this.normal = normal;
+        this.size = size;
+
+        this.depthMapSize = depthMapSize;
+
+        this.depthMap = new RenderTargetTexture(
+            "depthMap",
+            this.depthMapSize,
+            scene,
+            false,
+            true,
+            Constants.TEXTURETYPE_FLOAT,
+            true,
+            Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
+            true,
+            false
+        );
+    }
+}
 
 declare interface DirectRendererOptions {
     near?: number;
@@ -95,9 +108,6 @@ export class DirectRenderer {
      * and therefore will not occlude or receive radiance.
      */
     public meshes: Mesh[];
-
-    // Add some randomness to patch position to avoid banding effect
-    public randomizePosition: boolean = true;
 
     private _options: DirectRendererOptions;
     /**
@@ -168,6 +178,19 @@ export class DirectRenderer {
                 false,
                 false
             );
+
+             mesh.directInfo.tempTexture = new RenderTargetTexture(
+                "tempMap",
+                mesh.directInfo.shadowMapSize,
+                this._scene,
+                false,
+                true,
+                Constants.TEXTURETYPE_FLOAT,
+                false,
+                Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
+                false,
+                false
+            );
         }
 
         this._projectionMatrix = Matrix.PerspectiveFovLH(Math.PI / 2,
@@ -208,80 +231,32 @@ export class DirectRenderer {
     /**
      * Prepare textures for radiosity
      */
-    public createDepthMaps(lights: Mesh[]) {
+    public createDepthMaps(lights: Arealight[]) {
         for (const light of lights) {
-            const size = light.directInfo.shadowMapSize;
-
-            if (!size || !light.directInfo) {
-                continue;
-            }
-
-             const depthMap = new RenderTargetTexture(
-                "depthMap",
-                this._depthCubeSize,
-                this._scene,
-                false,
-                true,
-                Constants.TEXTURETYPE_FLOAT,
-                // true, // isCube ?
-                false, // isCube ?
-                // Constants.TEXTURE_NEAREST_SAMPLINGMODE,
-                Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
-                true,
-                false
-            );
-            depthMap.createDepthStencilTexture(Constants.LESS, true);
-
-            light.directInfo.depthMap = depthMap;
-
-            if (DirectRenderer.RADIOSITY_INFO_LOGS_LEVEL >= 2) {
-                console.log(`Generating depthmap for mesh : ${light.name}.`);
-            }
-
             this.renderVisibilityMapCube(light);
         }
     }
 
-    private renderToShadowMapTexture(light: Mesh) {
-        const viewMatrix = Matrix.LookAtLH(light.position, light.position.add(new Vector3(1, 0, 0)), Vector3.Up());
+    private renderToShadowMapTexture(light: Arealight) {
+        const viewMatrix = Matrix.LookAtLH(light.position, light.position.add(light.normal), Vector3.Up());
         const engine = this._scene.getEngine();
-
-        // light.directInfo.shadowMap = new RenderTargetTexture(
-        //     "shadowMap",
-        //     2048,
-        //     this._scene,
-        //     false,
-        //     true,
-        //     Constants.TEXTURETYPE_FLOAT,
-        //     false,
-        //     Constants.TEXTURE_NEAREST_SAMPLINGMODE,
-        //     true,
-        //     false
-        // );
-        // light.directInfo.shadowMap.createDepthStencilTexture(Constants.LESS, true);
-
-        engine.enableEffect(this._directEffectsManager.shadowMappingEffect);
-
-        // engine.bindFramebuffer(light.directInfo.shadowMap._texture);
-        // engine.clear(new Color4(0, 0, 0, 0), true, true);
-
-        this._directEffectsManager.shadowMappingEffect.setTexture("depthMap", light.directInfo.depthMap);
-        this._directEffectsManager.shadowMappingEffect.setMatrix("view", viewMatrix);
-        this._directEffectsManager.shadowMappingEffect.setMatrix("projection", this._projectionMatrix);
-        this._directEffectsManager.shadowMappingEffect.setFloat2("nearFar", this._near, this._far);
-        this._directEffectsManager.shadowMappingEffect.setVector3("lightPos", light.position);
+        const effect = this._directEffectsManager.shadowMappingEffect;
 
         for (const mesh of this.meshes) {
-            if (DirectRenderer.PERFORMANCE_LOGS_LEVEL >= 3) {
-                console.log(`Lightmap size for this submesh : ${mesh.directInfo.shadowMapSize.width} x ${mesh.directInfo.shadowMapSize.height}`);
-            }
+            engine.enableEffect(effect);
+            effect.setTexture("depthMap", light.depthMap);
+            effect.setMatrix("view", viewMatrix);
+            effect.setMatrix("projection", this._projectionMatrix);
+            effect.setFloat2("nearFar", this._near, this._far);
+            effect.setVector3("lightPos", light.position);
 
             engine.setDirectViewport(0, 0, mesh.directInfo.shadowMapSize.width, mesh.directInfo.shadowMapSize.height);
             engine.setState(false, 0, true, true);
             engine.bindFramebuffer(mesh.directInfo.shadowMap._texture);
-            // engine.clear(new Color4(0, 0, 0, 0), true, true);
+            engine.clear(new Color4(0, 0, 0, 0), true, true);
 
             for (const subMesh of mesh.subMeshes) {
+                // this.renderSubMesh(subMesh, effect);
                 var batch = mesh._getInstancesRenderList(subMesh._id);
 
                 if (batch.mustReturn) {
@@ -295,16 +270,10 @@ export class DirectRenderer {
             }
 
             engine.unBindFramebuffer(mesh.directInfo.shadowMap._texture);
+
+            // this.dilate(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
         }
-
-        // engine.unBindFramebuffer(light.directInfo.shadowMap._texture);
     }
-
-    // private swap<T>(textureArray: T[], i: number, j: number) {
-    //     var t = textureArray[i];
-    //     textureArray[i] = textureArray[j];
-    //     textureArray[j] = t;
-    // }
 
     // private postProcessLightmap(texture: MultiRenderTarget) {
     //     var textureArray = texture.textures;
@@ -322,16 +291,7 @@ export class DirectRenderer {
      * Bakes only direct light on lightmaps
      * @returns true if energy has been shot. (false meaning that there was no emitter)
      */
-    public generateShadowMap(lights: Mesh[]): boolean {
-        if (!this.isReady()) {
-            if (DirectRenderer.WARNING_LOGS) {
-                console.log("Not ready yet");
-            }
-
-            return true;
-        }
-
-        let hasShot = false;
+    public generateShadowMap(lights: Arealight[]) {
         console.log("Shooting");
         for (const light of lights) {
             this.renderToShadowMapTexture(light);
@@ -340,8 +300,6 @@ export class DirectRenderer {
         // for (let i = 0; i < this._patchMaps.length; i++) {
         //     this.postProcessLightmap(this._patchMaps[i]));
         // }
-
-        return hasShot;
     }
 
     /**
@@ -377,27 +335,25 @@ export class DirectRenderer {
     //     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     // }
 
-    // private dilate(padding: number = 1, origin: Texture, dest: Texture) {
-    //     // TODO padding unused
-    //     var engine = this._scene.getEngine();
-    //     var effect = this._radiosityEffectsManager.dilateEffect;
+    // private dilate(origin: Texture, dest: Texture) {
+    //     const engine = this._scene.getEngine();
+    //     const effect = this._directEffectsManager.dilateEffect;
+
     //     engine.enableEffect(effect);
-    //     engine.setState(false);
-    //     let gl = engine._gl;
-    //     let fb = this._frameBuffer1;
-    //     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    //     gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (<InternalTexture>dest._texture)._webGLTexture, 0);
+    //     engine.bindFramebuffer(dest._texture);
 
     //     engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
+
     //     let vb: any = {};
-    //     vb[VertexBuffer.PositionKind] = this._radiosityEffectsManager.screenQuadVB;
+    //     vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
     //     effect.setTexture("inputTexture", origin);
-    //     effect.setFloat2("texelSize", 1 / dest.getSize().width, 1 / dest.getSize().height);
-    //     engine.bindBuffers(vb, this._radiosityEffectsManager.screenQuadIB, effect);
+    //     effect.setFloat2("texelSize", 1 / origin.getSize().width, 1 / origin.getSize().height);
+    //     engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
 
     //     engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
     //     engine.drawElementsType(Material.TriangleFillMode, 0, 6);
-    //     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    //     engine.unBindFramebuffer(dest._texture);
     // }
 
     private renderSubMesh = (subMesh: SubMesh, effect: Effect) => {
@@ -428,13 +384,14 @@ export class DirectRenderer {
         effect.setMatrix("view", view);
         effect.setMatrix("projection", projection);
         effect.setFloat2("nearFar", this._near, this._far);
-        effect.setFloat("bias", this._bias);
     }
 
-    private renderVisibilityMapCube(light: Mesh) {
-        let engine = this._scene.getEngine();
+    private renderVisibilityMapCube(light: Arealight) {
+        const engine = this._scene.getEngine();
+        const gl = engine._gl;
 
-        const viewMatrix = Matrix.LookAtLH(light.position, light.position.add(new Vector3(1, 0, 0)), Vector3.Up());
+        // const viewMatrix = Matrix.LookAtLH(light.position, light.position.add(new Vector3(1, 0, 0)), Vector3.Up());
+        const viewMatrix = Matrix.LookAtLH(light.position, light.position.add(light.normal), Vector3.Up());
         let xAxis = new Vector3(viewMatrix.m[0], viewMatrix.m[4], viewMatrix.m[8]); // Tangent
         let yAxis = new Vector3(viewMatrix.m[1], viewMatrix.m[5], viewMatrix.m[9]); // "Up"
         let zAxis = new Vector3(viewMatrix.m[2], viewMatrix.m[6], viewMatrix.m[10]); // depth
@@ -444,7 +401,7 @@ export class DirectRenderer {
         const viewMatrixPY = Matrix.LookAtLH(light.position, light.position.add(yAxis), zAxis.scale(-1));
         const viewMatrixNY = Matrix.LookAtLH(light.position, light.position.subtract(yAxis), zAxis);
 
-        let viewMatrices = [
+        const viewMatrices = [
             viewMatrix,
             viewMatrixPX,
             viewMatrixNX,
@@ -452,11 +409,12 @@ export class DirectRenderer {
             viewMatrixNY
         ];
 
-        let projectionMatrices = [this._projectionMatrix,
-        this._projectionMatrixPX,
-        this._projectionMatrixNX,
-        this._projectionMatrixPY,
-        this._projectionMatrixNY
+        let projectionMatrices = [
+            this._projectionMatrix,
+            this._projectionMatrixPX,
+            this._projectionMatrixNX,
+            this._projectionMatrixPY,
+            this._projectionMatrixNY
         ];
 
         let viewportMultipliers = [
@@ -473,43 +431,40 @@ export class DirectRenderer {
             [0, 0],
             [0, 0.5],
         ];
+        let cubeSides = [
+            gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+            gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+            gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+            gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+            gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+        ];
 
-        // engine.enableEffect(this._directEffectsManager.visibilityEffect);
-        // engine.bindFramebuffer(light.directInfo.depthMap._texture);
+        engine.enableEffect(this._directEffectsManager.visibilityEffect);
 
-        // engine.clear(new Color4(0, 0, 0, 0), true, true);
-
-        // this._setCubeVisibilityUniforms(this._directEffectsManager.visibilityEffect, viewMatrix, this._projectionMatrix);
-        // // this._directEffectsManager.visibilityEffect.setVector3("lightPos", light.absolutePosition);
-
-        // for (const mesh of this.meshes) {
-        //     for (const subMesh of mesh.subMeshes) {
-        //         this.renderSubMesh(subMesh, this._directEffectsManager.visibilityEffect);
-        //     }
-        // }
-
-        // engine.unBindFramebuffer(light.directInfo.depthMap._texture);
-
-        for (let viewIndex = 0; viewIndex < viewMatrices.length; viewIndex++) {
-            engine.enableEffect(this._directEffectsManager.visibilityEffect);
-
+        // Hemi cube rendering
+        for (let viewIndex = 0; viewIndex < cubeSides.length; viewIndex++) {
             // Render on each face of the hemicube
-            engine.bindFramebuffer(light.directInfo.depthMap._texture, viewIndex);
+            engine.bindFramebuffer(light.depthMap._texture, cubeSides[viewIndex] - gl.TEXTURE_CUBE_MAP_POSITIVE_X);
 
             // Full cube viewport when rendering the front face
-            engine.setDirectViewport(viewportOffsets[viewIndex][0] * this._depthCubeSize, viewportOffsets[viewIndex][1] * this._depthCubeSize, this._depthCubeSize, this._depthCubeSize * viewportMultipliers[viewIndex][1]);
+            engine.setDirectViewport(
+                viewportOffsets[viewIndex][0] * this._depthCubeSize,
+                viewportOffsets[viewIndex][1] * this._depthCubeSize,
+                light.depthMapSize.width * viewportMultipliers[viewIndex][0],
+                light.depthMapSize.height* viewportMultipliers[viewIndex][1]
+            );
 
             engine.clear(new Color4(0, 0, 0, 0), true, true);
 
+            this._setCubeVisibilityUniforms(this._directEffectsManager.visibilityEffect, viewMatrices[viewIndex], projectionMatrices[viewIndex]);
+
             for (const mesh of this.meshes) {
                 for (const subMesh of mesh.subMeshes) {
-                    this._setCubeVisibilityUniforms(this._directEffectsManager.visibilityEffect, viewMatrices[viewIndex], projectionMatrices[viewIndex]);
-                    // this._directEffectsManager.visibilityEffect.setVector3("lightPos", light.absolutePosition);
                     this.renderSubMesh(subMesh, this._directEffectsManager.visibilityEffect);
                 }
             }
 
-            engine.unBindFramebuffer(light.directInfo.depthMap._texture);
+            engine.unBindFramebuffer(light.depthMap._texture);
         }
     }
 
