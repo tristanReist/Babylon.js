@@ -6,6 +6,7 @@ export * from "./engine.rawTexture";
 export * from "./engine.dynamicTexture";
 export * from "./engine.videoTexture";
 export * from "./engine.multiRender";
+export * from "./engine.multiRenderCube";
 export * from "./engine.cubeTexture";
 export * from "./engine.renderTarget";
 export * from "./engine.renderTargetCube";

@@ -833,13 +833,23 @@ export class RadiosityRenderer {
             }
         }
 
-        for (let i = 0; i < this._patchMaps.length; i++) {
-            this.postProcessLightmap(this._patchMaps[i]);
-        }
+        // for (let i = 0; i < this._patchMaps.length; i++) {
+        //     this.postProcessLightmap(this._patchMaps[i]);
+        // }
 
         this.cleanAfterRender();
         return hasShot;
     }
+
+    public toneMapIrradianceLightmap(defTexture : Texture, i : number) {
+        
+        this._patchMaps[i].textures[4] = defTexture;
+
+        this.postProcessLightmap(this._patchMaps[i]);
+
+        this.cleanAfterRender();
+    }
+
 
     /**
      * Gathers radiance the next "most bright" mesh
@@ -1088,7 +1098,7 @@ export class RadiosityRenderer {
         vb[VertexBuffer.PositionKind] = this._radiosityEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
         effect.setFloat("_ExposureAdjustment", 1); // TODO
-        effect.setColor3("ambientColor", new Color3(0.4, 0.4, 0.4)); // TODO
+        effect.setColor3("ambientColor", new Color3(0.1, 0.1, 0.1)); // TODO
         engine.bindBuffers(vb, this._radiosityEffectsManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);

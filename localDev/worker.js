@@ -10,6 +10,8 @@ onmessage = function(evt) {
     // Load the scripts + map file to allow vscode debug.
     BABYLONDEVTOOLS.Loader
         .require("src/index.js")
+        .require("./graphics-debugger.js")
+        .require("properties-debugger.js")
         .load(function() {
             if (typeof createEngine !== "undefined") {
                 engine = createEngine();
