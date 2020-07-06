@@ -634,38 +634,6 @@ export class RadiosityRenderer {
     }
 
     private renderToRadiosityTexture(mesh: Mesh, patch: Patch, patchArea: number, doNotWriteToGathering = false) {
-        const uvOffset =
-        [
-            -2, -2,
-            2, -2,
-            -2, 2,
-            2, 2,
-
-            -1, -2,
-            1, -2,
-            -2, -1,
-            2, -1,
-            -2, 1,
-            2, 1,
-            -1, 2,
-            1, 2,
-
-            -2, 0,
-            2, 0,
-            0, -2,
-            0, 2,
-
-            -1, -1,
-            1, -1,
-            -1, 0,
-            1, 0,
-            -1, 1,
-            1, 1,
-            0, -1,
-            0, 1,
-
-            0, 0
-        ];
         var deltaArea = patchArea;
         var mrt: MultiRenderTarget = mesh.radiosityInfo.residualTexture as MultiRenderTarget;
         var destResidualTexture = mrt.textures[5]._texture as InternalTexture;
@@ -674,57 +642,54 @@ export class RadiosityRenderer {
         engine.enableEffect(this._radiosityEffectsManager.shootEffect);
         const gl = engine._gl;
 
-        for (let i = 0; i < uvOffset.length; i += 2) {
-            this._radiosityEffectsManager.shootEffect.setTexture("itemBuffer", this._patchMap);
-            this._radiosityEffectsManager.shootEffect.setTexture("worldPosBuffer", mrt.textures[0]);
-            this._radiosityEffectsManager.shootEffect.setTexture("worldNormalBuffer", mrt.textures[1]);
-            this._radiosityEffectsManager.shootEffect.setTexture("idBuffer", mrt.textures[2]);
-            this._radiosityEffectsManager.shootEffect.setTexture("residualBuffer", mrt.textures[3]);
-            this._radiosityEffectsManager.shootEffect.setFloat("gatheringScale", doNotWriteToGathering ? 0.0 : 1.0);
-            this._radiosityEffectsManager.shootEffect.setFloat("residualScale", 1.0);
-            this._radiosityEffectsManager.shootEffect.setTexture("gatheringBuffer", mrt.textures[4]);
-            this._radiosityEffectsManager.shootEffect.setFloat2("nearFar", this._near, this._far);
+        this._radiosityEffectsManager.shootEffect.setTexture("itemBuffer", this._patchMap);
+        this._radiosityEffectsManager.shootEffect.setTexture("worldPosBuffer", mrt.textures[0]);
+        this._radiosityEffectsManager.shootEffect.setTexture("worldNormalBuffer", mrt.textures[1]);
+        this._radiosityEffectsManager.shootEffect.setTexture("idBuffer", mrt.textures[2]);
+        this._radiosityEffectsManager.shootEffect.setTexture("residualBuffer", mrt.textures[3]);
+        this._radiosityEffectsManager.shootEffect.setFloat("gatheringScale", doNotWriteToGathering ? 0.0 : 1.0);
+        this._radiosityEffectsManager.shootEffect.setFloat("residualScale", 1.0);
+        this._radiosityEffectsManager.shootEffect.setTexture("gatheringBuffer", mrt.textures[4]);
+        this._radiosityEffectsManager.shootEffect.setFloat2("nearFar", this._near, this._far);
 
-            this._radiosityEffectsManager.shootEffect.setVector3("shootPos", this.randomizePosition ? patch.perturbPosition() : patch.position);
-            this._radiosityEffectsManager.shootEffect.setVector3("shootNormal", patch.normal);
-            this._radiosityEffectsManager.shootEffect.setVector3("shootEnergy", patch.residualEnergy);
-            this._radiosityEffectsManager.shootEffect.setFloat("shootDArea", deltaArea);
-            this._radiosityEffectsManager.shootEffect.setFloat("normalBias", this._normalBias);
-            this._radiosityEffectsManager.shootEffect.setMatrix("view", patch.viewMatrix);
-            this._radiosityEffectsManager.shootEffect.setVector2("texelSize", new Vector2(1 / mesh.radiosityInfo.lightmapSize.width, 1 / mesh.radiosityInfo.lightmapSize.height));
-            this._radiosityEffectsManager.shootEffect.setVector2("texelOffset", new Vector2(uvOffset[i], uvOffset[i + 1]));
+        this._radiosityEffectsManager.shootEffect.setVector3("shootPos", this.randomizePosition ? patch.perturbPosition() : patch.position);
+        this._radiosityEffectsManager.shootEffect.setVector3("shootNormal", patch.normal);
+        this._radiosityEffectsManager.shootEffect.setVector3("shootEnergy", patch.residualEnergy);
+        this._radiosityEffectsManager.shootEffect.setFloat("shootDArea", deltaArea);
+        this._radiosityEffectsManager.shootEffect.setFloat("normalBias", this._normalBias);
+        this._radiosityEffectsManager.shootEffect.setMatrix("view", patch.viewMatrix);
+        this._radiosityEffectsManager.shootEffect.setVector2("texelSize", new Vector2(1 / mesh.radiosityInfo.lightmapSize.width, 1 / mesh.radiosityInfo.lightmapSize.height));
 
-            if (RadiosityRenderer.PERFORMANCE_LOGS_LEVEL >= 3) {
-                console.log(`Lightmap size for this submesh : ${mrt.getSize().width} x ${mrt.getSize().height}`);
+        if (RadiosityRenderer.PERFORMANCE_LOGS_LEVEL >= 3) {
+            console.log(`Lightmap size for this submesh : ${mrt.getSize().width} x ${mrt.getSize().height}`);
+        }
+
+        engine.setDirectViewport(0, 0, destResidualTexture.width, destResidualTexture.height);
+        engine.setState(false);
+        let fb = this._frameBuffer0;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, destResidualTexture._webGLTexture, 0);
+        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, destGatheringTexture._webGLTexture, 0);
+        gl.drawBuffers([
+            gl.COLOR_ATTACHMENT0,
+            gl.COLOR_ATTACHMENT1
+        ]);
+
+        var subMeshes = mesh.subMeshes;
+
+        for (let i = 0; i < subMeshes.length; i++) {
+            var subMesh = subMeshes[i];
+            var batch = mesh._getInstancesRenderList(subMesh._id);
+
+            if (batch.mustReturn) {
+                return;
             }
 
-            engine.setDirectViewport(0, 0, destResidualTexture.width, destResidualTexture.height);
-            engine.setState(false);
-            let fb = this._frameBuffer0;
-
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, destResidualTexture._webGLTexture, 0);
-            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, destGatheringTexture._webGLTexture, 0);
-            gl.drawBuffers([
-                gl.COLOR_ATTACHMENT0,
-                gl.COLOR_ATTACHMENT1
-            ]);
-
-            var subMeshes = mesh.subMeshes;
-
-            for (let i = 0; i < subMeshes.length; i++) {
-                var subMesh = subMeshes[i];
-                var batch = mesh._getInstancesRenderList(subMesh._id);
-
-                if (batch.mustReturn) {
-                    return;
-                }
-
-                var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
-                mesh._bind(subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode);
-                mesh._processRendering(mesh, subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
-                    (isInstance, world) => this._radiosityEffectsManager.shootEffect.setMatrix("world", world));
-            }
+            var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
+            mesh._bind(subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode);
+            mesh._processRendering(mesh, subMesh, this._radiosityEffectsManager.shootEffect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
+                (isInstance, world) => this._radiosityEffectsManager.shootEffect.setMatrix("world", world));
         }
 
         // Twice, for mipmaps

@@ -11,6 +11,10 @@ import "../Shaders/radiosityPostProcess.fragment";
 import "../Shaders/radiosityPostProcess.vertex";
 import "../Shaders/shadowMapping.fragment";
 import "../Shaders/shadowMapping.vertex";
+import "../Shaders/horizontalBlur.fragment";
+import "../Shaders/horizontalBlur.vertex";
+import "../Shaders/verticalBlur.fragment";
+import "../Shaders/verticalBlur.vertex";
 
 /**
   * Creates various effects to solve radiosity.
@@ -32,6 +36,16 @@ export class DirectEffectsManager {
     public lightmapCombineEffect: Effect;
 
     public shadowMappingEffect: Effect;
+
+    /**
+      * Effect to blur the lightmap horizontally.
+      */
+    public horizontalBlurEffect: Effect;
+
+    /**
+      * Effect to blur the lightmap vertically.
+      */
+    public verticalBlurEffect: Effect;
 
     private _vertexBuffer: VertexBuffer;
     private _indexBuffer: DataBuffer;
@@ -75,6 +89,8 @@ export class DirectEffectsManager {
                     this.isShadowMappingEffectReady(),
                     this.isDilateEffectReady(),
                     this.isLightmapCombineEffectReady(),
+                    this.isHorizontalBlurReady(),
+                    this.isVerticalBlurReady(),
                 ];
 
                 for (let i = 0; i < readyStates.length; i++) {
@@ -98,7 +114,9 @@ export class DirectEffectsManager {
                 this.isRadiosityPostProcessReady() &&
                 this.isShadowMappingEffectReady() &&
                 this.isDilateEffectReady() &&
-                this.isLightmapCombineEffectReady();
+                this.isLightmapCombineEffectReady() &&
+                this.isHorizontalBlurReady() &&
+                this.isVerticalBlurReady();
     }
 
     private prepareBuffers(): void {
@@ -168,10 +186,36 @@ export class DirectEffectsManager {
     public isRadiosityPostProcessReady(): boolean {
         this.radiosityPostProcessEffect = this._scene.getEngine().createEffect("radiosityPostProcess",
             [VertexBuffer.PositionKind],
-            ["_ExposureAdjustment"],
+            ["exposure"],
             ["inputTexture"], "");
 
         return this.radiosityPostProcessEffect.isReady();
+    }
+
+    /**
+     * Checks the ready state of the horizontal blur effect
+     * @returns true if the horizontal blur effect is ready
+     */
+    public isHorizontalBlurReady(): boolean {
+        this.horizontalBlurEffect = this._scene.getEngine().createEffect("horizontalBlur",
+            [VertexBuffer.PositionKind],
+            ["texelSize"],
+            ["inputTexture"], "");
+
+        return this.horizontalBlurEffect.isReady();
+    }
+
+    /**
+     * Checks the ready state of the vertical blur effect
+     * @returns true if the vertical blur effect is ready
+     */
+    public isVerticalBlurReady(): boolean {
+        this.verticalBlurEffect = this._scene.getEngine().createEffect("verticalBlur",
+            [VertexBuffer.PositionKind],
+            ["texelSize"],
+            ["inputTexture"], "");
+
+        return this.verticalBlurEffect.isReady();
     }
 
     /**
@@ -180,8 +224,8 @@ export class DirectEffectsManager {
      */
     public isShadowMappingEffectReady(): boolean {
         const attribs: string[] = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
-        const uniforms: string[] = ["world", "view", "projection", "nearFar", "lightPos"];
-        const samplers: string[] = ["depthMap"];
+        const uniforms: string[] = ["world", "view", "projection", "nearFar", "lightPos", "sampleCount"];
+        const samplers: string[] = ["depthMap", "gatherTexture"];
 
         this.shadowMappingEffect = this._scene.getEngine().createEffect("shadowMapping",
             attribs,
