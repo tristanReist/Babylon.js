@@ -23,15 +23,15 @@ vec3 worldNormal;
 void main(void) {
     worldNormal = normalize(vWorldNormal);
 
-    vec3 r2 = lightPos - vWorldPos;
-    vec3 worldLightDir = normalize(r2);
-
     vec3 directionToLight = vec3(view * vec4(vWorldPos, 1.0)).xyz * vec3(1.0, -1.0, 1.0);
 
     // Bias
-    float minBias = 0.000001;
-    float maxBias = 0.00000001;
-    float bias = max(maxBias * (1.0 - dot(worldNormal, normalize(lightPos - vWorldPos))), minBias); 
+    vec3 r2 = lightPos - vWorldPos;
+    vec3 worldLightDir = normalize(r2);
+
+    float ndl = dot(worldNormal, worldLightDir);
+    float sinNL = sqrt(1.0 - ndl * ndl);
+    float nBias = normalBias * sinNL;
 
     float sampledDepth = texture(depthMap, directionToLight).x;
 
@@ -42,7 +42,8 @@ void main(void) {
 
     float gather = texture(gatherTexture, vUV2).x;
 
-    float visible = step(depth - bias, sampledDepth) / sampleCount;
+    // float visible = step(depth - bias, sampledDepth) / sampleCount;
+    float visible = step(depth - nBias, sampledDepth) / sampleCount;
     // float visible = depth / nearFar.y;
     // float visible = sampledDepth / nearFar.y;
 

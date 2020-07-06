@@ -7,15 +7,6 @@ in vec2 vUV;
 
 void main(void)
 {
-	// float weights[7];
-	// weights[0] = 0.05;
-	// weights[1] = 0.1;
-	// weights[2] = 0.2;
-	// weights[3] = 0.3;
-	// weights[4] = 0.2;
-	// weights[5] = 0.1;
-	// weights[6] = 0.05;
-
 	float weights[13];
 	weights[0] = 0.00625;
 	weights[1] = 0.0125;

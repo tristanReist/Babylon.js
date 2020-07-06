@@ -323,14 +323,13 @@ export class DirectRenderer {
                 effect.setFloat2("nearFar", this._near, this._far);
                 effect.setVector3("lightPos", light.samples[sampleIndex]);
                 effect.setFloat("sampleCount", light.samples.length);
+                effect.setFloat("normalBias", this._normalBias);
                 effect.setTexture("gatherTexture", mesh.directInfo.shadowMap);
-                // effect.setTexture("gatherTexture", (sampleIndex + 1) % 2 ? mesh.directInfo.shadowMap : mesh.directInfo.tempTexture);
 
                 // Rendering shadow to tempTexture
                 engine.setDirectViewport(0, 0, mesh.directInfo.shadowMapSize.width, mesh.directInfo.shadowMapSize.height);
-                engine.setState(true, 0, true, true);
+                engine.setState(false, 0, true, true);
                 engine.bindFramebuffer(mesh.directInfo.tempTexture._texture);
-                // engine.bindFramebuffer(sampleIndex % 2 ? mesh.directInfo.shadowMap._texture : mesh.directInfo.tempTexture._texture);
 
                 for (const subMesh of mesh.subMeshes) {
                     var batch = mesh._getInstancesRenderList(subMesh._id);
@@ -345,7 +344,6 @@ export class DirectRenderer {
                         (isInstance, world) => this._directEffectsManager.shadowMappingEffect.setMatrix("world", world));
                 }
 
-                // engine.unBindFramebuffer(sampleIndex % 2 ? mesh.directInfo.shadowMap._texture : mesh.directInfo.tempTexture._texture);
                 engine.unBindFramebuffer(mesh.directInfo.tempTexture._texture);
 
                 // Swap temp and shadow texture
@@ -397,7 +395,7 @@ export class DirectRenderer {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setFloat("exposure", 7);
+        effect.setFloat("exposure", 10);
         engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
@@ -474,6 +472,7 @@ export class DirectRenderer {
         effect.setMatrix("view", view);
         effect.setMatrix("projection", projection);
         effect.setFloat2("nearFar", this._near, this._far);
+        effect.setFloat("bias", this._bias);
     }
 
     private renderVisibilityMapCube(light: Arealight) {
