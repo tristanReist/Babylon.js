@@ -33,6 +33,11 @@ import { MeshDictionary } from './meshDictionary';
  */
 export class Probe {
 
+    public static readonly OUTSIDE_HOUSE : number = 0;
+    public static readonly INSIDE_HOUSE : number = 1;
+    public static readonly INSIDE_HOUSE_CLOSE_TO_WALL : number = 2;
+
+
     /**
      * Static number to access to the cameras with their direction
      */
@@ -108,7 +113,7 @@ export class Probe {
 
     public envMultiplicator = 1.3;
 
-    public isInsideHouse = true;
+    public probeInHouse = Probe.OUTSIDE_HOUSE;
 
     /**
      * Create the probe used to capture the irradiance at a point
@@ -120,13 +125,8 @@ export class Probe {
     constructor(position : Vector3, scene : Scene, resolution : number, inRoom : number) {
         this._scene = scene;
         this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
-        this.sphere.visibility = 1;
-        if (inRoom == 1){
-            this.isInsideHouse = true;
-        }
-        else {
-            this.isInsideHouse = false;
-        }
+        this.sphere.visibility = 0;
+        this.probeInHouse = inRoom;
 
         this.cameraList = new Array<UniversalCamera>();
 
@@ -191,7 +191,7 @@ export class Probe {
      * @param visisble The visibility of the probe
      */
     public setVisibility(visisble : number) : void {
-        if (this.isInsideHouse){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE || this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL){
             this.sphere.visibility = visisble;
         }
     }
@@ -245,25 +245,6 @@ export class Probe {
                     effect.setTexture("irradianceMap", value.irradianceLightmap);
                     effect.setTexture("directIlluminationLightmap", value.directLightmap);
                 }
-
-                /*
-                To add when we want the upgrade, where we render only one mesh
-                */
-                // effect.setTexture("envMap", this.cubicMRT.textures[1]);
-                // effect.setTexture("envMapUV", this.cubicMRT.textures[0]);
-                // effect.setInt("numberLightmap", this.dictionary.values().length);
-                // let irradianceArray = new Array<BaseTexture>();
-                // let directLightArray = new Array<BaseTexture>();
-                // for (let value of this.dictionary.values()){
-                //     irradianceArray.push(<BaseTexture> value.irradianceLightmap);
-                //     if (value.directLightmap != null){
-                //         directLightArray.push(<BaseTexture> value.directLightmap);
-                //     }
-                // }
-                // effect.setTextureArray("irradianceMapArray",[irradianceArray[0],irradianceArray[0] ]);
-                // effect.setTextureArray("directIlluminationLightMapArray", [directLightArray[0], directLightArray[0]]);
-
-                // effect.setMatrix("rotation", rotation);
 
             }
             var batch = mesh._getInstancesRenderList(subMesh._id);
@@ -348,23 +329,6 @@ export class Probe {
         this.dictionary = dictionary;
         this.uvEffect = uvEffet;
         this.bounceEffect = bounceEffect;
-        /*
-        for (let texture of this.cubicMRT.textures) {
-            texture.isRenderTarget = true;
-        }
-        this.cubicMRT.renderList = meshes;
-        this._scene.customRenderTargets.push(this.cubicMRT);
-        this.cubicMRT.boundingBoxPosition = this.sphere.position;
-        this.cubicMRT.refreshRate = MultiRenderTarget.REFRESHRATE_RENDER_ONCE;
-
-        this.cubicMRT.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-            this._renderCubeTexture(opaqueSubMeshes, true);
-        };
-
-        this.cubicMRT.onAfterRenderObservable.add(() => {
-            this.envCubeMapRendered = true;
-        });
-*/
     }
 
 
@@ -374,7 +338,7 @@ export class Probe {
      * @param irradianceLightMap THe irradiance lightmap use to render the bounces
      */
     public renderBounce(meshes : Array<Mesh>) : void {
-        if (this.isInsideHouse){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE){
             this.tempBounce.renderList = meshes;
             this.tempBounce.boundingBoxPosition = this.sphere.position;
     
@@ -407,7 +371,7 @@ export class Probe {
      * Is called in irradiance for the creation of the promise
      */
     public initPromise() : void {
-        if (this.isInsideHouse){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE){
             this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
             this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
         }
@@ -417,7 +381,7 @@ export class Probe {
      * Return if the probe is ready to be render
      */
     public isProbeReady() : boolean {
-        if (this.isInsideHouse){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE){
             return this._isMRTReady() && this._isTempBounceReady();
         }
         return true;

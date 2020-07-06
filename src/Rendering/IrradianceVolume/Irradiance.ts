@@ -133,11 +133,13 @@ export class Irradiance {
         let beginBounce = new Date().getTime();
         
         for (let probe of this.probeList) {
-            probe.tempBounce.isCube = false;
-            probe.tempBounce.render();
-            probe.tempBounce.isCube = true;
-            renderTime += probe.renderTime;
-            shTime += probe.shTime;
+            if (probe.probeInHouse == Probe.INSIDE_HOUSE){
+                probe.tempBounce.isCube = false;
+                probe.tempBounce.render();
+                probe.tempBounce.isCube = true;
+                renderTime += probe.renderTime;
+                shTime += probe.shTime;
+            }
         }
         let endProbeEnv = new Date().getTime();
 
@@ -175,7 +177,7 @@ export class Irradiance {
         let shArray = new Float32Array(this.probeList.length * 9  * 4);
         for (let i = 0; i < this.probeList.length; i++) {
             let probe = this.probeList[i];
-            if(probe.isInsideHouse){
+            if(probe.probeInHouse == Probe.INSIDE_HOUSE){
                 let index = i * 9 * 4;
 
                 shArray[index] =  probe.sphericalHarmonic.l00.x;
@@ -220,10 +222,12 @@ export class Irradiance {
     
                 shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
                 shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
+                shArray[index + 34] =  probe.sphericalHarmonic.l2_2.z;
+                shArray[index + 35] =  1;
             }
             else {
-                let index = i + 9 * 4;
-                for (let j = 0; j < 34; j++){
+                let index = i * 9 * 4;
+                for (let j = 0; j < 36; j++){
                     shArray[index + j] = 0.;
                 }
             }
@@ -265,7 +269,7 @@ export class Irradiance {
                         probePosition.push(probe.sphere.position.x);
                         probePosition.push(probe.sphere.position.y);
                         probePosition.push(probe.sphere.position.z);
-                        if (probe.isInsideHouse){
+                        if (probe.probeInHouse == Probe.INSIDE_HOUSE){
                             probePosition.push(1.);
                         }
                         else {

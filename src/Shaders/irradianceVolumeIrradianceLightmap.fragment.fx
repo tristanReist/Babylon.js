@@ -21,18 +21,22 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
 
     // Recherche du Z :
 
-    float distProbesZ = (boxSize.z / (numberProbesInSpace.z));
+    float distProbesZ = (boxSize.z / (numberProbesInSpace.z - 1.));
     int indexZ = int(floor((position.z - bottomLeft.z) /  distProbesZ));
     float zd = (position.z - (bottomLeft.z + float(indexZ) * distProbesZ)) / ((bottomLeft.z + float(indexZ + 1) * distProbesZ) - (bottomLeft.z + float(indexZ) * distProbesZ));
     
     int multiplier = int(numberProbesInSpace.x * numberProbesInSpace.y);
     if (indexZ < 0){
+        indexZ = -1;
         responsibleProbes[1] = vec2(0, 0.);
         responsibleProbes[0] = vec2(-1, 0.);
+        zd = 1.;
     }
-    else if (indexZ == int(numberProbesInSpace.z) - 1){
+    else if (indexZ >= int(numberProbesInSpace.z) - 1){
+        indexZ = int(numberProbesInSpace.z) - 1;
         responsibleProbes[0] = vec2(indexZ * multiplier, 0.);
         responsibleProbes[1] = vec2(-1, 0.);
+        zd = 0.;
     }
     else {
         responsibleProbes[0]= vec2(indexZ * multiplier, 0.);
@@ -41,18 +45,22 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
 
 
     // Recherche de la position y
-    float distProbesY = (boxSize.y / (numberProbesInSpace.y));
+    float distProbesY = (boxSize.y / (numberProbesInSpace.y - 1.));
     int indexY =  int(floor((position.y - bottomLeft.y) / distProbesY));
     float yd = (position.y - (bottomLeft.y + float(indexY) * distProbesY)) / ((bottomLeft.y + float(indexY + 1) * distProbesY) - (bottomLeft.y + float(indexY) * distProbesY));
 
     multiplier = int(numberProbesInSpace.x);
     if (indexY < 0){
+        indexY = -1;
+        yd = 1.;
         for (int i = 0; i < 2; i++){
             responsibleProbes[i + 2 ] = responsibleProbes[i];
             responsibleProbes[i].x = -1.; 
         }
     }
-    else if (indexY == int(numberProbesInSpace.y) - 1){
+    else if (indexY >= int(numberProbesInSpace.y) - 1){
+        yd = 0.;
+        indexY = int(numberProbesInSpace.y) - 1;
         for (int i = 0; i < 2; i++){
             responsibleProbes[i + 2 ] = vec2(-1, 0.);
             if (responsibleProbes[i].x != -1. ){
@@ -71,19 +79,23 @@ vec2[8] responsibleProbesUniform( vec4 position ) {
     }
 
     //Recherche de la position x
-    float distProbesX = (boxSize.x / (numberProbesInSpace.x ));
+    float distProbesX = (boxSize.x / (numberProbesInSpace.x - 1.));
     int indexX =  int(floor((position.x - bottomLeft.x) / distProbesX));
    float xd = (position.x - (bottomLeft.x + float(indexX) * distProbesX)) / ((bottomLeft.x + float(indexX + 1) * distProbesX) - (bottomLeft.x + float(indexX) * distProbesX));
 
     multiplier = 1;
     if (indexX < 0){
+        indexX = -1;
+        xd = 1.;
         for (int i = 0; i < 4; i++){
             responsibleProbes[i + 4 ] = responsibleProbes[i];
             responsibleProbes[i].x = -1.; 
         }
     }
 
-    else if (indexX == int(numberProbesInSpace.x) - 1){
+    else if (indexX >= int(numberProbesInSpace.x) - 1){
+        indexX = int(numberProbesInSpace.x) - 1;
+        xd = 0.;
         for (int i = 0; i < 4; i++){
             responsibleProbes[i + 4 ] = vec2(-1, 0.);
             if (responsibleProbes[i].x != -1.){
@@ -182,6 +194,7 @@ void main(){
     vec4 color = vec4(0., 0., 0., 0.);
     if (isUniform == 1){
         vec2 probeIndices[] = responsibleProbesUniform(wPosition);
+
         for (int i = 0 ; i < 8 ; i++){
             // If == -1, the probes doesn't exist (either not in house, or the point is on border)
             if (int(probeIndices[i].x) != -1 && probePosition[int(probeIndices[i].x)].a == 1.){

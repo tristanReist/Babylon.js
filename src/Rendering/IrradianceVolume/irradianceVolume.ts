@@ -1,9 +1,10 @@
 import { Scene } from '../../scene';
 import { Mesh } from '../../Meshes/mesh';
-import { Vector3, Vector4 } from '../../Maths/math.vector';
+import { Vector3, Vector4, Vector2 } from '../../Maths/math.vector';
 import { Probe } from './Probe';
 import { MeshDictionary } from './meshDictionary';
 import { Irradiance } from './Irradiance';
+import { _BabylonLoaderRegistered } from '../../Loading';
 
 /**
  * Class that represent the irradiance volume
@@ -30,9 +31,10 @@ export class IrradianceVolume {
     public dictionary : MeshDictionary;
 
     private _scene : Scene;
-    private _probesDispotion : Vector3;
     private _lowerLeft : Vector3;
     private _volumeSize : Vector3;
+
+    private _probesDisposition : Vector3;
 
 
     /**
@@ -40,23 +42,27 @@ export class IrradianceVolume {
      * @param meshes  The meshes that need to be rendered by the probes
      * @param scene  The scene
      * @param probeRes The resolution that is used for rendering the probes
-     * @param numberProbeX The number of probes wanted on the x axis
-     * @param numberProbeY The number of probes wanted on the y axis
-     * @param numberProbeZ The number of probes wanted on the z axis
      * @param numberBounces the number of bounces wanted
+     * @param probeDisp The disposition of the probes in the scene
+     * @param numberProbes The number of probes placed on each axis
      */
     constructor(meshes : Array<Mesh>, scene : Scene, probeRes : number, 
-        probeDisposition : Vector3, numberBounces : number, probeDisp : Array<Vector4>) {
+        numberBounces : number, probeDisp : Array<Vector4>, numberProbes : Vector3) {
         this._scene = scene;
         this.meshForIrradiance = meshes;
         this.probeList = [];
-        this._probesDispotion = probeDisposition;
+        this._probesDisposition = numberProbes;
         //Create and dispatch the probes inside the irradiance volume
-        // this._createProbeList(probeRes);
+       
         this._createProbeFromProbeDisp(probeDisp);
+        // this._createIrradianceGradientProbes();
+        this._lowerLeft = new Vector3(probeDisp[0].x, probeDisp[0].y, probeDisp[0].z);
+        this._volumeSize = new Vector3(probeDisp[probeDisp.length - 1].x - this._lowerLeft.x,
+            probeDisp[probeDisp.length - 1].y - this._lowerLeft.y,
+            probeDisp[probeDisp.length - 1].z - this._lowerLeft.z);
         this.dictionary = new MeshDictionary(meshes, scene);
         this.irradiance = new Irradiance(this._scene, this.probeList, this.meshForIrradiance, this.dictionary,
-            numberBounces, this._probesDispotion, this._lowerLeft, this._volumeSize);
+            numberBounces, this._probesDisposition, this._lowerLeft, this._volumeSize);
     }
 
 
@@ -66,62 +72,54 @@ export class IrradianceVolume {
             this._scene, 16, probePos.w));
         }
     }
-/*
-    private _createProbeList(probeRes : number) {
-        let positions = [];
-        for (let mesh of this.meshForIrradiance) {
-            let wMatrix = mesh.getWorldMatrix();
-            let meshVertices = mesh.getVerticesData(VertexBuffer.PositionKind);
-            if (meshVertices != null) {
-                for (let i = 0; i < meshVertices.length; i += 3) {
-                    let vertexPosition = new Vector3(meshVertices[i], meshVertices[i + 1], meshVertices[i + 2]);
-                    let res = Vector3.TransformCoordinates(vertexPosition, wMatrix);
-                    positions.push(res);
-                }
-            }
-        }
-        let minVec = new Vector3(Infinity, Infinity, Infinity);
-        let maxVec = new Vector3(- Infinity, - Infinity, - Infinity);
-        for (let vertex of positions) {
-            if (vertex.x <= minVec.x) {
-                minVec.x = vertex.x;
-            }
-            else if (vertex.x >= maxVec.x) {
-                maxVec.x = vertex.x;
-            }
-            if (vertex.y <= minVec.y) {
-                minVec.y = vertex.y;
-            }
-            else if (vertex.y >= maxVec.y) {
-                maxVec.y = vertex.y;
-            }
-            if (vertex.z <= minVec.z) {
-                minVec.z = vertex.z;
-            }
-            else if (vertex.z >= maxVec.z) {
-                maxVec.z = vertex.z;
-            }
-        }
-        this._volumeSize = new Vector3(maxVec.x - minVec.x, maxVec.y - minVec.y, maxVec.z - minVec.z);
 
-        this._lowerLeft = new Vector3();
-        this._lowerLeft.x = minVec.x + this._volumeSize.x / (2 * this._probesDispotion.x);
-        this._lowerLeft.y = minVec.y + this._volumeSize.y / (2 * this._probesDispotion.y);
-        this._lowerLeft.z = minVec.z + this._volumeSize.z / (2 * this._probesDispotion.z);
 
-        for (let z = 0; z < this._probesDispotion.z  ; z += 1) {
-            for (let y = 0; y <  this._probesDispotion.y ; y += 1) {
-                for (let x = 0; x <  this._probesDispotion.x ; x += 1) {
-                    this.probeList.push(new Probe(new Vector3(
-                        this._lowerLeft.x + x * this._volumeSize.x / this._probesDispotion.x,
-                        this._lowerLeft.y + y * this._volumeSize.y / this._probesDispotion.y,
-                        this._lowerLeft.z + z * this._volumeSize.z / this._probesDispotion.z),
-                         this._scene, probeRes, 1));
-                }
-            }
+
+
+    private _moveRigh(movingSquare : number[], xPos : number, yPos : number){
+        movingSquare[2]++;
+        movingSquare[3]++;
+        xPos++;
+        if (yPos != 0){
+            movingSquare[0]++;
+            movingSquare[1]++;
         }
+
+        if (xPos == this._probesDisposition.x){
+
+        }
+
+
+        if (this.probeList[movingSquare[]])
     }
-*/
+
+    private _moveDown(movingSquare : number[], xPos : number, yPos : number){
+
+    }
+
+    private _moveUp(movingSquare : number[], xPos : number, yPos : number){
+
+    }
+
+    private _moveLeft(movingSquare : number[], xPos : number, yPos : number){
+
+    }
+
+    /**
+     * Function that will be use to see if we need to create probes to compute irradiance gradient at some places
+     */
+    private _createIrradianceGradientProbes(){
+        let movingSquare = [-1, -1, -1, 0];
+        // Position of the top right of the square
+        let xPos = 0;
+        let yPos = 0;
+        this._moveRigh(movingSquare, xPos, yPos);
+
+     
+
+
+    }
+
     /**
      * Called to change the directLightmap of the dictionary
      * Must ba called when the radiosity has been updates, othermwise, it does not do anything
