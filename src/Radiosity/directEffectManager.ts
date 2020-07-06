@@ -47,6 +47,8 @@ export class DirectEffectsManager {
       */
     public verticalBlurEffect: Effect;
 
+    public effectPromise: Promise<void>;
+
     private _vertexBuffer: VertexBuffer;
     private _indexBuffer: DataBuffer;
 
@@ -62,7 +64,7 @@ export class DirectEffectsManager {
         this._scene = scene;
 
         this.prepareBuffers();
-        this.createEffects();
+        this.effectPromise = this.createEffects();
     }
 
     /**
@@ -80,7 +82,6 @@ export class DirectEffectsManager {
     }
 
     private createEffects(): Promise<void> {
-
         return new Promise((resolve, reject) => {
             let interval = setInterval(() => {
                 let readyStates = [
@@ -224,7 +225,7 @@ export class DirectEffectsManager {
      */
     public isShadowMappingEffectReady(): boolean {
         const attribs: string[] = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
-        const uniforms: string[] = ["world", "view", "projection", "nearFar", "lightPos", "sampleCount", "normalBias"];
+        const uniforms: string[] = ["world", "view", "nearFar", "lightPos", "sampleCount", "normalBias"];
         const samplers: string[] = ["depthMap", "gatherTexture"];
 
         this.shadowMappingEffect = this._scene.getEngine().createEffect("shadowMapping",

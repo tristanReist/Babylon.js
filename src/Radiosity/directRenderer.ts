@@ -11,8 +11,6 @@ import { Constants } from "../Engines/constants";
 import { Vector2, Vector3, Color3, Color4, Matrix } from "../Maths/math";
 import { DirectEffectsManager } from "./directEffectManager";
 
-import { Nullable } from "../types";
-
 declare module "../Meshes/mesh" {
     export interface Mesh {
         /** Object containing radiosity information for this mesh */
@@ -24,28 +22,46 @@ declare module "../Meshes/mesh" {
             };
 
             shadowMap: RenderTargetTexture;
-            tempTexture: Nullable<RenderTargetTexture>;
+            tempTexture: RenderTargetTexture;
         };
 
         /** Inits the `directInfo` object */
-        initForDirect(): void;
+        initForDirect(shadowMapSize: { width: number, height: number }, scene: Scene): void;
 
         /** Gets radiosity texture
          * @return the radiosity texture. Can be fully black if the radiosity process has not been run yet.
          */
-        getShadowMap(): Nullable<Texture>;
+        getShadowMap(): Texture;
     }
 }
 
-Mesh.prototype.initForDirect = function() {
+Mesh.prototype.initForDirect = function(shadowMapSize: { width: number, height: number }, scene: Scene) {
     this.directInfo = {
-        shadowMapSize: {
-            width: 256,
-            height: 256
-        },
-
-        depthMap: null,
-        shadowMap: null,
+        shadowMapSize,
+        shadowMap: new RenderTargetTexture(
+            "shadowMap",
+            shadowMapSize,
+            scene,
+            false,
+            true,
+            Constants.TEXTURETYPE_FLOAT,
+            false,
+            Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
+            false,
+            false
+        ),
+         tempTexture: new RenderTargetTexture(
+            "tempMap",
+            shadowMapSize,
+            scene,
+            false,
+            true,
+            Constants.TEXTURETYPE_FLOAT,
+            false,
+            Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
+            false,
+            false
+        ),
     };
 };
 
@@ -101,12 +117,10 @@ export class Arealight {
 
         this._generateSamples(sampleCount);
 
-
-
         for (const sample of this.samples) {
             const mat = new StandardMaterial("", scene);
             mat.emissiveColor = new Color3(1, 0, 0);
-            const box = Mesh.CreateBox("", 1, scene);
+            const box = Mesh.CreateBox("", 0.1, scene);
             box.position = sample;
             box.material = mat;
         }
@@ -116,9 +130,6 @@ export class Arealight {
         this.samples = [];
 
         const viewMatrix = Matrix.LookAtLH(this.position, this.position.add(this.normal), Vector3.Up());
-        let xAxis = new Vector3(viewMatrix.m[0], viewMatrix.m[4], viewMatrix.m[8]); // Tangent
-        let yAxis = new Vector3(viewMatrix.m[1], viewMatrix.m[5], viewMatrix.m[9]); // "Up"
-        let zAxis = new Vector3(viewMatrix.m[2], viewMatrix.m[6], viewMatrix.m[10]); // depth
         viewMatrix.invert();
 
         for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
@@ -126,14 +137,12 @@ export class Arealight {
             const phi = v * 2.0 * Math.PI;
             const cosTheta = 1.0 - u;
             const sinTheta = Math.sqrt(1.0 - cosTheta * cosTheta);
-            // const x = (Math.random() - 0.5) * 2.0 * this.radius;
-            // const y = (Math.random() - 0.5) * 2.0 * this.radius;
             const x = Math.cos(phi) * sinTheta * this.radius;
             const y = Math.sin(phi) * sinTheta * this.radius;
 
-            const localSample = new Vector3(x, y, 0);
-            const worldSample = Vector3.TransformCoordinates(localSample, viewMatrix);
-            this.samples.push(worldSample);
+            const localPosition = new Vector3(x, y, 0);
+            const worldPosition = Vector3.TransformCoordinates(localPosition, viewMatrix);
+            this.samples.push(worldPosition);
         }
     }
 
@@ -175,6 +184,8 @@ export class DirectRenderer {
      */
     public meshes: Mesh[];
 
+    public lights: Arealight[];
+
     private _options: DirectRendererOptions;
     /**
      * Verbosity level for performance of the renderer
@@ -199,8 +210,6 @@ export class DirectRenderer {
     private _bias: number;
     private _normalBias: number;
 
-    private _depthCubeSize: number = 2048;
-
     private _projectionMatrix: Matrix;
     private _projectionMatrixPX: Matrix;
     private _projectionMatrixNX: Matrix;
@@ -209,20 +218,12 @@ export class DirectRenderer {
 
     private _directEffectsManager: DirectEffectsManager;
 
-    // private squareToDiskArea(a: number) {
-    //     return a * a * Math.PI / 4;
-    // }
-
-    private rectangleToDiskArea(a: number, b: number = a) {
-        return a * b * Math.PI / 4;
-    }
-
     /**
      * Instanciates a radiosity renderer
      * @param scene The current scene
      * @param meshes The meshes to include in the radiosity solver
      */
-    constructor(scene: Scene, meshes?: Mesh[], options?: DirectRendererOptions) {
+    constructor(scene: Scene, meshes?: Mesh[], lights?: Arealight[], options?: DirectRendererOptions) {
         this._options = options || {};
         this._scene = scene;
         this._near = this._options.near || 0.1;
@@ -230,34 +231,7 @@ export class DirectRenderer {
         this._bias = this._options.bias || 1e-4;
         this._normalBias = this._options.normalBias || 1e-4;
         this.meshes = meshes || [];
-
-        for (const mesh of this.meshes) {
-             mesh.directInfo.shadowMap = new RenderTargetTexture(
-                "shadowMap",
-                mesh.directInfo.shadowMapSize,
-                this._scene,
-                false,
-                true,
-                Constants.TEXTURETYPE_FLOAT,
-                false,
-                Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
-                false,
-                false
-            );
-
-             mesh.directInfo.tempTexture = new RenderTargetTexture(
-                "tempMap",
-                mesh.directInfo.shadowMapSize,
-                this._scene,
-                false,
-                true,
-                Constants.TEXTURETYPE_FLOAT,
-                false,
-                Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
-                false,
-                false
-            );
-        }
+        this.lights = lights || [];
 
         this._projectionMatrix = Matrix.PerspectiveFovLH(
             Math.PI / 2,
@@ -295,15 +269,20 @@ export class DirectRenderer {
         ));
 
         this._directEffectsManager = new DirectEffectsManager(this._scene);
-        while (!this._directEffectsManager.isReady()) {
-        }
+
+        this._directEffectsManager.effectPromise
+            .then(() => {
+                this.createDepthMaps();
+
+                this.generateShadowMap();
+            });
     }
 
     /**
-     * Prepare textures for radiosity
+     * Prepare textures for lightmap generation
      */
-    public createDepthMaps(lights: Arealight[]) {
-        for (const light of lights) {
+    public createDepthMaps() {
+        for (const light of this.lights) {
             this.renderVisibilityMapCube(light);
         }
     }
@@ -319,7 +298,6 @@ export class DirectRenderer {
                 engine.enableEffect(effect);
                 effect.setTexture("depthMap", depthMap);
                 effect.setMatrix("view", viewMatrix);
-                effect.setMatrix("projection", this._projectionMatrix);
                 effect.setFloat2("nearFar", this._near, this._far);
                 effect.setVector3("lightPos", light.samples[sampleIndex]);
                 effect.setFloat("sampleCount", light.samples.length);
@@ -370,9 +348,9 @@ export class DirectRenderer {
      * Bakes only direct light on lightmaps
      * @returns true if energy has been shot. (false meaning that there was no emitter)
      */
-    public generateShadowMap(lights: Arealight[]) {
+    public generateShadowMap() {
         console.log("Shooting");
-        for (const light of lights) {
+        for (const light of this.lights) {
             this.renderToShadowMapTexture(light);
         }
     }
@@ -414,28 +392,7 @@ export class DirectRenderer {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setVector2("texelSize", Vector2.One().divide(new Vector2(origin._texture.width, origin._texture.height)));
-        engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
-
-        engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
-        engine.drawElementsType(Material.TriangleFillMode, 0, 6);
-
-        engine.unBindFramebuffer(dest._texture);
-    }
-
-    private dilate(origin: Texture, dest: Texture) {
-        const engine = this._scene.getEngine();
-        const effect = this._directEffectsManager.dilateEffect;
-
-        engine.enableEffect(effect);
-        engine.bindFramebuffer(dest._texture);
-
-        // engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
-
-        let vb: any = {};
-        vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
-        effect.setTexture("inputTexture", origin);
-        effect.setFloat2("texelSize", 1 / origin.getSize().width, 1 / origin.getSize().height);
+        effect.setVector2("texelSize", Vector2.One().divide(new Vector2(origin.getSize().width, origin.getSize().height)));
         engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);

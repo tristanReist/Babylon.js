@@ -25,7 +25,7 @@ void main(void)
 	vec2 start = vUV - vec2(6.0 * texelSize.x, 0.0);
 	vec2 texelOffset = vec2(texelSize.x, 0.0);
 
-	vec4 baseColor = vec4(0., 0., 0., 0.);
+	vec4 baseColor = vec4(0.0);
 
 	for (int i = 0; i < 13; i++)
 	{

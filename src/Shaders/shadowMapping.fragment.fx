@@ -42,7 +42,6 @@ void main(void) {
 
     float gather = texture(gatherTexture, vUV2).x;
 
-    // float visible = step(depth - bias, sampledDepth) / sampleCount;
     float visible = step(depth - nBias, sampledDepth) / sampleCount;
     // float visible = depth / nearFar.y;
     // float visible = sampledDepth / nearFar.y;
