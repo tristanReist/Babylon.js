@@ -7,9 +7,9 @@ import { InternalTexture } from "../Materials/Textures/internalTexture";
 import { RenderTargetTexture } from "../Materials/Textures/renderTargetTexture";
 import { Effect } from "../Materials/effect";
 import { Material } from "../Materials/material";
-import { StandardMaterial } from "../Materials/standardMaterial";
+// import { StandardMaterial } from "../Materials/standardMaterial";
 import { Constants } from "../Engines/constants";
-import { Vector2, Vector3, Color3, Color4, Matrix } from "../Maths/math";
+import { Vector2, Vector3, Color4, Matrix } from "../Maths/math";
 import { DirectEffectsManager } from "./directEffectManager";
 
 declare module "../Meshes/mesh" {

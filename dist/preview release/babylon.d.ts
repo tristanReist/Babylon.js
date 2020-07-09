@@ -68137,6 +68137,7 @@ declare module BABYLON {
             width: number;
             height: number;
         };
+        depthMap: RenderTargetTexture;
         depthMaps: RenderTargetTexture[];
         samples: Vector3[];
         private _bits;
@@ -68202,10 +68203,12 @@ declare module BABYLON {
          * @param meshes The meshes to include in the radiosity solver
          */
         constructor(scene: Scene, meshes?: Mesh[], lights?: Arealight[], options?: DirectRendererOptions);
+        render(): void;
         /**
          * Prepare textures for lightmap generation
          */
         createDepthMaps(): void;
+        private renderSampleToShadowMapTexture;
         private renderToShadowMapTexture;
         dilate(origin: Texture, dest: Texture): void;
         /**
@@ -68222,6 +68225,7 @@ declare module BABYLON {
         private blur;
         private renderSubMesh;
         private _setCubeVisibilityUniforms;
+        private renderVisibilityMapCubeSample;
         private renderVisibilityMapCube;
         /**
          * Disposes of the radiosity renderer.

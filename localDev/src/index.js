@@ -1,7 +1,8 @@
-const sceneFolder = "./assets/models/";
-const sceneFilename = "scene.glb";
+// const sceneFolder = "./assets/models/";
+// const sceneFilename = "scene.glb";
 // const sceneFolder = "./assets/models/kzp-scene/";
-// const sceneFilename = "fileName.gltf";
+const sceneFolder = "./assets/models/result/";
+const sceneFilename = "fileName.gltf";
 let placeHolderMaterial = null;
 let viewManagerInstance = null;
 
@@ -91,10 +92,10 @@ const addArealight = (position, normal, size, scene) => {
         normal,
         size,
         {
-            width: 512,
-            height: 512,
+            width: 2048,
+            height: 2048,
         },
-        32,
+        64,
         scene,
     );
 }
@@ -110,7 +111,9 @@ const createScene = () => {
     camera.attachControl(engine.getRenderingCanvas(), true);
 
     const lights = [];
-    lights.push(addArealight(new BABYLON.Vector3(-450, 160, 135), new BABYLON.Vector3(1, 0, 0), 70, scene));
+    // lights.push(addArealight(new BABYLON.Vector3(-150, 160, 135), new BABYLON.Vector3(1, 0, 0), 70, scene));
+    lights.push(addArealight(new BABYLON.Vector3(10, 160, 200), new BABYLON.Vector3(0, 0, -1), 60, scene));
+    lights.push(addArealight(new BABYLON.Vector3(350, 120, 200), new BABYLON.Vector3(0, 0, -1), 80, scene));
 
     BABYLON.SceneLoader.ImportMesh("", sceneFolder, sceneFilename, scene, (meshes) => {
         for (const mesh of meshes) {
@@ -122,16 +125,23 @@ const createScene = () => {
             mesh.material.backFaceCulling = false;
         }
 
+        console.time("UV mapping");
         const meshesLightmapped = prepareUvs(meshes, scene);
+        console.timeEnd("UV mapping");
 
         const near = 1;
         const far = 1500;
-        const bias = 1e-6;
+        const bias = 1e-5;
         const normalBias = 1e-9;
+
+        console.time("Shadow mapping");
         const pr = new BABYLON.DirectRenderer(scene, meshesLightmapped, lights, { near, far, bias, normalBias });
 
-        pr.createDepthMaps();
-        pr.generateShadowMap();
+        pr.render();
+        console.timeEnd("Shadow mapping");
+
+        // pr.createDepthMaps();
+        // pr.generateShadowMap();
 
         // window.spector.startCapture(engine.getRenderingCanvas(), 1000000, false);
         // window.spector.stopCapture();
