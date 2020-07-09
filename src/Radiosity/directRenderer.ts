@@ -3,6 +3,7 @@ import { VertexBuffer } from "../Meshes/buffer";
 import { SubMesh } from "../Meshes/subMesh";
 import { Scene } from "../scene";
 import { Texture } from "../Materials/Textures/texture";
+import { InternalTexture } from "../Materials/Textures/internalTexture";
 import { RenderTargetTexture } from "../Materials/Textures/renderTargetTexture";
 import { Effect } from "../Materials/effect";
 import { Material } from "../Materials/material";
@@ -87,7 +88,6 @@ export class Arealight {
     // Samples world positions
     public samples: Vector3[];
 
-
     private _bits = new Uint32Array(1);
 
     constructor(position: Vector3, normal: Vector3, radius: number, depthMapSize: { width: number, height: number }, sampleCount: number, scene: Scene) {
@@ -120,7 +120,7 @@ export class Arealight {
         for (const sample of this.samples) {
             const mat = new StandardMaterial("", scene);
             mat.emissiveColor = new Color3(1, 0, 0);
-            const box = Mesh.CreateBox("", 0.1, scene);
+            const box = Mesh.CreateBox("", 1.5, scene);
             box.position = sample;
             box.material = mat;
         }
@@ -185,6 +185,8 @@ export class DirectRenderer {
     public meshes: Mesh[];
 
     public lights: Arealight[];
+
+    public renderingPromise: Promise<void>;
 
     private _options: DirectRendererOptions;
     /**
@@ -270,12 +272,8 @@ export class DirectRenderer {
 
         this._directEffectsManager = new DirectEffectsManager(this._scene);
 
-        this._directEffectsManager.effectPromise
-            .then(() => {
-                this.createDepthMaps();
-
-                this.generateShadowMap();
-            });
+        while(!this._directEffectsManager.isReady()) {
+        }
     }
 
     /**
@@ -307,7 +305,9 @@ export class DirectRenderer {
                 // Rendering shadow to tempTexture
                 engine.setDirectViewport(0, 0, mesh.directInfo.shadowMapSize.width, mesh.directInfo.shadowMapSize.height);
                 engine.setState(false, 0, true, true);
-                engine.bindFramebuffer(mesh.directInfo.tempTexture._texture);
+                // Back faces only
+                // engine.setState(true, 0, false, true);
+                engine.bindFramebuffer(<InternalTexture>mesh.directInfo.tempTexture._texture);
 
                 for (const subMesh of mesh.subMeshes) {
                     var batch = mesh._getInstancesRenderList(subMesh._id);
@@ -322,7 +322,7 @@ export class DirectRenderer {
                         (isInstance, world) => this._directEffectsManager.shadowMappingEffect.setMatrix("world", world));
                 }
 
-                engine.unBindFramebuffer(mesh.directInfo.tempTexture._texture);
+                engine.unBindFramebuffer(<InternalTexture>mesh.directInfo.tempTexture._texture);
 
                 // Swap temp and shadow texture
                 const temp = mesh.directInfo.tempTexture;
@@ -332,17 +332,42 @@ export class DirectRenderer {
         }
 
         for (const mesh of this.meshes) {
+            // this.toneMap(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
+            this.dilate(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
+
+            this.toneMap(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap);
+
             this.blur(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
             this.blur(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap, false);
 
-            this.toneMap(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
+            // this.dilate(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap);
 
             // Swap temp and shadow texture
-            const temp = mesh.directInfo.tempTexture._texture;
-            mesh.directInfo.tempTexture._texture = mesh.directInfo.shadowMap._texture;
-            mesh.directInfo.shadowMap._texture = temp;
+            // const temp = mesh.directInfo.tempTexture._texture;
+            // mesh.directInfo.tempTexture._texture = mesh.directInfo.shadowMap._texture;
+            // mesh.directInfo.shadowMap._texture = temp;
         }
     }
+
+    public dilate(origin: Texture, dest: Texture) {
+        const engine = this._scene.getEngine();
+        const effect = this._directEffectsManager.dilateEffect;
+        engine.enableEffect(effect);
+        engine.setState(false);
+        engine.bindFramebuffer(<InternalTexture>dest._texture);
+
+        let vb: any = {};
+        vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
+        effect.setTexture("inputTexture", origin);
+        effect.setFloat2("texelSize", 1 / dest.getSize().width, 1 / dest.getSize().height);
+        engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
+
+        engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
+        engine.drawElementsType(Material.TriangleFillMode, 0, 6);
+
+        engine.unBindFramebuffer(<InternalTexture>dest._texture);
+    }
+
 
     /**
      * Bakes only direct light on lightmaps
@@ -364,30 +389,30 @@ export class DirectRenderer {
     }
 
     private toneMap(origin: Texture, dest: Texture) {
-        var engine = this._scene.getEngine();
-        var effect = this._directEffectsManager.radiosityPostProcessEffect;
+        const engine = this._scene.getEngine();
+        const effect = this._directEffectsManager.radiosityPostProcessEffect;
         engine.enableEffect(effect);
         engine.setState(false);
-        engine.bindFramebuffer(dest._texture);
+        engine.bindFramebuffer(<InternalTexture>dest._texture);
 
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setFloat("exposure", 10);
+        effect.setFloat("exposure", 3.5);
         engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
         engine.drawElementsType(Material.TriangleFillMode, 0, 6);
 
-        engine.unBindFramebuffer(dest._texture);
+        engine.unBindFramebuffer(<InternalTexture>dest._texture);
     }
 
     private blur(origin: Texture, dest: Texture, horizontal: boolean = true) {
-        var engine = this._scene.getEngine();
-        var effect = horizontal ? this._directEffectsManager.horizontalBlurEffect : this._directEffectsManager.verticalBlurEffect;
+        const engine = this._scene.getEngine();
+        const effect = horizontal ? this._directEffectsManager.horizontalBlurEffect : this._directEffectsManager.verticalBlurEffect;
         engine.enableEffect(effect);
         engine.setState(false);
-        engine.bindFramebuffer(dest._texture);
+        engine.bindFramebuffer(<InternalTexture>dest._texture);
 
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
@@ -398,7 +423,7 @@ export class DirectRenderer {
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
         engine.drawElementsType(Material.TriangleFillMode, 0, 6);
 
-        engine.unBindFramebuffer(dest._texture);
+        engine.unBindFramebuffer(<InternalTexture>dest._texture);
     }
 
     private renderSubMesh = (subMesh: SubMesh, effect: Effect) => {
@@ -411,7 +436,8 @@ export class DirectRenderer {
         }
 
         mesh._bind(subMesh, effect, Material.TriangleFillMode);
-        engine.setState(material.backFaceCulling);
+        engine.setState(false, 0, true, false);
+        // engine.setState(material.backFaceCulling);
 
         var batch = mesh._getInstancesRenderList(subMesh._id);
 
@@ -494,19 +520,21 @@ export class DirectRenderer {
             // Hemi cube rendering
             for (let viewIndex = 0; viewIndex < cubeSides.length; viewIndex++) {
                 // Render on each face of the hemicube
-                engine.bindFramebuffer(depthMap._texture, cubeSides[viewIndex] - gl.TEXTURE_CUBE_MAP_POSITIVE_X);
+                engine.bindFramebuffer(<InternalTexture>depthMap._texture, cubeSides[viewIndex] - gl.TEXTURE_CUBE_MAP_POSITIVE_X);
 
                 // Full cube viewport when rendering the front face
                 engine.setDirectViewport(
                     viewportOffsets[viewIndex][0] * light.depthMapSize.width,
                     viewportOffsets[viewIndex][1] * light.depthMapSize.height,
                     light.depthMapSize.width * viewportMultipliers[viewIndex][0],
-                    light.depthMapSize.height* viewportMultipliers[viewIndex][1]
+                    light.depthMapSize.height * viewportMultipliers[viewIndex][1]
                 );
 
                 engine.clear(new Color4(0, 0, 0, 0), true, true);
 
                 this._setCubeVisibilityUniforms(this._directEffectsManager.visibilityEffect, viewMatrices[viewIndex], projectionMatrices[viewIndex]);
+                this._directEffectsManager.visibilityEffect.setVector3("lightPos", samplePosition);
+                this._directEffectsManager.visibilityEffect.setFloat("normalBias", this._normalBias);
 
                 for (const mesh of this.meshes) {
                     for (const subMesh of mesh.subMeshes) {
@@ -514,7 +542,7 @@ export class DirectRenderer {
                     }
                 }
 
-                engine.unBindFramebuffer(depthMap._texture);
+                engine.unBindFramebuffer(<InternalTexture>depthMap._texture);
             }
         }
     }

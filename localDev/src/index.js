@@ -1,7 +1,7 @@
-// const sceneFolder = "/";
-// const sceneFilename = "openRoom.babylon";
-const sceneFolder = "./assets/models/kzp-scene/";
-const sceneFilename = "fileName.gltf";
+const sceneFolder = "./assets/models/";
+const sceneFilename = "scene.glb";
+// const sceneFolder = "./assets/models/kzp-scene/";
+// const sceneFilename = "fileName.gltf";
 let placeHolderMaterial = null;
 let viewManagerInstance = null;
 
@@ -57,7 +57,7 @@ const qualitySettings = [
     },
 ];
 
-const prepareUvs = (meshes) => {
+const prepareUvs = (meshes, scene) => {
     const meshesToProcess = meshes.filter((mesh) => (mesh.geometry && mesh.material && mesh.material.alpha === 1
         && mesh.name !== "earth"
         && mesh.name !== "skybox"
@@ -68,14 +68,15 @@ const prepareUvs = (meshes) => {
 
     for (let i = 0; i < meshesToProcess.length; i++) {
         const mesh = meshesToProcess[i];
-        const [[uvWorldRatioX, uvWorldRationY], polygonsArea] = uvm.map([mesh], 10, 66.0);
+        const [uvWorldRatioX, uvWorldRationY] = uvm.map([mesh], 10, 66.0);
 
         if (!mesh.directInfo) {
-            mesh.initForDirect();
-            mesh.directInfo.shadowMapSize = qualitySettings[quality].objectLightmapSize;
+            mesh.initForDirect(
+                qualitySettings[quality].objectLightmapSize,
+                scene
+            );
         }
 
-        mesh.directInfo.texelWorldSize = { width: 1 / (uvWorldRatioX * mesh.directInfo.shadowMapSize.width), height: 1 / (uvWorldRationY * mesh.directInfo.shadowMapSize.height) };
         // mesh.radiosityInfo.texelWorldSize = { width: 1 / (uvWorldRatioX * mesh.radiosityInfo.lightmapSize.width), height: 1 / (uvWorldRationY * mesh.radiosityInfo.lightmapSize.height) };
         // mesh.radiosityInfo.polygonWorldArea = polygonsArea[0];
         // mesh.radiosityInfo.polygonWorldArea = polygonsArea[i];
@@ -84,19 +85,18 @@ const prepareUvs = (meshes) => {
     return meshesToProcess;
 }
 
-const addArealight = (position, size, scene) => {
-    const light = BABYLON.Mesh.CreateGround("", size.x, size.y, 1, scene);
-    light.position = position;
-    light.material = placeHolderMaterial.clone();
-
-    light.initForDirect();
-    light.directInfo.shadowMapSize = qualitySettings[quality].lightLightmapSize;
-
-    light.directInfo.color = new BABYLON.Vector3(50, 50, 50);
-
-    prepareUvs([light]);
-
-    return light;
+const addArealight = (position, normal, size, scene) => {
+    return new BABYLON.Arealight(
+        position,
+        normal,
+        size,
+        {
+            width: 512,
+            height: 512,
+        },
+        32,
+        scene,
+    );
 }
 
 const createScene = () => {
@@ -109,10 +109,8 @@ const createScene = () => {
     camera.speed = 10;
     camera.attachControl(engine.getRenderingCanvas(), true);
 
-    const light = addArealight(new BABYLON.Vector3(-500, 160, 135), new BABYLON.Vector2(140, 140), scene);
-    light.rotation.x = -Math.PI / 2;
-    light.rotation.y = -Math.PI / 2;
-    light.computeWorldMatrix(true);
+    const lights = [];
+    lights.push(addArealight(new BABYLON.Vector3(-450, 160, 135), new BABYLON.Vector3(1, 0, 0), 70, scene));
 
     BABYLON.SceneLoader.ImportMesh("", sceneFolder, sceneFilename, scene, (meshes) => {
         for (const mesh of meshes) {
@@ -121,32 +119,27 @@ const createScene = () => {
             } else {
                 mesh.material = placeHolderMaterial.clone();
             }
+            mesh.material.backFaceCulling = false;
         }
 
-        const meshesLightmapped = prepareUvs(meshes);
+        const meshesLightmapped = prepareUvs(meshes, scene);
 
         const near = 1;
         const far = 1500;
         const bias = 1e-6;
-        // const pr = new BABYLON.RadiosityRenderer(scene, meshesLightmapped.concat(light), { near, far, bias });
-        const pr = new BABYLON.DirectRenderer(scene, meshesLightmapped, { near, far, bias });
+        const normalBias = 1e-9;
+        const pr = new BABYLON.DirectRenderer(scene, meshesLightmapped, lights, { near, far, bias, normalBias });
+
+        pr.createDepthMaps();
+        pr.generateShadowMap();
+
         // window.spector.startCapture(engine.getRenderingCanvas(), 1000000, false);
-        pr.createDepthMaps([light]);
         // window.spector.stopCapture();
-
-        const observer = scene.onAfterRenderTargetsRenderObservable.add(() => {
-            // window.spector.startCapture(engine.getRenderingCanvas(), 1000000, false);
-            pr.generateShadowMap([light]);
-            // window.spector.stopCapture();
-
-            for (const mesh of meshesLightmapped) {
-                mesh.material.lightmapTexture = mesh.directInfo.shadowMap;
-                mesh.material.useLightmapAsShadowmap = true;
-                mesh.material.lightmapTexture.coordinatesIndex = 1;
-            }
-
-            scene.onAfterRenderTargetsRenderObservable.remove(observer);
-        });
+        for (const mesh of meshesLightmapped) {
+            mesh.material.lightmapTexture = mesh.getShadowMap();
+            mesh.material.useLightmapAsShadowmap = true;
+            mesh.material.lightmapTexture.coordinatesIndex = 1;
+        }
 
         // const observer = scene.onAfterRenderTargetsRenderObservable.add(() => {
         //     if (!pr.isReady()) {

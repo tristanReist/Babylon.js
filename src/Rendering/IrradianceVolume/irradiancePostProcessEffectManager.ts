@@ -3,14 +3,12 @@ import { Scene } from '../../scene';
 import { VertexBuffer } from "../../Meshes/buffer";
 import { DataBuffer } from "../../Meshes/dataBuffer";
 
-
 import "../../Shaders/irradianceVolumeMixTwoTextures.fragment";
 import "../../Shaders/irradianceVolumeMixTwoTextures.vertex";
 import "../../Shaders/radiosityPostProcess.fragment";
 import "../../Shaders/radiosityPostProcess.vertex";
 import "../../Shaders/dilate.fragment";
 import "../../Shaders/dilate.vertex";
-
 
 export class IrradiancePostProcessEffectManager {
 
@@ -129,10 +127,8 @@ export class IrradiancePostProcessEffectManager {
             [VertexBuffer.PositionKind],
             ["offset", "texelSize"],
             ["inputTexture"], "");
-        
+
         return this.dilateEffect.isReady();
     }
-
-
 
 }

@@ -7,7 +7,7 @@
 		exports["babylonjs-inspector"] = factory(require("babylonjs-gui"), require("babylonjs-loaders"), require("babylonjs-materials"), require("babylonjs-serializers"), require("babylonjs"));
 	else
 		root["INSPECTOR"] = factory(root["BABYLON"]["GUI"], root["BABYLON"], root["BABYLON"], root["BABYLON"], root["BABYLON"]);
-})((typeof self !== "undefined" ? self : typeof global !== "undefined" ? global : this), function(__WEBPACK_EXTERNAL_MODULE_babylonjs_gui_2D_controls_image__, __WEBPACK_EXTERNAL_MODULE_babylonjs_loaders_glTF_index__, __WEBPACK_EXTERNAL_MODULE_babylonjs_materials_grid_gridMaterial__, __WEBPACK_EXTERNAL_MODULE_babylonjs_serializers_glTF_2_0_index__, __WEBPACK_EXTERNAL_MODULE_babylonjs_Misc_observable__) {
+})((typeof self !== "undefined" ? self : typeof global !== "undefined" ? global : this), function(__WEBPACK_EXTERNAL_MODULE_babylonjs_gui_2D_adtInstrumentation__, __WEBPACK_EXTERNAL_MODULE_babylonjs_loaders_glTF_index__, __WEBPACK_EXTERNAL_MODULE_babylonjs_materials_grid_gridMaterial__, __WEBPACK_EXTERNAL_MODULE_babylonjs_serializers_glTF_2_0_index__, __WEBPACK_EXTERNAL_MODULE_babylonjs_Misc_observable__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -1201,7 +1201,7 @@ var p = config.measurePerformance && PERFORMANCE && PERFORMANCE.mark && PERFORMA
   mark: noop$1,
   measure: noop$1
 };
-var preamble = "FA \"5.13.1\"";
+var preamble = "FA \"5.13.0\"";
 
 var begin = function begin(name) {
   p.mark("".concat(preamble, " ").concat(name, " begins"));
@@ -5769,7 +5769,7 @@ function classList(props) {
     'fa-li': listItem,
     'fa-flip-horizontal': flip === 'horizontal' || flip === 'both',
     'fa-flip-vertical': flip === 'vertical' || flip === 'both'
-  }, _defineProperty(_classes, "fa-".concat(size), typeof size !== 'undefined' && size !== null), _defineProperty(_classes, "fa-rotate-".concat(rotation), typeof rotation !== 'undefined' && rotation !== null && rotation !== 0), _defineProperty(_classes, "fa-pull-".concat(pull), typeof pull !== 'undefined' && pull !== null), _defineProperty(_classes, 'fa-swap-opacity', props.swapOpacity), _classes); // map over all the keys in the classes object
+  }, _defineProperty(_classes, "fa-".concat(size), typeof size !== 'undefined' && size !== null), _defineProperty(_classes, "fa-rotate-".concat(rotation), typeof rotation !== 'undefined' && rotation !== null), _defineProperty(_classes, "fa-pull-".concat(pull), typeof pull !== 'undefined' && pull !== null), _defineProperty(_classes, 'fa-swap-opacity', props.swapOpacity), _classes); // map over all the keys in the classes object
   // return an array of the keys where the value for the key is not null
 
   return Object.keys(classes).map(function (key) {
@@ -5924,10 +5924,7 @@ function objectWithKey(key, value) {
   return Array.isArray(value) && value.length > 0 || !Array.isArray(value) && value ? _defineProperty({}, key, value) : {};
 }
 
-function FontAwesomeIcon(_ref) {
-  var forwardedRef = _ref.forwardedRef,
-      props = _objectWithoutProperties(_ref, ["forwardedRef"]);
-
+function FontAwesomeIcon(props) {
   var iconArgs = props.icon,
       maskArgs = props.mask,
       symbol = props.symbol,
@@ -5948,9 +5945,7 @@ function FontAwesomeIcon(_ref) {
   }
 
   var abstract = renderedIcon.abstract;
-  var extraProps = {
-    ref: forwardedRef
-  };
+  var extraProps = {};
   Object.keys(props).forEach(function (key) {
     // eslint-disable-next-line no-prototype-builtins
     if (!FontAwesomeIcon.defaultProps.hasOwnProperty(key)) {
@@ -5971,7 +5966,7 @@ FontAwesomeIcon.propTypes = {
   listItem: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.bool,
   pull: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOf(['right', 'left']),
   pulse: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.bool,
-  rotation: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOf([0, 90, 180, 270]),
+  rotation: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOf([90, 180, 270]),
   size: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOf(['lg', 'xs', 'sm', '1x', '2x', '3x', '4x', '5x', '6x', '7x', '8x', '9x', '10x']),
   spin: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.bool,
   symbol: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.oneOfType([prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.bool, prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.string]),
@@ -52733,22 +52728,21 @@ if (false) {} else {
 
 /***/ }),
 
-/***/ "../../node_modules/split.js/dist/split.mjs":
-/*!******************************************************************************!*\
-  !*** /home/quentin/Projects/Babylon.js/node_modules/split.js/dist/split.mjs ***!
-  \******************************************************************************/
+/***/ "../../node_modules/split.js/dist/split.es.js":
+/*!********************************************************************************!*\
+  !*** /home/quentin/Projects/Babylon.js/node_modules/split.js/dist/split.es.js ***!
+  \********************************************************************************/
 /*! exports provided: default */
-/***/ (function(__webpack_module__, __webpack_exports__, __webpack_require__) {
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 // The programming goals of Split.js are to deliver readable, understandable and
 // maintainable code, while at the same time manually optimizing for tiny minified file size,
-// browser compatibility without additional requirements
+// browser compatibility without additional requirements, graceful fallback (IE8 is supported)
 // and very few assumptions about the user's page layout.
-var global = typeof window !== 'undefined' ? window : null;
-var ssr = global === null;
-var document = !ssr ? global.document : undefined;
+var global = window;
+var document = global.document;
 
 // Save a couple long function names that are used frequently.
 // This optimization saves around 400 bytes.
@@ -52761,21 +52755,23 @@ var bGutterSize = '_c';
 var HORIZONTAL = 'horizontal';
 var NOOP = function () { return false; };
 
+// Figure out if we're in IE8 or not. IE8 will still render correctly,
+// but will be static instead of draggable.
+var isIE8 = global.attachEvent && !global[addEventListener];
+
 // Helper function determines which prefixes of CSS calc we need.
 // We only need to do this once on startup, when this anonymous function is called.
 //
 // Tests -webkit, -moz and -o prefixes. Modified from StackOverflow:
 // http://stackoverflow.com/questions/16625140/js-feature-detection-to-detect-the-usage-of-webkit-calc-over-calc/16625167#16625167
-var calc = ssr
-    ? 'calc'
-    : ((['', '-webkit-', '-moz-', '-o-']
-          .filter(function (prefix) {
-              var el = document.createElement('div');
-              el.style.cssText = "width:" + prefix + "calc(9px)";
+var calc = (['', '-webkit-', '-moz-', '-o-']
+    .filter(function (prefix) {
+        var el = document.createElement('div');
+        el.style.cssText = "width:" + prefix + "calc(9px)";
 
-              return !!el.style.length
-          })
-          .shift()) + "calc");
+        return !!el.style.length
+    })
+    .shift()) + "calc";
 
 // Helper function checks if its argument is a string-like type
 var isString = function (v) { return typeof v === 'string' || v instanceof String; };
@@ -52835,7 +52831,11 @@ var defaultElementStyleFn = function (dim, size, gutSize) {
     var style = {};
 
     if (!isString(size)) {
-        style[dim] = calc + "(" + size + "% - " + gutSize + "px)";
+        if (!isIE8) {
+            style[dim] = calc + "(" + size + "% - " + gutSize + "px)";
+        } else {
+            style[dim] = size + "%";
+        }
     } else {
         style[dim] = size;
     }
@@ -52878,8 +52878,6 @@ var defaultGutterStyleFn = function (dim, gutSize) {
 // 5. Actually size the pair elements, insert gutters and attach event listeners.
 var Split = function (idsOption, options) {
     if ( options === void 0 ) options = {};
-
-    if (ssr) { return {} }
 
     var ids = idsOption;
     var dimension;
@@ -53370,27 +53368,30 @@ var Split = function (idsOption, options) {
         // staticly assigning sizes without draggable gutters. Assigns a string
         // to `size`.
         //
-        // Create gutter elements for each pair.
-        if (i > 0) {
-            var gutterElement = gutter(i, direction, element.element);
-            setGutterSize(gutterElement, gutterSize, i);
+        // IE9 and above
+        if (!isIE8) {
+            // Create gutter elements for each pair.
+            if (i > 0) {
+                var gutterElement = gutter(i, direction, element.element);
+                setGutterSize(gutterElement, gutterSize, i);
 
-            // Save bound event listener for removal later
-            pair[gutterStartDragging] = startDragging.bind(pair);
+                // Save bound event listener for removal later
+                pair[gutterStartDragging] = startDragging.bind(pair);
 
-            // Attach bound event listener
-            gutterElement[addEventListener](
-                'mousedown',
-                pair[gutterStartDragging]
-            );
-            gutterElement[addEventListener](
-                'touchstart',
-                pair[gutterStartDragging]
-            );
+                // Attach bound event listener
+                gutterElement[addEventListener](
+                    'mousedown',
+                    pair[gutterStartDragging]
+                );
+                gutterElement[addEventListener](
+                    'touchstart',
+                    pair[gutterStartDragging]
+                );
 
-            parent.insertBefore(gutterElement, element.element);
+                parent.insertBefore(gutterElement, element.element);
 
-            pair.gutter = gutterElement;
+                pair.gutter = gutterElement;
+            }
         }
 
         setElementSize(
@@ -53486,6 +53487,13 @@ var Split = function (idsOption, options) {
                 });
             }
         });
+    }
+
+    if (isIE8) {
+        return {
+            setSizes: setSizes,
+            destroy: destroy,
+        }
     }
 
     return {
@@ -59292,7 +59300,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _lineContainerComponent__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../lineContainerComponent */ "./components/actionTabs/lineContainerComponent.tsx");
 /* harmony import */ var _lines_textLineComponent__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../lines/textLineComponent */ "./components/actionTabs/lines/textLineComponent.tsx");
-/* harmony import */ var babylonjs_gui_2D_controls_control__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! babylonjs-gui/2D/controls/control */ "babylonjs-gui/2D/controls/image");
+/* harmony import */ var babylonjs_gui_2D_controls_control__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! babylonjs-gui/2D/controls/control */ "babylonjs-gui/2D/adtInstrumentation");
 /* harmony import */ var babylonjs_gui_2D_controls_control__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(babylonjs_gui_2D_controls_control__WEBPACK_IMPORTED_MODULE_4__);
 /* harmony import */ var _lines_sliderLineComponent__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../../lines/sliderLineComponent */ "./components/actionTabs/lines/sliderLineComponent.tsx");
 /* harmony import */ var _lines_floatLineComponent__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../../lines/floatLineComponent */ "./components/actionTabs/lines/floatLineComponent.tsx");
@@ -59598,7 +59606,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _commonControlPropertyGridComponent__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./commonControlPropertyGridComponent */ "./components/actionTabs/tabs/propertyGrids/gui/commonControlPropertyGridComponent.tsx");
 /* harmony import */ var _lineContainerComponent__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../lineContainerComponent */ "./components/actionTabs/lineContainerComponent.tsx");
-/* harmony import */ var babylonjs_gui_2D_controls_image__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! babylonjs-gui/2D/controls/image */ "babylonjs-gui/2D/controls/image");
+/* harmony import */ var babylonjs_gui_2D_controls_image__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! babylonjs-gui/2D/controls/image */ "babylonjs-gui/2D/adtInstrumentation");
 /* harmony import */ var babylonjs_gui_2D_controls_image__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(babylonjs_gui_2D_controls_image__WEBPACK_IMPORTED_MODULE_4__);
 /* harmony import */ var _lines_floatLineComponent__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../../lines/floatLineComponent */ "./components/actionTabs/lines/floatLineComponent.tsx");
 /* harmony import */ var _lines_checkBoxLineComponent__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../../lines/checkBoxLineComponent */ "./components/actionTabs/lines/checkBoxLineComponent.tsx");
@@ -60012,7 +60020,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react */ "../../node_modules/react/index.js");
 /* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _commonControlPropertyGridComponent__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./commonControlPropertyGridComponent */ "./components/actionTabs/tabs/propertyGrids/gui/commonControlPropertyGridComponent.tsx");
-/* harmony import */ var babylonjs_gui_2D_controls_textBlock__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! babylonjs-gui/2D/controls/textBlock */ "babylonjs-gui/2D/controls/image");
+/* harmony import */ var babylonjs_gui_2D_controls_textBlock__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! babylonjs-gui/2D/controls/textBlock */ "babylonjs-gui/2D/adtInstrumentation");
 /* harmony import */ var babylonjs_gui_2D_controls_textBlock__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(babylonjs_gui_2D_controls_textBlock__WEBPACK_IMPORTED_MODULE_3__);
 /* harmony import */ var _lineContainerComponent__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../../../lineContainerComponent */ "./components/actionTabs/lineContainerComponent.tsx");
 /* harmony import */ var _lines_textInputLineComponent__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../../lines/textInputLineComponent */ "./components/actionTabs/lines/textInputLineComponent.tsx");
@@ -61469,7 +61477,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _lines_optionsLineComponent__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../../lines/optionsLineComponent */ "./components/actionTabs/lines/optionsLineComponent.tsx");
 /* harmony import */ var _lines_fileButtonLineComponent__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../../../lines/fileButtonLineComponent */ "./components/actionTabs/lines/fileButtonLineComponent.tsx");
 /* harmony import */ var _lines_valueLineComponent__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ../../../lines/valueLineComponent */ "./components/actionTabs/lines/valueLineComponent.tsx");
-/* harmony import */ var babylonjs_gui_2D_adtInstrumentation__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! babylonjs-gui/2D/adtInstrumentation */ "babylonjs-gui/2D/controls/image");
+/* harmony import */ var babylonjs_gui_2D_adtInstrumentation__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! babylonjs-gui/2D/adtInstrumentation */ "babylonjs-gui/2D/adtInstrumentation");
 /* harmony import */ var babylonjs_gui_2D_adtInstrumentation__WEBPACK_IMPORTED_MODULE_12___default = /*#__PURE__*/__webpack_require__.n(babylonjs_gui_2D_adtInstrumentation__WEBPACK_IMPORTED_MODULE_12__);
 /* harmony import */ var _customPropertyGridComponent__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ../customPropertyGridComponent */ "./components/actionTabs/tabs/propertyGrids/customPropertyGridComponent.tsx");
 /* harmony import */ var _lines_buttonLineComponent__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ../../../lines/buttonLineComponent */ "./components/actionTabs/lines/buttonLineComponent.tsx");
@@ -64897,7 +64905,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-var Split = __webpack_require__(/*! split.js */ "../../node_modules/split.js/dist/split.mjs").default;
+var Split = __webpack_require__(/*! split.js */ "../../node_modules/split.js/dist/split.es.js").default;
 __webpack_require__(/*! ./embedHost.scss */ "./components/embedHost/embedHost.scss");
 var EmbedHostComponent = /** @class */ (function (_super) {
     Object(tslib__WEBPACK_IMPORTED_MODULE_0__["__extends"])(EmbedHostComponent, _super);
@@ -67816,14 +67824,14 @@ var Tools = /** @class */ (function () {
 
 /***/ }),
 
-/***/ "babylonjs-gui/2D/controls/image":
+/***/ "babylonjs-gui/2D/adtInstrumentation":
 /*!************************************************************************************************************************!*\
   !*** external {"root":["BABYLON","GUI"],"commonjs":"babylonjs-gui","commonjs2":"babylonjs-gui","amd":"babylonjs-gui"} ***!
   \************************************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-module.exports = __WEBPACK_EXTERNAL_MODULE_babylonjs_gui_2D_controls_image__;
+module.exports = __WEBPACK_EXTERNAL_MODULE_babylonjs_gui_2D_adtInstrumentation__;
 
 /***/ }),
 

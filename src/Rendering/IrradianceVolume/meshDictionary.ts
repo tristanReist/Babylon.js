@@ -24,7 +24,6 @@ export interface IMeshesGroup {
     postProcessLightmap : MultiRenderTarget;
 }
 
-
 /**
  * This dictionary contains meshes as key and textures are value
  * In our implementation, we create one lightmap per mesh
@@ -39,11 +38,10 @@ export class MeshDictionary {
 
     private _postProcessManager : IrradiancePostProcessEffectManager;
 
-
     public globalIllumStrength = 1;
     public directIllumStrength = 1;
 
-    private _frameBuffer1 : WebGLFramebuffer;;
+    private _frameBuffer1 : WebGLFramebuffer;
 
     /**
      * Create the dictionary
@@ -77,7 +75,7 @@ export class MeshDictionary {
             let value = this.getValue(mesh);
             if (value != null) {
                 let size = 128;
-                value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene, false, true, 1); 
+                value.irradianceLightmap = new RenderTargetTexture("irradianceLightmap", size, this._scene, false, true, 1);
                 value.postProcessLightmap = new MultiRenderTarget("postProcess", size, 4, this._scene, {
                     samplingModes: [2, 2, 2, 2],
                     types: [1, 1, 1, 1]});
@@ -87,28 +85,27 @@ export class MeshDictionary {
     }
 
     public render() {
-        for (let value of this._values){
+        for (let value of this._values) {
             this.renderValue(value);
         }
     }
 
-    public renderValue(value : IMeshesGroup){
-        
+    public renderValue(value : IMeshesGroup) {
+
         this._dilateRendering(value);
         this._sumOfBothRendering(value);
         this._toneMappingRendering(value);
         value.postProcessLightmap.textures[1].coordinatesIndex = 1;
         let mesh = this._getMesh(value);
-        if (mesh != null){
+        if (mesh != null) {
             (<PBRMaterial> mesh.material).lightmapTexture = value.postProcessLightmap.textures[1];
             // (<PBRMaterial> mesh.material).lightmapTexture = value.directLightmap;
 
         }
     }
 
-
     private _sumOfBothRendering(value : IMeshesGroup) : void {
-        let mrt = value.postProcessLightmap; 
+        let mrt = value.postProcessLightmap;
         let engine = this._scene.getEngine();
         let effect = this._postProcessManager.sumOfBothEffect;
 
@@ -119,7 +116,7 @@ export class MeshDictionary {
         let gl = engine._gl;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,  (<InternalTexture>dest._texture)._webGLTexture, 0);
-        
+
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
@@ -136,7 +133,7 @@ export class MeshDictionary {
     }
 
     private _toneMappingRendering(value : IMeshesGroup) {
-        let mrt = value.postProcessLightmap; 
+        let mrt = value.postProcessLightmap;
         let engine = this._scene.getEngine();
         let effect = this._postProcessManager.toneMappingEffect;
 
@@ -146,8 +143,8 @@ export class MeshDictionary {
         engine.setState(false);
         let gl = engine._gl;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
-        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,(<InternalTexture>dest._texture)._webGLTexture, 0);
-        
+        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (<InternalTexture>dest._texture)._webGLTexture, 0);
+
         engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
@@ -155,14 +152,13 @@ export class MeshDictionary {
         effect.setFloat("_ExposureAdjustment", 2.);
         engine.bindBuffers(vb, this._postProcessManager.screenQuadIB, effect);
 
-
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
         engine.drawElementsType(Material.TriangleFillMode, 0, 6);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);        
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
-    private _dilateRendering( value : IMeshesGroup ){
-        let mrt = value.postProcessLightmap; 
+    private _dilateRendering(value : IMeshesGroup) {
+        let mrt = value.postProcessLightmap;
         let engine = this._scene.getEngine();
         let effect = this._postProcessManager.dilateEffect;
         let dest = mrt.textures[2];
@@ -172,7 +168,7 @@ export class MeshDictionary {
         let gl = engine._gl;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._frameBuffer1);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, (<InternalTexture>dest._texture)._webGLTexture, 0);
-  
+
         engine.clear(new Color4(1.0, 0.0, 0.0, 1.0), true, true, true);
         gl.clearColor(1., 0., 0., 1.);
         let vb: any = {};
@@ -183,10 +179,8 @@ export class MeshDictionary {
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
         engine.drawElementsType(Material.TriangleFillMode, 0, 6);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);   
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
-    
-
 
     /**
      * Functions called to check if the materials are ready for rendering
@@ -194,7 +188,7 @@ export class MeshDictionary {
     public areMaterialReady() : boolean {
         return this._postProcessManager.isReady() && this._irradianceLightmapMaterial.isReady();
      }
-    
+
     /**
      * Return the list of meshes that are present in the dictionary
      */
@@ -222,8 +216,8 @@ export class MeshDictionary {
     }
 
     private _getMesh(value : IMeshesGroup) : Nullable<Mesh> {
-        for (let i = 0; i < this._values.length; i++){
-            if (this._values[i] == value){
+        for (let i = 0; i < this._values.length; i++) {
+            if (this._values[i] == value) {
                 return this._keys[i];
             }
         }

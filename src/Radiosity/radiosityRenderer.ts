@@ -842,14 +842,13 @@ export class RadiosityRenderer {
     }
 
     public toneMapIrradianceLightmap(defTexture : Texture, i : number) {
-        
+
         this._patchMaps[i].textures[4] = defTexture;
 
         this.postProcessLightmap(this._patchMaps[i]);
 
         this.cleanAfterRender();
     }
-
 
     /**
      * Gathers radiance the next "most bright" mesh

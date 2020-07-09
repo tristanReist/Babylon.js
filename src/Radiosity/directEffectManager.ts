@@ -156,8 +156,8 @@ export class DirectEffectsManager {
      * @returns true if the visibility effect is ready
      */
     public isVisiblityEffectReady(): boolean {
-        const attribs = [VertexBuffer.PositionKind];
-        const uniforms = ["world", "view", "projection", "nearFar", "bias"];
+        const attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind];
+        const uniforms = ["world", "view", "projection", "nearFar", "bias", "lightPos", "normalBias"];
 
         this.visibilityEffect = this._scene.getEngine().createEffect("visibility",
             attribs,

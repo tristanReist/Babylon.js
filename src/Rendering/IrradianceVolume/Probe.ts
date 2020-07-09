@@ -25,7 +25,6 @@ import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 
 import { MeshDictionary } from './meshDictionary';
 
-
 /**
  * The probe is what is used for irradiance volume
  * It aims to sample the irradiance at  a certain point of the scene
@@ -36,7 +35,6 @@ export class Probe {
     public static readonly OUTSIDE_HOUSE : number = 0;
     public static readonly INSIDE_HOUSE : number = 1;
     public static readonly INSIDE_HOUSE_CLOSE_TO_WALL : number = 2;
-
 
     /**
      * Static number to access to the cameras with their direction
@@ -108,7 +106,7 @@ export class Probe {
     public sphericalHarmonicChanged : boolean;
 
     public renderTime  = 0;
-    
+
     public shTime = 0;
 
     public envMultiplicator = 1.3;
@@ -191,7 +189,7 @@ export class Probe {
      * @param visisble The visibility of the probe
      */
     public setVisibility(visisble : number) : void {
-        if (this.probeInHouse == Probe.INSIDE_HOUSE || this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE || this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL) {
             this.sphere.visibility = visisble;
         }
     }
@@ -331,22 +329,19 @@ export class Probe {
         this.bounceEffect = bounceEffect;
     }
 
-
     /**
      * Render one bounce of the light from the point of view of a probe
      *
      * @param irradianceLightMap THe irradiance lightmap use to render the bounces
      */
     public renderBounce(meshes : Array<Mesh>) : void {
-        if (this.probeInHouse == Probe.INSIDE_HOUSE){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE) {
             this.tempBounce.renderList = meshes;
             this.tempBounce.boundingBoxPosition = this.sphere.position;
-    
-    
+
             let begin = new Date().getTime();
             let end =  new Date().getTime();
-    
-    
+
             this.tempBounce.onBeforeRenderObservable.add(() => {
                     this.tempBounce.isCube = true;
                     begin = new Date().getTime();
@@ -357,7 +352,7 @@ export class Probe {
             this.tempBounce.onAfterRenderObservable.add(() => {
                     end =  new Date().getTime();
                     this.renderTime = end - begin;
-        
+
                     begin = new Date().getTime();
                     this._CPUcomputeSHCoeff();
                     end =  new Date().getTime();
@@ -371,7 +366,7 @@ export class Probe {
      * Is called in irradiance for the creation of the promise
      */
     public initPromise() : void {
-        if (this.probeInHouse == Probe.INSIDE_HOUSE){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE) {
             this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
             this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
         }
@@ -381,7 +376,7 @@ export class Probe {
      * Return if the probe is ready to be render
      */
     public isProbeReady() : boolean {
-        if (this.probeInHouse == Probe.INSIDE_HOUSE){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE) {
             return this._isMRTReady() && this._isTempBounceReady();
         }
         return true;
@@ -402,7 +397,7 @@ export class Probe {
 
         if (sp != null) {
             this.sphericalHarmonic = SphericalHarmonics.FromPolynomial(sp);
-            // this._weightSHCoeff();
+            this._weightSHCoeff();
             this.sphericalHarmonicChanged = true;
         }
         this._computeProbeIrradiance();
@@ -428,9 +423,9 @@ export class Probe {
         this.sphere.material = shaderMaterial;
 
     }
-/*
+
     private _weightSHCoeff() {
-        let weight = 0.5;
+        let weight = 0.1;
         this.sphericalHarmonic.l00 = this.sphericalHarmonic.l00.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l10 = this.sphericalHarmonic.l10.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l11 = this.sphericalHarmonic.l11.multiplyByFloats(weight, weight, weight);
@@ -441,5 +436,5 @@ export class Probe {
         this.sphericalHarmonic.l2_1 = this.sphericalHarmonic.l2_1.multiplyByFloats(weight, weight, weight);
         this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
     }
-*/
 }
+
