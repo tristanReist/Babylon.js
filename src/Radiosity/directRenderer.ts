@@ -111,23 +111,6 @@ export class Arealight {
             false
         );
 
-        // for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
-        //     this.depthMaps.push(
-        //         new RenderTargetTexture(
-        //             "depthMap",
-        //             this.depthMapSize,
-        //             scene,
-        //             false,
-        //             true,
-        //             Constants.TEXTURETYPE_FLOAT,
-        //             true,
-        //             Constants.TEXTURE_BILINEAR_SAMPLINGMODE,
-        //             true,
-        //             false
-        //         )
-        //     );
-        // }
-
         this._generateSamples(sampleCount);
 
         // for (const sample of this.samples) {
@@ -301,12 +284,12 @@ export class DirectRenderer {
         for (const mesh of this.meshes) {
             this.dilate(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
 
-            // this.toneMap(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap);
-
             this.blur(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap, false);
             this.blur(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
 
             this.dilate(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap);
+
+            // this.toneMap(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
 
             // Swap temp and shadow texture
             // const temp = mesh.directInfo.tempTexture._texture;
@@ -341,7 +324,7 @@ export class DirectRenderer {
 
             // Rendering shadow to tempTexture
             engine.setDirectViewport(0, 0, mesh.directInfo.shadowMapSize.width, mesh.directInfo.shadowMapSize.height);
-            engine.setState(false, 0, true, true);
+            engine.setState(false, 0, true);
             engine.bindFramebuffer(<InternalTexture>mesh.directInfo.tempTexture._texture);
 
             for (const subMesh of mesh.subMeshes) {
@@ -387,7 +370,8 @@ export class DirectRenderer {
                 engine.setDirectViewport(0, 0, mesh.directInfo.shadowMapSize.width, mesh.directInfo.shadowMapSize.height);
                 // engine.setState(false, 0, true, true);
                 // Back faces only
-                engine.setState(true, 0, false, true);
+                // engine.setState(true, 0, false, true);
+                engine.setState(false, 0, true);
                 engine.bindFramebuffer(<InternalTexture>mesh.directInfo.tempTexture._texture);
 
                 for (const subMesh of mesh.subMeshes) {
@@ -479,7 +463,7 @@ export class DirectRenderer {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._directEffectsManager.screenQuadVB;
         effect.setTexture("inputTexture", origin);
-        effect.setFloat("exposure", 3.5);
+        effect.setFloat("exposure", 2);
         engine.bindBuffers(vb, this._directEffectsManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
@@ -517,7 +501,8 @@ export class DirectRenderer {
         }
 
         mesh._bind(subMesh, effect, Material.TriangleFillMode);
-        engine.setState(material.backFaceCulling);
+        engine.setState(false, 0, true);
+        // engine.setState(material.backFaceCulling);
 
         var batch = mesh._getInstancesRenderList(subMesh._id);
 
