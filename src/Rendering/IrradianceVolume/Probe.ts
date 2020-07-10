@@ -24,6 +24,7 @@ import "../../Shaders/irradianceVolumeComputeIrradiance.vertex";
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 
 import { MeshDictionary } from './meshDictionary';
+import { ProbeIrradianceGradient } from '../../Legacy/legacy';
 
 
 /**
@@ -115,6 +116,9 @@ export class Probe {
 
     public probeInHouse = Probe.OUTSIDE_HOUSE;
 
+    public needIrradianceGradient = false;
+    public probeForIrradiance : ProbeIrradianceGradient;
+
     /**
      * Create the probe used to capture the irradiance at a point
      * @param position The position at which the probe is set
@@ -127,7 +131,9 @@ export class Probe {
         this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
         this.sphere.visibility = 0;
         this.probeInHouse = inRoom;
-
+        if (inRoom == Probe.INSIDE_HOUSE_CLOSE_TO_WALL){
+            this.needIrradianceGradient = true;
+        }
         this.cameraList = new Array<UniversalCamera>();
 
         //First Camera ( x axis )
@@ -166,6 +172,7 @@ export class Probe {
         }
 
         this.sphere.translate(position, 1);
+        this.sphericalHarmonic = new SphericalHarmonics();
         this.sphericalHarmonicChanged = false;
         this._resolution = resolution;
     }
@@ -196,7 +203,7 @@ export class Probe {
         }
     }
 
-    private _renderCubeTexture(subMeshes : SmartArray<SubMesh>, isMRT : boolean) : void {
+    protected _renderCubeTexture(subMeshes : SmartArray<SubMesh>, isMRT : boolean) : void {
 
         var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix, isMRT : boolean, rotation : Matrix) => {
             let mesh = subMesh.getRenderingMesh();
@@ -442,4 +449,98 @@ export class Probe {
         this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
     }
 */
-}
+
+    public useIrradianceGradient(){
+        let tempr : Vector3;
+        let tempg : Vector3;
+        let tempb : Vector3;
+        let d : Vector3;
+
+
+        let currentShCoef : Vector3;
+        let gradientShCoef : Vector3;
+
+
+        let modifCoef = () => {
+            currentShCoef.x  = gradientShCoef.x + Vector3.Dot(tempr, d);
+            currentShCoef.y = gradientShCoef.y + Vector3.Dot(tempg, d);
+            currentShCoef.z = gradientShCoef.z + Vector3.Dot(tempb, d);
+        };
+
+        if (this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL){
+            d = this.sphere.position.subtract(this.probeForIrradiance.sphere.position);
+            // L00
+            currentShCoef = this.sphericalHarmonic.l00;
+            gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l00;
+            tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l00.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l00.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l00.x);
+            tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l00.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l00.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l00.y);
+            tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l00.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l00.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l00.z);
+            modifCoef();
+
+            // L10
+            currentShCoef = this.sphericalHarmonic.l10;
+            gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l10;
+            tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l10.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l10.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l10.x);
+            tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l10.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l10.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l10.y);
+            tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l10.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l10.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l10.z);
+            modifCoef();
+            
+            // L11
+            currentShCoef = this.sphericalHarmonic.l11;
+            gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l11;
+            tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l11.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l11.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l11.x);
+            tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l11.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l11.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l11.y);
+            tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l11.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l11.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l11.z);
+            modifCoef();
+
+            // L1_1
+            currentShCoef = this.sphericalHarmonic.l1_1;
+            gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l1_1;
+            tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l1_1.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l1_1.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l1_1.x);
+            tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l1_1.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l1_1.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l1_1.y);
+            tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l1_1.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l1_1.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l1_1.z);
+            modifCoef();
+
+             // L20
+             currentShCoef = this.sphericalHarmonic.l20;
+             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l20;
+             tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l20.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l20.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l20.x);
+             tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l20.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l20.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l20.y);
+             tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l20.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l20.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l20.z);
+             modifCoef();
+
+             // 221
+             currentShCoef = this.sphericalHarmonic.l21;
+             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l21;
+             tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l21.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l21.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l21.x);
+             tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l21.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l21.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l21.y);
+             tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l21.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l21.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l21.z);
+             modifCoef();
+
+             // 22_1
+             currentShCoef = this.sphericalHarmonic.l2_1;
+             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l2_1;
+             tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_1.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_1.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_1.x);
+             tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_1.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_1.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_1.y);
+             tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_1.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_1.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_1.z);
+             modifCoef();
+            
+             // L22
+             currentShCoef = this.sphericalHarmonic.l22;
+             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l22;
+             tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l22.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l22.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l22.x);
+             tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l22.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l22.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l22.y);
+             tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l22.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l22.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l22.z);
+             modifCoef();
+
+             // 22_1
+             currentShCoef = this.sphericalHarmonic.l2_2;
+             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l2_2;
+             tempr = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_2.x, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_2.x, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_2.x);
+             tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_2.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_2.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_2.y);
+             tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_2.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_2.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_2.z);
+             modifCoef();
+        }
+        this._computeProbeIrradiance();
+    }
+} 

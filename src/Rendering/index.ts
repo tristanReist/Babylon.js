@@ -5,6 +5,7 @@ export * from "./edgesRenderer";
 export * from "./geometryBufferRenderer";
 export * from "./geometryBufferRendererSceneComponent";
 export * from "./IrradianceVolume/Probe";
+export * from "./IrradianceVolume/ProbeIrradianceGradient";
 export * from "./IrradianceVolume/Irradiance";
 export * from "./IrradianceVolume/irradianceVolume";
 export * from "./IrradianceVolume/meshDictionary";
