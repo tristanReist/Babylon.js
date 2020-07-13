@@ -129,7 +129,7 @@ export class Probe {
         this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
         this.sphere.visibility = 0;
         this.probeInHouse = inRoom;
-        if (inRoom == Probe.INSIDE_HOUSE_CLOSE_TO_WALL){
+        if (inRoom == Probe.INSIDE_HOUSE_CLOSE_TO_WALL) {
             this.needIrradianceGradient = true;
         }
         this.cameraList = new Array<UniversalCamera>();
@@ -444,17 +444,14 @@ export class Probe {
         this.sphericalHarmonic.l2_2 = this.sphericalHarmonic.l2_2.multiplyByFloats(weight, weight, weight);
     }
 
-
-    public useIrradianceGradient(){
+    public useIrradianceGradient() {
         let tempr : Vector3;
         let tempg : Vector3;
         let tempb : Vector3;
         let d : Vector3;
 
-
         let currentShCoef : Vector3;
         let gradientShCoef : Vector3;
-
 
         let modifCoef = () => {
             currentShCoef.x  = gradientShCoef.x + Vector3.Dot(tempr, d);
@@ -462,7 +459,7 @@ export class Probe {
             currentShCoef.z = gradientShCoef.z + Vector3.Dot(tempb, d);
         };
 
-        if (this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL){
+        if (this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL) {
             d = this.sphere.position.subtract(this.probeForIrradiance.sphere.position);
             // L00
             currentShCoef = this.sphericalHarmonic.l00;
@@ -479,7 +476,7 @@ export class Probe {
             tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l10.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l10.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l10.y);
             tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l10.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l10.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l10.z);
             modifCoef();
-            
+
             // L11
             currentShCoef = this.sphericalHarmonic.l11;
             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l11;
@@ -519,7 +516,7 @@ export class Probe {
              tempg = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_1.y, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_1.y, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_1.y);
              tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_1.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_1.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_1.z);
              modifCoef();
-            
+
              // L22
              currentShCoef = this.sphericalHarmonic.l22;
              gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l22;
@@ -538,4 +535,4 @@ export class Probe {
         }
         this._computeProbeIrradiance();
     }
-} 
+}

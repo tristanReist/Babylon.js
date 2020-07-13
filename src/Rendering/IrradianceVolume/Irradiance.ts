@@ -72,7 +72,7 @@ export class Irradiance {
      * Initializer of the irradiance class
      * @param scene The scene of the meshes
      * @param probes The probes that are used to render irradiance
-     * 
+     *
      * @param meshes The meshes that are used to render irradiance
      * @param dictionary The dictionary that contains information about meshes
      * @param numberBounces The number of bounces we want to render
@@ -81,7 +81,7 @@ export class Irradiance {
      * @param volumeSize A vec3 containing the volume width, height and depth
      */
     constructor(scene : Scene, probes : Array<Probe>, probesForGradient : Array<ProbeIrradianceGradient>, meshes : Array<Mesh>, dictionary : MeshDictionary, numberBounces : number,
-        probeDisposition : Vector3, bottomLeft : Vector3, volumeSize : Vector3 ) {
+        probeDisposition : Vector3, bottomLeft : Vector3, volumeSize : Vector3) {
         this._scene = scene;
         this.probeList = probes;
         this.probeIrradianceGradientList = probesForGradient;
@@ -127,7 +127,7 @@ export class Irradiance {
             for (let probe of this.probeIrradianceGradientList) {
                 probe.sphericalHarmonicChanged = false;
             }
-            if (this.numberBounces > 0){
+            if (this.numberBounces > 0) {
                 // Call the recursive function that will render each bounce
                 this._renderBounce(currentBounce + 1);
             }
@@ -155,7 +155,7 @@ export class Irradiance {
         }
 
         for (let probe of this.probeIrradianceGradientList) {
-            if (probe.probeInHouse == Probe.INSIDE_HOUSE){
+            if (probe.probeInHouse == Probe.INSIDE_HOUSE) {
                 probe.tempBounce.isCube = false;
                 probe.tempBounce.render();
                 probe.tempBounce.isCube = true;
@@ -164,8 +164,7 @@ export class Irradiance {
             }
         }
 
-
-        for (let probe of this.probeList){
+        for (let probe of this.probeList) {
             probe.useIrradianceGradient();
         }
 
@@ -207,7 +206,7 @@ export class Irradiance {
         let shArray = new Float32Array(this.probeList.length * 9  * 4);
         for (let i = 0; i < this.probeList.length; i++) {
             let probe = this.probeList[i];
-            if (probe.probeInHouse != Probe.OUTSIDE_HOUSE){
+            if (probe.probeInHouse != Probe.OUTSIDE_HOUSE) {
                 let index = i * 9 * 4;
 
                 shArray[index] =  probe.sphericalHarmonic.l00.x;
@@ -298,7 +297,7 @@ export class Irradiance {
                         probePosition.push(probe.sphere.position.x);
                         probePosition.push(probe.sphere.position.y);
                         probePosition.push(probe.sphere.position.z);
-                        if (probe.probeInHouse != Probe.OUTSIDE_HOUSE){
+                        if (probe.probeInHouse != Probe.OUTSIDE_HOUSE) {
                             probePosition.push(1.);
                         }
                         else {
@@ -368,9 +367,9 @@ export class Irradiance {
                 return false;
             }
         }
-        for (let probe of this.probeIrradianceGradientList){
+        for (let probe of this.probeIrradianceGradientList) {
             ready = probe.isProbeReady() && ready;
-            if (!ready){
+            if (!ready) {
                 return false;
             }
         }
