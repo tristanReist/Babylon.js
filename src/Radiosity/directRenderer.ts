@@ -501,8 +501,7 @@ export class DirectRenderer {
         }
 
         mesh._bind(subMesh, effect, Material.TriangleFillMode);
-        engine.setState(false, 0, true);
-        // engine.setState(material.backFaceCulling);
+        engine.setState(material.backFaceCulling);
 
         var batch = mesh._getInstancesRenderList(subMesh._id);
 
