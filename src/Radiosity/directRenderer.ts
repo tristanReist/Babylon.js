@@ -433,7 +433,6 @@ export class DirectRenderer {
         engine.unBindFramebuffer(<InternalTexture>dest._texture);
     }
 
-
     /**
      * Bakes only direct light on lightmaps
      * @returns true if energy has been shot. (false meaning that there was no emitter)
