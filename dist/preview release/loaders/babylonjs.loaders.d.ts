@@ -2380,4 +2380,4 @@ declare module BABYLON {
         private _parseBinary;
         private _parseASCII;
     }
-}
+}

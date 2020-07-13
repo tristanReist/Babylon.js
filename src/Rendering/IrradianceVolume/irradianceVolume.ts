@@ -1,16 +1,15 @@
-import { Scene } from '../../scene';
 import { Mesh } from '../../Meshes/mesh';
 import { Vector3, Vector4 } from '../../Maths/math.vector';
 import { Probe } from './Probe';
 import { MeshDictionary } from './meshDictionary';
 import { Irradiance } from './Irradiance';
-import { _BabylonLoaderRegistered } from '../../Loading';
 import { ProbeIrradianceGradient } from './ProbeIrradianceGradient';
+import { Scene } from '../../scene';
 
 /**
  * Class that represent the irradiance volume
  * It contains all the probe used to render the scene, and is responsible of rendering the irradiance
- * 
+ *
  */
 export class IrradianceVolume {
 
@@ -62,7 +61,7 @@ export class IrradianceVolume {
         this._probesDisposition = numberProbes;
         this._tempLastRect = [];
         //Create and dispatch the probes inside the irradiance volume
-       
+
         this._createProbeFromProbeDisp(probeDisp);
         this._lowerLeft = new Vector3(probeDisp[0].x, probeDisp[0].y, probeDisp[0].z);
         this._volumeSize = new Vector3(probeDisp[probeDisp.length - 1].x - this._lowerLeft.x,
@@ -369,11 +368,11 @@ export class IrradianceVolume {
      * Called to change the directLightmap of the dictionary
      * Must ba called when the radiosity has been updates, othermwise, it does not do anything
      */
-    public updateDicoDirectLightmap(){
-        for (let mesh of this.dictionary.keys()){
+    public updateDicoDirectLightmap() {
+        for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
-                value.directLightmap = mesh.getRadiosityTexture();
+                value.directLightmap = mesh.getShadowMap();
             }
         }
     }
@@ -385,19 +384,17 @@ export class IrradianceVolume {
         this.irradiance.render();
     }
 
-
-    public updateGlobalIllumStrength(value : number){
+    public updateGlobalIllumStrength(value : number) {
         this.dictionary.globalIllumStrength = value;
         this.dictionary.render();
     }
 
-    public updateDirectIllumStrength(value : number){
+    public updateDirectIllumStrength(value : number) {
         this.dictionary.directIllumStrength = value;
         this.dictionary.render();
     }
 
-    public updateDirectIllumForEnv(envMultiplicator : number){     
+    public updateDirectIllumForEnv(envMultiplicator : number) {
         this.irradiance.updateDirectIllumForEnv(envMultiplicator);
-
     }
 }

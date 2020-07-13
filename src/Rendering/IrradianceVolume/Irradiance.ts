@@ -16,7 +16,7 @@ import "./../../Shaders/irradianceVolumeIrradianceLightmap.fragment";
 import "./../../Shaders/irradianceVolumeIrradianceLightmap.vertex";
 import { ProbeIrradianceGradient } from './ProbeIrradianceGradient';
 /**
- * Class that aims to take care of everything with regard to the irradiance for the irradiance volume 
+ * Class that aims to take care of everything with regard to the irradiance for the irradiance volume
  */
 export class Irradiance {
 
@@ -86,7 +86,7 @@ export class Irradiance {
         this.probeList = probes;
         this.probeIrradianceGradientList = probesForGradient;
         this.meshes = [];
-        for (let mesh of meshes){
+        for (let mesh of meshes) {
             this.meshes.push(mesh);
         }
 
@@ -100,7 +100,6 @@ export class Irradiance {
         this._initIrradianceLightMap();
         this._promise = this._createPromise();
     }
-
 
     /**
      * Function that launch the render process
@@ -144,9 +143,9 @@ export class Irradiance {
         let renderTime = 0;
         let shTime = 0;
         let beginBounce = new Date().getTime();
-        
+
         for (let probe of this.probeList) {
-            if (probe.probeInHouse == Probe.INSIDE_HOUSE){
+            if (probe.probeInHouse == Probe.INSIDE_HOUSE) {
                 probe.tempBounce.isCube = false;
                 probe.tempBounce.render();
                 probe.tempBounce.isCube = true;
@@ -184,12 +183,11 @@ export class Irradiance {
         let endBounce = new Date().getTime();
 
         console.log("___________________ \n bounce : " + currentBounce);
-        console.log("Temps total : " + (endBounce - beginBounce)); 
+        console.log("Temps total : " + (endBounce - beginBounce));
         console.log("Rendu de tous les environnements des probes : " + (endProbeEnv - beginBounce));
         console.log("Rendu de l'irradiance sur la scène : " + (endBounce - endProbeEnv));
         console.log("Temps total capture environnement : " + renderTime);
         console.log("Temps total sh coef : " + shTime);
-
 
         if (currentBounce < this.numberBounces) {
             this._renderBounce(currentBounce + 1);
@@ -198,7 +196,6 @@ export class Irradiance {
             this.dictionary.render();
             this.finish = true;
         }
-    
 
     }
 
@@ -217,42 +214,42 @@ export class Irradiance {
                 shArray[index + 1] =  probe.sphericalHarmonic.l00.y;
                 shArray[index + 2] = probe.sphericalHarmonic.l00.z;
                 shArray[index + 3] = 1;
-    
+
                 shArray[index + 4] = probe.sphericalHarmonic.l11.x;
                 shArray[index + 5] = probe.sphericalHarmonic.l11.y;
                 shArray[index + 6] = probe.sphericalHarmonic.l11.z;
                 shArray[index + 7] = 1;
-    
+
                 shArray[index + 8] = probe.sphericalHarmonic.l10.x;
                 shArray[index + 9] =  probe.sphericalHarmonic.l10.y;
                 shArray[index + 10] =  probe.sphericalHarmonic.l10.z;
                 shArray[index + 11] = 1;
-    
+
                 shArray[index + 12] =  probe.sphericalHarmonic.l1_1.x;
                 shArray[index + 13] =  probe.sphericalHarmonic.l1_1.y;
                 shArray[index + 14] = probe.sphericalHarmonic.l1_1.z;
                 shArray[index + 15] = 1;
-    
+
                 shArray[index + 16] =  probe.sphericalHarmonic.l22.x;
                 shArray[index + 17] =  probe.sphericalHarmonic.l22.y;
                 shArray[index + 18] =  probe.sphericalHarmonic.l22.z;
                 shArray[index + 19] = 1;
-    
+
                 shArray[index + 20] =  probe.sphericalHarmonic.l21.x;
                 shArray[index + 21] =  probe.sphericalHarmonic.l21.y;
                 shArray[index + 22] =  probe.sphericalHarmonic.l21.z;
                 shArray[index + 23] = 1;
-    
+
                 shArray[index + 24] =  probe.sphericalHarmonic.l20.x;
                 shArray[index + 25] =  probe.sphericalHarmonic.l20.y;
                 shArray[index + 26] =  probe.sphericalHarmonic.l20.z;
                 shArray[index + 27] = 1;
-    
+
                 shArray[index + 28] =  probe.sphericalHarmonic.l2_1.x;
                 shArray[index + 29] =  probe.sphericalHarmonic.l2_1.y;
                 shArray[index + 30] =  probe.sphericalHarmonic.l2_1.z;
                 shArray[index + 31] = 1;
-    
+
                 shArray[index + 32] =  probe.sphericalHarmonic.l2_2.x;
                 shArray[index + 33] =  probe.sphericalHarmonic.l2_2.y;
                 shArray[index + 34] =  probe.sphericalHarmonic.l2_2.z;
@@ -260,7 +257,7 @@ export class Irradiance {
             }
             else {
                 let index = i * 9 * 4;
-                for (let j = 0; j < 36; j++){
+                for (let j = 0; j < 36; j++) {
                     shArray[index + j] = 0.;
                 }
             }
@@ -291,7 +288,7 @@ export class Irradiance {
 
                 // value.irradianceLightmap.wrapU = 2;
                 // value.irradianceLightmap.wrapV = 2;
-                value.irradianceLightmap.clearColor = new Color4(0., 0.,0., 0.);
+                value.irradianceLightmap.clearColor = new Color4(0., 0., 0., 0.);
                 value.irradianceLightmap.renderList = [mesh];
                 let previousMaterial : Nullable<Material>;
                 value.irradianceLightmap.onBeforeRenderObservable.add(() => {
@@ -439,13 +436,13 @@ export class Irradiance {
         return true;
     }
 */
-    
+
     /**
      * Method to call when you want to update the number of bounces, after the irradiance rendering has been done
-     * @param numberBounces 
+     * @param numberBounces
      */
     public updateNumberBounces(numberBounces : number) {
-        if (this.numberBounces < numberBounces){
+        if (this.numberBounces < numberBounces) {
             this.finish = false;
             let currentBounce = this.numberBounces + 1;
             this.numberBounces = numberBounces;
@@ -455,16 +452,16 @@ export class Irradiance {
             this.finish = false;
             this.numberBounces = numberBounces;
             let engine = this._scene.getEngine();
-            for (let value of this.dictionary.values()){
+            for (let value of this.dictionary.values()) {
                 let internal = value.irradianceLightmap.getInternalTexture();
-                if (internal != null){
+                if (internal != null) {
                     engine.bindFramebuffer(internal);
                     engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
                     engine.unBindFramebuffer(internal);
                 }
             }
 
-            if (this.numberBounces == 0){
+            if (this.numberBounces == 0) {
                 this.dictionary.render();
             }
             else {
@@ -475,18 +472,18 @@ export class Irradiance {
             console.log("same");
             return;
         }
- 
+
     }
 
-    public updateDirectIllumForEnv(envMultiplicator : number){
+    public updateDirectIllumForEnv(envMultiplicator : number) {
         for (let probe of this.probeList) {
             probe.envMultiplicator = envMultiplicator;
         }
-        if (this.numberBounces > 0){
+        if (this.numberBounces > 0) {
             let engine = this._scene.getEngine();
-            for (let value of this.dictionary.values()){
+            for (let value of this.dictionary.values()) {
                 let internal = value.irradianceLightmap.getInternalTexture();
-                if (internal != null){
+                if (internal != null) {
                     engine.bindFramebuffer(internal);
                     engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
                     engine.unBindFramebuffer(internal);

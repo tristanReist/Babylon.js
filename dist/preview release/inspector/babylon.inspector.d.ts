@@ -2199,4 +2199,4 @@ declare module INSPECTOR {
         private static _RemoveElementFromDOM;
         static Hide(): void;
     }
-}
+}

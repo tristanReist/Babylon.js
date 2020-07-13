@@ -173,10 +173,8 @@ node_modules
 !ISplit.d.ts
 
 # local dev
-localDev/src/*
 /dist/preview release/babylon.custom.js
 /dist/preview release/babylon.custom.max.js
-/localDev/src/index.js
 package-lock.json
 dist/preview release/package/
 

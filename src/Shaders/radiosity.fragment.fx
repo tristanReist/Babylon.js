@@ -61,6 +61,31 @@ float visible()
   return step(depth, shadow);
 }
 
+// Implementation source : http://jcgt.org/published/0003/04/08/paper-lowres.pdf
+float visibleAdpativeBias()
+{
+  // Look up projected point
+  vec3 directionToLight = vec3(view * vec4(worldPos, 1.0)).xyz*vec3(1.0, -1.0, 1.0);
+   
+  vec3 r2 = shootPos - worldPos;
+  vec3 worldLightDir = normalize(r2);
+
+  float ndl = dot(worldNormal, worldLightDir);
+  float sinNL = sqrt(1.0 - ndl * ndl);
+  float nBias = normalBias * sinNL;
+
+  vec3 absDir = abs(directionToLight);
+  float depth = max(max(absDir.x, absDir.y), absDir.z);
+  float farMinusNear = nearFar.y - nearFar.x;
+  depth = ((nearFar.y + nearFar.x) - 2.0 * nearFar.y * nearFar.x / depth) / farMinusNear;
+
+  float scale = farMinusNear;
+  float adaptativeEpsilon = (pow(nearFar.y - depth * farMinusNear, 2.0) / (nearFar.x * nearFar.y * farMinusNear)) * scale * 0.001;
+  
+  float shadow = texture(itemBuffer, directionToLight).x + adaptativeEpsilon;
+  return step(depth, shadow);
+}
+
 vec3 formFactorEnergy()
 {
 
@@ -76,7 +101,8 @@ vec3 formFactorEnergy()
   // compute the disc approximation form factor
   float fij = max(cosi * cosj, 0.) / (pi * distance2 + shootDArea);
 
-  fij *= visible();   // returns visibility as 0 or 1
+  // fij *= visible();   // returns visibility as 0 or 1
+  fij *= visibleAdpativeBias();   // returns visibility as 0 or 1
 
   // Modulate shooter's energy by the receiver's reflectivity
   // and the area of the shooter.
