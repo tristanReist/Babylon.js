@@ -512,7 +512,6 @@ export class Irradiance {
             }
         }
         else {
-            console.log("same");
             return;
         }
 

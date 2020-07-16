@@ -4,7 +4,6 @@ import { SphereBuilder } from '../../Meshes/Builders/sphereBuilder';
 import { Scene } from '../../scene';
 import { Color4 } from '../../Maths/math.color';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
-import { MultiRenderTarget } from '../../Materials/Textures/multiRenderTarget';
 import { SubMesh } from '../../Meshes/subMesh';
 import { Material } from '../../Materials/material';
 import { Effect } from '../../Materials/effect';
@@ -24,7 +23,8 @@ import "../../Shaders/irradianceVolumeComputeIrradiance.vertex";
 import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 
 import { MeshDictionary } from './meshDictionary';
-import { ProbeIrradianceGradient } from '../../Legacy/legacy';
+import { ProbeIrradianceGradient } from './ProbeIrradianceGradient';
+import { Constants } from '../../Engines/constants';
 
 /**
  * The probe is what is used for irradiance volume
@@ -80,11 +80,6 @@ export class Probe {
     public albedoStr : string;
 
     public dictionary : MeshDictionary;
-
-    /**
-     * The multirendertarget that is use to redner the scene from the probe
-     */
-    public cubicMRT : MultiRenderTarget;
 
     /**
      * The spherical harmonic coefficients that represent the irradiance capture by the probe
@@ -201,9 +196,9 @@ export class Probe {
         }
     }
 
-    protected _renderCubeTexture(subMeshes : SmartArray<SubMesh>, isMRT : boolean) : void {
+    protected _renderCubeTexture(subMeshes : SmartArray<SubMesh>) : void {
 
-        var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix, isMRT : boolean, rotation : Matrix) => {
+        var renderSubMesh = (subMesh : SubMesh, effect : Effect, view : Matrix, projection : Matrix, rotation : Matrix) => {
             let mesh = subMesh.getRenderingMesh();
 
             mesh._bind(subMesh, effect, Material.TriangleFillMode);
@@ -211,47 +206,29 @@ export class Probe {
             if (subMesh.verticesCount === 0) {
                 return;
             }
-            if (isMRT)  {
-                effect.setMatrix("view", view);
-                effect.setMatrix("projection", projection);
-               // effect.setFloat("lightmapNumber", this.dictionary.containsKey(mesh) / this.dictionary.values().length);
-                if (mesh.material != null) {
-                    let color = (<PBRMaterial> (mesh.material)).albedoColor;
-                    effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
-                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null) {
-                        effect.setBool("hasTexture", true);
-                        effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
-                    }
-                    else {
-                        effect.setBool("hasTexture", false);
-                    }
-                }
-                effect.setVector3("probePosition", this.sphere.position);
-            }
-            else {
-                effect.setMatrix("view", view);
-                effect.setMatrix("projection", projection);
-                if (mesh.material != null) {
-                    let color = (<PBRMaterial> (mesh.material)).albedoColor;
-                    effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
-                    if ((<PBRMaterial> (mesh.material)).albedoTexture != null) {
-                        effect.setBool("hasTexture", true);
-                        effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
-                    }
-                    else {
-                        effect.setBool("hasTexture", false);
-                    }
-                }
-                effect.setFloat("envMultiplicator", this.envMultiplicator);
-                effect.setVector3("probePosition", this.sphere.position);
-                let value = this.dictionary.getValue(mesh);
-                if (value != null) {
 
-                    effect.setTexture("irradianceMap", value.postProcessLightmap.textures[0]);
-                    effect.setTexture("directIlluminationLightmap", value.directLightmap);
+            effect.setMatrix("view", view);
+            effect.setMatrix("projection", projection);
+            if (mesh.material != null) {
+                let color = (<PBRMaterial> (mesh.material)).albedoColor;
+                effect.setVector3("albedoColor", new Vector3(color.r, color.g, color.b));
+                if ((<PBRMaterial> (mesh.material)).albedoTexture != null) {
+                    effect.setBool("hasTexture", true);
+                    effect.setTexture("albedoTexture", (<PBRMaterial> (mesh.material)).albedoTexture);
                 }
-
+                else {
+                    effect.setBool("hasTexture", false);
+                }
             }
+            effect.setFloat("envMultiplicator", this.envMultiplicator);
+            effect.setVector3("probePosition", this.sphere.position);
+            let value = this.dictionary.getValue(mesh);
+            if (value != null) {
+
+                effect.setTexture("irradianceMap", value.postProcessLightmap.textures[0]);
+                effect.setTexture("directIlluminationLightmap", value.directLightmap);
+            }
+
             var batch = mesh._getInstancesRenderList(subMesh._id);
             if (batch.mustReturn) {
                 return ;
@@ -266,18 +243,8 @@ export class Probe {
         let engine = scene.getEngine();
         let gl = engine._gl;
 
-        let internalTexture;
-        let secondInternalTexture;
-        let effect;
-        if (isMRT) {
-            internalTexture = <InternalTexture>this.cubicMRT.textures[0]._texture;
-            secondInternalTexture = <InternalTexture> this.cubicMRT.textures[1]._texture;
-            effect = this.uvEffect;
-        }
-        else {
-            internalTexture = <InternalTexture>this.tempBounce.getInternalTexture();
-            effect = this.bounceEffect;
-        }
+        let internalTexture = <InternalTexture>this.tempBounce.getInternalTexture();
+        let effect = this.bounceEffect;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, internalTexture._framebuffer);
         engine.setState(false, 0, true, scene.useRightHandedSystem);
@@ -312,15 +279,12 @@ export class Probe {
         engine.enableEffect(effect);
 
         for (let j = 0; j < 6; j++) {
-            engine.setDirectViewport(0, 0, this.cubicMRT.getRenderWidth(), this.cubicMRT.getRenderHeight());
+            engine.setDirectViewport(0, 0, this.tempBounce.getRenderWidth(), this.tempBounce.getRenderHeight());
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, cubeSides[j], internalTexture._webGLTexture, 0);
-            if (isMRT && secondInternalTexture != null) {
-                gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, cubeSides[j], secondInternalTexture._webGLTexture, 0);
-            }
 
             engine.clear(new Color4(0, 0, 0, 0), true, true);
             for (let i = 0; i < subMeshes.length; i++) {
-                renderSubMesh(subMeshes.data[i], effect, viewMatrices[j], projectionMatrix, isMRT, rotationMatrices[j]);
+                renderSubMesh(subMeshes.data[i], effect, viewMatrices[j], projectionMatrix, rotationMatrices[j]);
             }
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -354,7 +318,7 @@ export class Probe {
                     begin = new Date().getTime();
             });
             this.tempBounce.customRenderFunction =  (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-                    this._renderCubeTexture(opaqueSubMeshes, false);
+                    this._renderCubeTexture(opaqueSubMeshes);
             };
             this.tempBounce.onAfterRenderObservable.add(() => {
                     end =  new Date().getTime();
@@ -374,8 +338,7 @@ export class Probe {
      */
     public initPromise() : void {
         if (this.probeInHouse == Probe.INSIDE_HOUSE) {
-            this.cubicMRT = new MultiRenderTarget("uvAlbedo", this._resolution, 2, this._scene, {isCube : true});
-            this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, this.cubicMRT.textureType, true);
+            this.tempBounce = new RenderTargetTexture("tempLightBounce", this._resolution, this._scene, undefined, true, Constants.TEXTURETYPE_FLOAT, true);
         }
     }
 
@@ -384,13 +347,9 @@ export class Probe {
      */
     public isProbeReady() : boolean {
         if (this.probeInHouse == Probe.INSIDE_HOUSE) {
-            return this._isMRTReady() && this._isTempBounceReady();
+            return this._isTempBounceReady();
         }
         return true;
-    }
-
-    private _isMRTReady() : boolean {
-        return this.cubicMRT.isReady();
     }
 
     private _isTempBounceReady() : boolean {
