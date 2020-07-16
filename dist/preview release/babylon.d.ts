@@ -68116,8 +68116,8 @@ declare module BABYLON {
                     width: number;
                     height: number;
                 };
-                shadowMap: RenderTargetTexture;
-                tempTexture: RenderTargetTexture;
+                shadowMap: Texture;
+                tempTexture: Texture;
             };
             /** Inits the `directInfo` object */
             initForDirect(shadowMapSize: {
@@ -68138,7 +68138,6 @@ declare module BABYLON {
             height: number;
         };
         depthMap: RenderTargetTexture;
-        depthMaps: RenderTargetTexture[];
         samples: Vector3[];
         private _bits;
         constructor(position: Vector3, normal: Vector3, radius: number, depthMapSize: {
@@ -68170,6 +68169,7 @@ declare module BABYLON {
         meshes: Mesh[];
         lights: Arealight[];
         renderingPromise: Promise<void>;
+        private _frambuffer0;
         private _options;
         /**
          * Verbosity level for performance of the renderer
@@ -68204,29 +68204,18 @@ declare module BABYLON {
          */
         constructor(scene: Scene, meshes?: Mesh[], lights?: Arealight[], options?: DirectRendererOptions);
         render(): void;
-        /**
-         * Prepare textures for lightmap generation
-         */
-        createDepthMaps(): void;
         private renderSampleToShadowMapTexture;
-        private renderToShadowMapTexture;
         dilate(origin: Texture, dest: Texture): void;
-        /**
-         * Bakes only direct light on lightmaps
-         * @returns true if energy has been shot. (false meaning that there was no emitter)
-         */
-        generateShadowMap(): void;
         /**
          * Checks if the renderer is ready
          * @returns True if the renderer is ready
          */
         isReady(): boolean;
-        private toneMap;
+        toneMap(origin: Texture, dest: Texture): void;
         private blur;
         private renderSubMesh;
         private _setCubeVisibilityUniforms;
         private renderVisibilityMapCubeSample;
-        private renderVisibilityMapCube;
         /**
          * Disposes of the radiosity renderer.
          */
