@@ -317,7 +317,6 @@ export class DirectRenderer {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this._frambuffer0);
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, <WebGLTexture>mesh.directInfo.tempTexture!._texture!._webGLTexture, 0);
 
-
             for (const subMesh of mesh.subMeshes) {
                 var batch = mesh._getInstancesRenderList(subMesh._id);
 

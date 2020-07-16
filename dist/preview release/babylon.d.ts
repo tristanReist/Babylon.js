@@ -68464,7 +68464,6 @@ declare module BABYLON {
      */
     export interface IMeshesGroup {
         directLightmap: Nullable<Texture>;
-        irradianceLightmap: RenderTargetTexture;
         postProcessLightmap: MultiRenderTarget;
     }
     /**
@@ -68476,11 +68475,10 @@ declare module BABYLON {
         private _keys;
         private _values;
         private _scene;
-        private _irradianceLightmapMaterial;
         private _postProcessManager;
         globalIllumStrength: number;
         directIllumStrength: number;
-        private _frameBuffer1;
+        frameBuffer1: WebGLFramebuffer;
         /**
          * Create the dictionary
          * Each mesh of meshes will be a key
@@ -68524,11 +68522,6 @@ declare module BABYLON {
          * @param lightmap The lightmap with which we are going to replace the previous one
          */
         addDirectLightmap(mesh: Mesh, lightmap: Texture): void;
-        /**
-         * Init the material of the irradianceLightmap
-         * @param shaderMaterial The new material
-         */
-        initIrradianceLightmapMaterial(shaderMaterial: ShaderMaterial): void;
     }
 }
 declare module BABYLON {
@@ -68690,6 +68683,7 @@ declare module BABYLON {
         private _uniformNumberProbes;
         private _uniformBottomLeft;
         private _uniformBoxSize;
+        private _probesPosition;
         /**
          * The list of probes that are part of this irradiance volume
          */
@@ -68708,6 +68702,7 @@ declare module BABYLON {
          * The effect used to render the irradiance from each probe.
          */
         bounceEffect: Effect;
+        irradianceLightmapEffect: Effect;
         /**
          * The dictionary that stores the lightmaps linked to each mesh
          */
@@ -68745,12 +68740,14 @@ declare module BABYLON {
          * allowing to have less uniforms in our shader
          */
         updateShTexture(): void;
-        private _initIrradianceLightMap;
+        private _createProbePositionList;
+        private _renderIrradianceLightmap;
         private _createPromise;
         private _initProbesPromise;
         private _isRawTextReady;
         private _areProbesReady;
         private _isUVEffectReady;
+        private _isIrradianceLightmapEffectReady;
         private _isBounceEffectReady;
         private _areIrradianceLightMapReady;
         /**

@@ -247,7 +247,7 @@ export class Probe {
                 let value = this.dictionary.getValue(mesh);
                 if (value != null) {
 
-                    effect.setTexture("irradianceMap", value.irradianceLightmap);
+                    effect.setTexture("irradianceMap", value.postProcessLightmap.textures[0]);
                     effect.setTexture("directIlluminationLightmap", value.directLightmap);
                 }
 
