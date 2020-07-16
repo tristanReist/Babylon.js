@@ -68116,8 +68116,8 @@ declare module BABYLON {
                     width: number;
                     height: number;
                 };
-                shadowMap: RenderTargetTexture;
-                tempTexture: RenderTargetTexture;
+                shadowMap: Texture;
+                tempTexture: Texture;
             };
             /** Inits the `directInfo` object */
             initForDirect(shadowMapSize: {
@@ -68138,7 +68138,6 @@ declare module BABYLON {
             height: number;
         };
         depthMap: RenderTargetTexture;
-        depthMaps: RenderTargetTexture[];
         samples: Vector3[];
         private _bits;
         constructor(position: Vector3, normal: Vector3, radius: number, depthMapSize: {
@@ -68170,6 +68169,7 @@ declare module BABYLON {
         meshes: Mesh[];
         lights: Arealight[];
         renderingPromise: Promise<void>;
+        private _frambuffer0;
         private _options;
         /**
          * Verbosity level for performance of the renderer
@@ -68204,29 +68204,18 @@ declare module BABYLON {
          */
         constructor(scene: Scene, meshes?: Mesh[], lights?: Arealight[], options?: DirectRendererOptions);
         render(): void;
-        /**
-         * Prepare textures for lightmap generation
-         */
-        createDepthMaps(): void;
         private renderSampleToShadowMapTexture;
-        private renderToShadowMapTexture;
         dilate(origin: Texture, dest: Texture): void;
-        /**
-         * Bakes only direct light on lightmaps
-         * @returns true if energy has been shot. (false meaning that there was no emitter)
-         */
-        generateShadowMap(): void;
         /**
          * Checks if the renderer is ready
          * @returns True if the renderer is ready
          */
         isReady(): boolean;
-        private toneMap;
+        toneMap(origin: Texture, dest: Texture): void;
         private blur;
         private renderSubMesh;
         private _setCubeVisibilityUniforms;
         private renderVisibilityMapCubeSample;
-        private renderVisibilityMapCube;
         /**
          * Disposes of the radiosity renderer.
          */
@@ -68611,6 +68600,8 @@ declare module BABYLON {
         shTime: number;
         envMultiplicator: number;
         probeInHouse: number;
+        needIrradianceGradient: boolean;
+        probeForIrradiance: ProbeIrradianceGradient;
         /**
          * Create the probe used to capture the irradiance at a point
          * @param position The position at which the probe is set
@@ -68634,7 +68625,7 @@ declare module BABYLON {
          * @param visisble The visibility of the probe
          */
         setVisibility(visisble: number): void;
-        private _renderCubeTexture;
+        protected _renderCubeTexture(subMeshes: SmartArray<SubMesh>, isMRT: boolean): void;
         /**
          * Render the 6 cameras of the probes with different effect to create the cube map we need
          * @param meshes The meshes we want to render
@@ -68660,6 +68651,20 @@ declare module BABYLON {
         private _CPUcomputeSHCoeff;
         private _computeProbeIrradiance;
         private _weightSHCoeff;
+        useIrradianceGradient(): void;
+    }
+}
+declare module BABYLON {
+    export class ProbeIrradianceGradient extends Probe {
+        private adjacentProbesForIrradiance;
+        private distanceBetweenProbesForGradient;
+        gradientSphericalHarmonics: SphericalHarmonics[];
+        constructor(position: Vector3, scene: Scene, resolution: number, inRoom: number);
+        render(meshes: Array<Mesh>, dictionary: MeshDictionary, uvEffet: Effect, bounceEffect: Effect): void;
+        initPromise(): void;
+        renderBounce(meshes: Array<Mesh>): void;
+        setVisibility(visible: number): void;
+        private _computeIrradianceGradient;
     }
 }
 declare module BABYLON {
@@ -68689,6 +68694,7 @@ declare module BABYLON {
          * The list of probes that are part of this irradiance volume
          */
         probeList: Array<Probe>;
+        probeIrradianceGradientList: Array<ProbeIrradianceGradient>;
         /**
          * The meshes that are render by the probes
          */
@@ -68720,6 +68726,7 @@ declare module BABYLON {
          * Initializer of the irradiance class
          * @param scene The scene of the meshes
          * @param probes The probes that are used to render irradiance
+         *
          * @param meshes The meshes that are used to render irradiance
          * @param dictionary The dictionary that contains information about meshes
          * @param numberBounces The number of bounces we want to render
@@ -68727,7 +68734,7 @@ declare module BABYLON {
          * @param bottomLeft    A position representing the position of the probe on the bottom left of the irradiance volume
          * @param volumeSize A vec3 containing the volume width, height and depth
          */
-        constructor(scene: Scene, probes: Array<Probe>, meshes: Array<Mesh>, dictionary: MeshDictionary, numberBounces: number, probeDisposition: Vector3, bottomLeft: Vector3, volumeSize: Vector3);
+        constructor(scene: Scene, probes: Array<Probe>, probesForGradient: Array<ProbeIrradianceGradient>, meshes: Array<Mesh>, dictionary: MeshDictionary, numberBounces: number, probeDisposition: Vector3, bottomLeft: Vector3, volumeSize: Vector3);
         /**
          * Function that launch the render process
          */
@@ -68765,6 +68772,7 @@ declare module BABYLON {
          * List of probes that are used to render the scene
          */
         probeList: Array<Probe>;
+        irradianceProbeList: Array<ProbeIrradianceGradient>;
         /**
          * The dictionary that contains the lightmaps for each scene
          */
@@ -68781,6 +68789,8 @@ declare module BABYLON {
         private _lowerLeft;
         private _volumeSize;
         private _probesDisposition;
+        private _tempProbeIndexForIrradiance;
+        private _tempLastRect;
         /**
          * Creation of the irradiance volume
          * @param meshes  The meshes that need to be rendered by the probes
@@ -68792,6 +68802,16 @@ declare module BABYLON {
          */
         constructor(meshes: Array<Mesh>, scene: Scene, probeRes: number, numberBounces: number, probeDisp: Array<Vector4>, numberProbes: Vector3);
         private _createProbeFromProbeDisp;
+        private _moveRight;
+        private _moveDown;
+        private _moveUp;
+        private _moveLeft;
+        private _checkNewProbeInMovingSquare;
+        private _createNewGradientProbes;
+        /**
+         * Function that will be use to see if we need to create probes to compute irradiance gradient at some places
+         */
+        private _createIrradianceGradientProbes;
         /**
          * Called to change the directLightmap of the dictionary
          * Must ba called when the radiosity has been updates, othermwise, it does not do anything
