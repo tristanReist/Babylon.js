@@ -2,8 +2,7 @@ import { Scene } from '../../scene';
 import { Probe } from './Probe';
 import { Mesh } from '../../Meshes/mesh';
 import { Material } from '../../Materials/material';
-import { Nullable } from '../../types';
-import { ShaderMaterial } from '../../Materials/shaderMaterial';
+
 import { VertexBuffer } from '../../Meshes/buffer';
 import { Effect } from '../../Materials/effect';
 import { Vector3 } from '../../Maths/math.vector';
@@ -15,6 +14,7 @@ import { Color4 } from '../../Maths/math.color';
 import "./../../Shaders/irradianceVolumeIrradianceLightmap.fragment";
 import "./../../Shaders/irradianceVolumeIrradianceLightmap.vertex";
 import { ProbeIrradianceGradient } from './ProbeIrradianceGradient';
+import { InternalTexture } from '../../Materials/Textures/internalTexture';
 /**
  * Class that aims to take care of everything with regard to the irradiance for the irradiance volume
  */
@@ -25,7 +25,7 @@ export class Irradiance {
     private _uniformNumberProbes: Vector3;
     private _uniformBottomLeft : Vector3;
     private _uniformBoxSize : Vector3;
-
+    private _probesPosition : Array<number>;
     /**
      * The list of probes that are part of this irradiance volume
      */
@@ -49,6 +49,8 @@ export class Irradiance {
      * The effect used to render the irradiance from each probe.
      */
     public bounceEffect : Effect;
+
+    public irradianceLightmapEffect : Effect;
 
     /**
      * The dictionary that stores the lightmaps linked to each mesh
@@ -95,9 +97,11 @@ export class Irradiance {
         this._uniformNumberProbes = probeDisposition;
         this._uniformBottomLeft = bottomLeft;
         this._uniformBoxSize = volumeSize;
+
+        this._createProbePositionList();
+
         dictionary.initLightmapTextures();
         //We can only initialize the irradiance lightmap after setting the uniforms attributes, as it is needed for the material
-        this._initIrradianceLightMap();
         this._promise = this._createPromise();
     }
 
@@ -175,9 +179,10 @@ export class Irradiance {
         let endProbeEnv = new Date().getTime();
 
         this.updateShTexture();
-        for (let value of this.dictionary.values()) {
-            value.irradianceLightmap.render();
-        }
+        this._renderIrradianceLightmap();
+        // for (let value of this.dictionary.values()) {
+        //     value.irradianceLightmap.render();
+        // }
 
         let endBounce = new Date().getTime();
 
@@ -264,59 +269,81 @@ export class Irradiance {
         this._shTexture.update(shArray);
     }
 
-    private _initIrradianceLightMap() : void {
-        let irradianceMaterial = new ShaderMaterial("irradianceMaterial", this._scene,
-        "irradianceVolumeIrradianceLightmap", {
-            attributes : ["position", "normal", "uv2"],
-            uniforms : ["world", "isUniform", "numberProbesInSpace", "boxSize", "bottomLeft", "probePosition"],
-            defines : ["#define NUM_PROBES " + this.probeList.length],
-            samplers : ["shText"]
-        });
+    private _createProbePositionList() {
 
-        irradianceMaterial.setInt("isUniform", 1);
-        irradianceMaterial.setVector3("numberProbesInSpace", this._uniformNumberProbes);
-        irradianceMaterial.setVector3("boxSize", this._uniformBoxSize);
-        irradianceMaterial.setVector3("bottomLeft", this._uniformBottomLeft);
-        irradianceMaterial.backFaceCulling = false;
+        this._probesPosition = [];
+        // let shCoef = [];
+        for (let probe of  this.probeList) {
+            this._probesPosition.push(probe.sphere.position.x);
+            this._probesPosition.push(probe.sphere.position.y);
+            this._probesPosition.push(probe.sphere.position.z);
+            if (probe.probeInHouse != Probe.OUTSIDE_HOUSE) {
+                this._probesPosition.push(1.);
+            }
+            else {
+                this._probesPosition.push(0.);
+            }
+        }
+    }
 
-        this.dictionary.initIrradianceLightmapMaterial(irradianceMaterial);
+    private _renderIrradianceLightmap() : void {
+        let engine = this._scene.getEngine();
+        let gl = engine._gl;
+        let effect = this.irradianceLightmapEffect;
+
+        // this.irradianceLightmapEffect.backFaceCulling = false;
 
         for (let mesh of this.dictionary.keys()) {
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
+                let mrt = value.postProcessLightmap;
+                let dest = mrt.textures[2];
+                engine.enableEffect(effect);
 
-                // value.irradianceLightmap.wrapU = 2;
-                // value.irradianceLightmap.wrapV = 2;
-                value.irradianceLightmap.clearColor = new Color4(0., 0., 0., 0.);
-                value.irradianceLightmap.renderList = [mesh];
-                let previousMaterial : Nullable<Material>;
-                value.irradianceLightmap.onBeforeRenderObservable.add(() => {
-                    let probePosition = [];
-                    // let shCoef = [];
-                    for (let probe of  this.probeList) {
-                        probePosition.push(probe.sphere.position.x);
-                        probePosition.push(probe.sphere.position.y);
-                        probePosition.push(probe.sphere.position.z);
-                        if (probe.probeInHouse != Probe.OUTSIDE_HOUSE) {
-                            probePosition.push(1.);
-                        }
-                        else {
-                            probePosition.push(0.);
-                        }
+                effect.setMatrix("world", mesh.getWorldMatrix());
+                effect.setInt("isUniform", 1);
+                effect.setVector3("numberProbesInSpace", this._uniformNumberProbes);
+                effect.setVector3("boxSize", this._uniformBoxSize);
+                effect.setVector3("bottomLeft", this._uniformBottomLeft);
+                effect.setTexture("shText", this._shTexture);
+                effect.setArray4("probePosition", this._probesPosition);
+
+                engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
+                engine.setState(false);
+
+                let fb = this.dictionary.frameBuffer1;
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+                gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,  (<InternalTexture>dest._texture)._webGLTexture, 0);
+
+                var subMeshes = mesh.subMeshes;
+                for (let i = 0; i < subMeshes.length; i++) {
+                    var subMesh = subMeshes[i];
+                    var batch = mesh._getInstancesRenderList(subMesh._id);
+
+                    if (batch.mustReturn) {
+                        return;
                     }
-                    irradianceMaterial.setArray4("probePosition", probePosition);
-                    irradianceMaterial.setTexture("shText", this._shTexture);
 
-                    //Add the right material to the mesh
-                    previousMaterial = mesh.material;
-                    mesh.material = irradianceMaterial;
-                });
+                    var hardwareInstancedRendering = Boolean(engine.getCaps().instancedArrays && batch.visibleInstances[subMesh._id]);
+                    mesh._bind(subMesh, effect, Material.TriangleFillMode);
+                    mesh._processRendering(mesh, subMesh, effect, Material.TriangleFillMode, batch, hardwareInstancedRendering,
+                        (isInstance, world) => effect.setMatrix("world", world));
+                }
 
-                value.irradianceLightmap.onAfterRenderObservable.add(() => {
-                    //Put the previous material on the meshes
-                    mesh.material = previousMaterial;
-                    // value.sumOfBoth.render();
-                });
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+                // engine.clear(new Color4(0.0, 0.0, 0.0, 0.0), true, true, true);
+                // let vb: any = {};
+                // vb[VertexBuffer.PositionKind] = mesh.getVertexBuffer(VertexBuffer.PositionKind);
+                // vb[VertexBuffer.NormalKind] = mesh.getVertexBuffer(VertexBuffer.NormalKind);
+                // vb[VertexBuffer.UV2Kind] = mesh.getVertexBuffer(VertexBuffer.UV2Kind);
+
+                // if (mesh._geometry != null) {
+                //     engine.bindBuffers(vb, mesh._geometry.getIndexBuffer(), effect);
+                // }
+
+                // engine.drawElementsType(Material.TriangleFillMode, 0, 6);
+
             }
         }
     }
@@ -332,6 +359,7 @@ export class Irradiance {
                     this._areIrradianceLightMapReady(),
                     this._areProbesReady(),
                     this._isUVEffectReady(),
+                    this._isIrradianceLightmapEffectReady(),
                     this._isBounceEffectReady(),
                     this.dictionary.areMaterialReady()
                 ];
@@ -388,6 +416,22 @@ export class Irradiance {
         return this.uvEffect.isReady();
     }
 
+    private _isIrradianceLightmapEffectReady() : boolean {
+        var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
+        var uniforms = ["world", "isUniform", "numberProbesInSpace", "boxSize", "bottomLeft", "probePosition"];
+        var samplers = ["shText"];
+        var defines = "#define NUM_PROBES " + this.probeList.length;
+
+        this.irradianceLightmapEffect = this._scene.getEngine().createEffect("irradianceVolumeIrradianceLightmap",
+            attribs,
+            uniforms,
+            samplers,
+            defines
+        );
+
+        return this.irradianceLightmapEffect.isReady();
+    }
+
     private _isBounceEffectReady() : boolean {
         // var attribs = [VertexBuffer.PositionKind, VertexBuffer.UVKind];
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UVKind, VertexBuffer.UV2Kind];
@@ -405,7 +449,7 @@ export class Irradiance {
 
     private _areIrradianceLightMapReady() : boolean {
         for (let value of this.dictionary.values()) {
-            if (!value.irradianceLightmap.isReady()) {
+            if (!value.postProcessLightmap.isReady()) {
                 return false;
             }
             if (value.directLightmap != null && !value.directLightmap.isReady()) {
@@ -452,7 +496,7 @@ export class Irradiance {
             this.numberBounces = numberBounces;
             let engine = this._scene.getEngine();
             for (let value of this.dictionary.values()) {
-                let internal = value.irradianceLightmap.getInternalTexture();
+                let internal = value.postProcessLightmap.getInternalTexture();
                 if (internal != null) {
                     engine.bindFramebuffer(internal);
                     engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
@@ -481,7 +525,7 @@ export class Irradiance {
         if (this.numberBounces > 0) {
             let engine = this._scene.getEngine();
             for (let value of this.dictionary.values()) {
-                let internal = value.irradianceLightmap.getInternalTexture();
+                let internal = value.postProcessLightmap.getInternalTexture();
                 if (internal != null) {
                     engine.bindFramebuffer(internal);
                     engine.clear(new Color4(0., 0., 0., 1.), true, true, true);
