@@ -68133,20 +68133,22 @@ declare module BABYLON {
         position: Vector3;
         normal: Vector3;
         radius: number;
+        size: ISize;
         depthMapSize: {
             width: number;
             height: number;
         };
         depthMap: RenderTargetTexture;
         samples: Vector3[];
-        private _bits;
-        constructor(position: Vector3, normal: Vector3, radius: number, depthMapSize: {
+        sampleIndex: number;
+        constructor(position: Vector3, normal: Vector3, size: ISize, depthMapSize: {
             width: number;
             height: number;
         }, sampleCount: number, scene: Scene);
         private _generateSamples;
-        private _radicalInverse_VdC;
-        private _hammersley;
+        private sampleRectangle;
+        private haltonEx;
+        private halton2d;
     }
     interface DirectRendererOptions {
         near?: number;
@@ -68203,7 +68205,9 @@ declare module BABYLON {
          * @param meshes The meshes to include in the radiosity solver
          */
         constructor(scene: Scene, meshes?: Mesh[], lights?: Arealight[], options?: DirectRendererOptions);
+        renderNextSample(): void;
         render(): void;
+        postProcesses(): void;
         private renderSampleToShadowMapTexture;
         dilate(origin: Texture, dest: Texture): void;
         /**
@@ -68211,6 +68215,7 @@ declare module BABYLON {
          * @returns True if the renderer is ready
          */
         isReady(): boolean;
+        isRenderFinished(): boolean;
         toneMap(origin: Texture, dest: Texture): void;
         private blur;
         private renderSubMesh;
