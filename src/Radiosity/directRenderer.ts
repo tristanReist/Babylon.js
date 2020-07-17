@@ -85,8 +85,6 @@ export class Arealight {
 
     public sampleIndex: number = 0;
 
-    private _bits = new Uint32Array(1);
-
     constructor(position: Vector3, normal: Vector3, size: ISize, depthMapSize: { width: number, height: number }, sampleCount: number, scene: Scene) {
         this.position = position.clone();
         this.normal = normal.clone().normalize();
