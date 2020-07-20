@@ -272,7 +272,6 @@ export class Irradiance {
     private _createProbePositionList() {
 
         this._probesPosition = [];
-        // let shCoef = [];
         for (let probe of  this.probeList) {
             this._probesPosition.push(probe.sphere.position.x);
             this._probesPosition.push(probe.sphere.position.y);
