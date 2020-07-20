@@ -20711,7 +20711,7 @@ declare module BABYLON {
         /**
          * Override the default coordinates mode to projection for RTT as it is the most common case for rendered textures.
          */
-        coordinatesMode: number;
+        _coordinatesMode: number;
         /**
          * Define the camera used to render the texture.
          */
@@ -30163,7 +30163,7 @@ declare module BABYLON {
          * This is part of the texture as textures usually maps to one uv set.
          */
         coordinatesIndex: number;
-        private _coordinatesMode;
+        _coordinatesMode: number;
         /**
         * How a texture is mapped.
         *

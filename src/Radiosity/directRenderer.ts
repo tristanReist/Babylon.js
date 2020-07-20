@@ -8,9 +8,9 @@ import { RenderTargetTexture } from "../Materials/Textures/renderTargetTexture";
 import { MultiRenderTarget } from "../Materials/Textures/multiRenderTarget";
 import { Effect } from "../Materials/effect";
 import { Material } from "../Materials/material";
-import { StandardMaterial } from "../Materials/standardMaterial";
+// import { StandardMaterial } from "../Materials/standardMaterial";
 import { Constants } from "../Engines/constants";
-import { ISize, Vector2, Vector3, Color3, Color4, Matrix } from "../Maths/math";
+import { ISize, Vector2, Vector3, Color4, Matrix } from "../Maths/math";
 import { DirectEffectsManager } from "./directEffectManager";
 
 declare module "../Meshes/mesh" {
@@ -107,13 +107,13 @@ export class Arealight {
 
         this._generateSamples(sampleCount);
 
-        for (const sample of this.samples) {
-            const mat = new StandardMaterial("", scene);
-            mat.emissiveColor = new Color3(1, 0, 0);
-            const box = Mesh.CreateBox("", 1.5, scene);
-            box.position = sample;
-            box.material = mat;
-        }
+        // for (const sample of this.samples) {
+        //     const mat = new StandardMaterial("", scene);
+        //     mat.emissiveColor = new Color3(1, 0, 0);
+        //     const box = Mesh.CreateBox("", 1.5, scene);
+        //     box.position = sample;
+        //     box.material = mat;
+        // }
     }
 
     private _generateSamples(sampleCount: number) {

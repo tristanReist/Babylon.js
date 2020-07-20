@@ -115,7 +115,7 @@ export class RenderTargetTexture extends Texture {
     /**
      * Override the default coordinates mode to projection for RTT as it is the most common case for rendered textures.
      */
-    public coordinatesMode = Texture.PROJECTION_MODE;
+    public _coordinatesMode = Texture.PROJECTION_MODE;
     /**
      * Define the camera used to render the texture.
      */
@@ -353,7 +353,7 @@ export class RenderTargetTexture extends Texture {
         if (!delayAllocation) {
             if (isCube) {
                 this._texture = scene.getEngine().createRenderTargetCubeTexture(this.getRenderSize(), this._renderTargetOptions);
-                this.coordinatesMode = Texture.INVCUBIC_MODE;
+                this._coordinatesMode = Texture.INVCUBIC_MODE;
                 this._textureMatrix = Matrix.Identity();
             } else {
                 this._texture = scene.getEngine().createRenderTargetTexture(this._size, this._renderTargetOptions);
