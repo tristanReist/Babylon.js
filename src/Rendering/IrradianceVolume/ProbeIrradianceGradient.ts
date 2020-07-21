@@ -65,7 +65,7 @@ export class ProbeIrradianceGradient extends Probe {
             probe.renderBounce(meshes);
         }
         this.tempBounce.customRenderFunction = (opaqueSubMeshes: SmartArray<SubMesh>, alphaTestSubMeshes: SmartArray<SubMesh>, transparentSubMeshes: SmartArray<SubMesh>, depthOnlySubMeshes: SmartArray<SubMesh>): void => {
-            this._renderCubeTexture(opaqueSubMeshes, false);
+            this._renderCubeTexture(opaqueSubMeshes);
             for (let probe of this.adjacentProbesForIrradiance) {
                 probe.tempBounce.isCube = false;
                 probe.tempBounce.render();

@@ -25,7 +25,7 @@ export class Irradiance {
     private _uniformNumberProbes: Vector3;
     private _uniformBottomLeft : Vector3;
     private _uniformBoxSize : Vector3;
-    private _probesPosition : Array<number>;
+    private _probesPosition : Float32Array;
     /**
      * The list of probes that are part of this irradiance volume
      */
@@ -69,6 +69,7 @@ export class Irradiance {
     public finish = false;
 
     private _shTexture : RawTexture;
+    private _posProbesTexture : RawTexture;
 
     /**
      * Initializer of the irradiance class
@@ -271,17 +272,17 @@ export class Irradiance {
 
     private _createProbePositionList() {
 
-        this._probesPosition = [];
-        // let shCoef = [];
-        for (let probe of  this.probeList) {
-            this._probesPosition.push(probe.sphere.position.x);
-            this._probesPosition.push(probe.sphere.position.y);
-            this._probesPosition.push(probe.sphere.position.z);
+        this._probesPosition = new Float32Array(this.probeList.length * 4);
+        for (let i = 0; i < this.probeList.length; i++) {
+            let probe = this.probeList[i];
+            this._probesPosition[i * 4] = probe.position.x;
+            this._probesPosition[i * 4 + 1] = probe.position.y;
+            this._probesPosition[i * 4 + 2] = probe.position.z;
             if (probe.probeInHouse != Probe.OUTSIDE_HOUSE) {
-                this._probesPosition.push(1.);
+                this._probesPosition[i * 4 + 3] = 1.;
             }
             else {
-                this._probesPosition.push(0.);
+                this._probesPosition[i * 4 + 3] = 0.;
             }
         }
     }
@@ -306,7 +307,7 @@ export class Irradiance {
                 effect.setVector3("boxSize", this._uniformBoxSize);
                 effect.setVector3("bottomLeft", this._uniformBottomLeft);
                 effect.setTexture("shText", this._shTexture);
-                effect.setArray4("probePosition", this._probesPosition);
+                effect.setTexture("probePosition", this._posProbesTexture);
 
                 engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
                 engine.setState(false);
@@ -353,9 +354,11 @@ export class Irradiance {
             this._initProbesPromise();
             let initArray = new Float32Array(this.probeList.length * 9 * 4);
             this._shTexture = new RawTexture(initArray, 9, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
+            this._posProbesTexture = new RawTexture(this._probesPosition, 1, this.probeList.length, Engine.TEXTUREFORMAT_RGBA, this._scene, false, false, 0, Engine.TEXTURETYPE_FLOAT);
             let interval = setInterval(() => {
                 let readyStates = [
-                    this._isRawTextReady(),
+                    this._isRawTextSHCoefReady(),
+                    this._isRawTextProbePosReady(),
                     this._areIrradianceLightMapReady(),
                     this._areProbesReady(),
                     this._isUVEffectReady(),
@@ -383,8 +386,12 @@ export class Irradiance {
         }
     }
 
-    private _isRawTextReady() : boolean {
+    private _isRawTextSHCoefReady() : boolean {
         return this._shTexture.isReady();
+    }
+
+    private _isRawTextProbePosReady() : boolean {
+        return this._posProbesTexture.isReady();
     }
 
     private _areProbesReady() : boolean {
@@ -418,8 +425,8 @@ export class Irradiance {
 
     private _isIrradianceLightmapEffectReady() : boolean {
         var attribs = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
-        var uniforms = ["world", "isUniform", "numberProbesInSpace", "boxSize", "bottomLeft", "probePosition"];
-        var samplers = ["shText"];
+        var uniforms = ["world", "isUniform", "numberProbesInSpace", "boxSize", "bottomLeft"];
+        var samplers = ["shText", "probePosition"];
         var defines = "#define NUM_PROBES " + this.probeList.length;
 
         this.irradianceLightmapEffect = this._scene.getEngine().createEffect("irradianceVolumeIrradianceLightmap",
@@ -512,7 +519,6 @@ export class Irradiance {
             }
         }
         else {
-            console.log("same");
             return;
         }
 

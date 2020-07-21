@@ -68530,6 +68530,19 @@ declare module BABYLON {
     }
 }
 declare module BABYLON {
+    export class ProbeIrradianceGradient extends Probe {
+        private adjacentProbesForIrradiance;
+        private distanceBetweenProbesForGradient;
+        gradientSphericalHarmonics: SphericalHarmonics[];
+        constructor(position: Vector3, scene: Scene, resolution: number, inRoom: number);
+        render(meshes: Array<Mesh>, dictionary: MeshDictionary, uvEffet: Effect, bounceEffect: Effect): void;
+        initPromise(): void;
+        renderBounce(meshes: Array<Mesh>): void;
+        setVisibility(visible: number): void;
+        private _computeIrradianceGradient;
+    }
+}
+declare module BABYLON {
     /**
      * The probe is what is used for irradiance volume
      * It aims to sample the irradiance at  a certain point of the scene
@@ -68551,11 +68564,6 @@ declare module BABYLON {
         private _scene;
         private _resolution;
         /**
-         * The sphere that we choose to be visible or not,
-         * that keep the information of irradiance
-         */
-        sphere: Mesh;
-        /**
          * The list of camera that are attached to the probe,
          * used to render the cube map
          */
@@ -68569,15 +68577,13 @@ declare module BABYLON {
          */
         uvEffect: Effect;
         bounceEffect: Effect;
+        position: Vector3;
+        transformNode: TransformNode;
         /**
          * The string representing the path to the texture that is used
          */
         albedoStr: string;
         dictionary: MeshDictionary;
-        /**
-         * The multirendertarget that is use to redner the scene from the probe
-         */
-        cubicMRT: MultiRenderTarget;
         /**
          * The spherical harmonic coefficients that represent the irradiance capture by the probe
          */
@@ -68623,7 +68629,7 @@ declare module BABYLON {
          * @param visisble The visibility of the probe
          */
         setVisibility(visisble: number): void;
-        protected _renderCubeTexture(subMeshes: SmartArray<SubMesh>, isMRT: boolean): void;
+        protected _renderCubeTexture(subMeshes: SmartArray<SubMesh>): void;
         /**
          * Render the 6 cameras of the probes with different effect to create the cube map we need
          * @param meshes The meshes we want to render
@@ -68644,25 +68650,10 @@ declare module BABYLON {
          * Return if the probe is ready to be render
          */
         isProbeReady(): boolean;
-        private _isMRTReady;
         private _isTempBounceReady;
         private _CPUcomputeSHCoeff;
-        private _computeProbeIrradiance;
         private _weightSHCoeff;
         useIrradianceGradient(): void;
-    }
-}
-declare module BABYLON {
-    export class ProbeIrradianceGradient extends Probe {
-        private adjacentProbesForIrradiance;
-        private distanceBetweenProbesForGradient;
-        gradientSphericalHarmonics: SphericalHarmonics[];
-        constructor(position: Vector3, scene: Scene, resolution: number, inRoom: number);
-        render(meshes: Array<Mesh>, dictionary: MeshDictionary, uvEffet: Effect, bounceEffect: Effect): void;
-        initPromise(): void;
-        renderBounce(meshes: Array<Mesh>): void;
-        setVisibility(visible: number): void;
-        private _computeIrradianceGradient;
     }
 }
 declare module BABYLON {
@@ -68722,6 +68713,7 @@ declare module BABYLON {
          */
         finish: boolean;
         private _shTexture;
+        private _posProbesTexture;
         /**
          * Initializer of the irradiance class
          * @param scene The scene of the meshes
@@ -68749,7 +68741,8 @@ declare module BABYLON {
         private _renderIrradianceLightmap;
         private _createPromise;
         private _initProbesPromise;
-        private _isRawTextReady;
+        private _isRawTextSHCoefReady;
+        private _isRawTextProbePosReady;
         private _areProbesReady;
         private _isUVEffectReady;
         private _isIrradianceLightmapEffectReady;

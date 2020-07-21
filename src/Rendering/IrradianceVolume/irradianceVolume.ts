@@ -258,7 +258,7 @@ export class IrradianceVolume {
         let distanceBetweenProbes = new Vector3(this._volumeSize.x / (this._probesDisposition.x - 1), this._volumeSize.y / (this._probesDisposition.y - 1), this._volumeSize.z / (this._probesDisposition.z - 1));
         switch (index){
             case 0: {
-                let currentProbePosition = this.probeList[this._tempLastRect[0]].sphere.position;
+                let currentProbePosition = this.probeList[this._tempLastRect[0]].position;
                 if (this._tempLastRect[1] != -1 && this.probeList[this._tempLastRect[1]].probeInHouse != Probe.OUTSIDE_HOUSE) {
                     probePosition = new Vector3(currentProbePosition.x  + distanceBetweenProbes.x / 2, currentProbePosition.y + distanceBetweenProbes.y, currentProbePosition.z - distanceBetweenProbes.z / 2);
                     secondProbeIndex = 1;
@@ -271,7 +271,7 @@ export class IrradianceVolume {
                 break;
             }
             case 1: {
-                let currentProbePosition = this.probeList[this._tempLastRect[1]].sphere.position;
+                let currentProbePosition = this.probeList[this._tempLastRect[1]].position;
                 if (this._tempLastRect[0] != -1 && this.probeList[this._tempLastRect[0]].probeInHouse != Probe.OUTSIDE_HOUSE) {
                     probePosition = new Vector3(currentProbePosition.x  - distanceBetweenProbes.x / 2, currentProbePosition.y + distanceBetweenProbes.y, currentProbePosition.z - distanceBetweenProbes.z / 2);
                     secondProbeIndex = 0;
@@ -284,7 +284,7 @@ export class IrradianceVolume {
                 break;
             }
             case 2: {
-                let currentProbePosition = this.probeList[this._tempLastRect[2]].sphere.position;
+                let currentProbePosition = this.probeList[this._tempLastRect[2]].position;
                 if (this._tempLastRect[0] != -1 && this.probeList[this._tempLastRect[0]].probeInHouse != Probe.OUTSIDE_HOUSE) {
                     probePosition = new Vector3(currentProbePosition.x  - distanceBetweenProbes.x / 2, currentProbePosition.y + distanceBetweenProbes.y, currentProbePosition.z - distanceBetweenProbes.z / 2);
                     secondProbeIndex = 0;
@@ -297,7 +297,7 @@ export class IrradianceVolume {
                 break;
             }
             case 3: {
-                let currentProbePosition = this.probeList[this._tempLastRect[3]].sphere.position;
+                let currentProbePosition = this.probeList[this._tempLastRect[3]].position;
                 if (this._tempLastRect[1] != -1 && this.probeList[this._tempLastRect[1]].probeInHouse != Probe.OUTSIDE_HOUSE) {
                     probePosition = new Vector3(currentProbePosition.x  + distanceBetweenProbes.x / 2, currentProbePosition.y + distanceBetweenProbes.y, currentProbePosition.z - distanceBetweenProbes.z / 2);
                     secondProbeIndex = 1;

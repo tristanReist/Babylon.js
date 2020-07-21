@@ -54,10 +54,6 @@ export class IrradianceVolumeManager {
 
         this._createMeshesArray(meshes);
 
-        // TODO : Utilisation des fonctions de Kazaplan pour trouver les mesh propre
-        // à une pièce, pour créer un truc par pièce
-        console.log("TODO");
-
         // Creating the IrradianceVolumes with the previously definies rooms
         // this._irradianceVolumes = [new IrradianceVolume(this._meshForIrradiance,
         //      this._scene, 16, this._probesDisposition, this._numberBounces)];
@@ -115,9 +111,6 @@ export class IrradianceVolumeManager {
             }
             this._pr.gatherDirectLightOnly();
             this._scene.onAfterRenderTargetsRenderObservable.remove(observer);
-
-            console.log("End compute radiosity");
-
             this._renderIrradianceVolumes();
         });
     }
