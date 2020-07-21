@@ -181,7 +181,7 @@ export class Arealight {
               r[i] = offset[i] = this.haltonEx(invprimes[i], offset[i]);
             }
         }
-        
+
         return r;
     }
 }
@@ -413,7 +413,7 @@ export class DirectRenderer {
     }
 
     public isRenderFinished() {
-        return this.lights.every(light => light.sampleIndex === light.samples.length);
+        return this.lights.every((light) => light.sampleIndex === light.samples.length);
     }
 
     public toneMap(origin: Texture, dest: Texture) {
