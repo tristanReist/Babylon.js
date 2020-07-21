@@ -10,7 +10,7 @@ import { Effect } from "../Materials/effect";
 import { Material } from "../Materials/material";
 // import { StandardMaterial } from "../Materials/standardMaterial";
 import { Constants } from "../Engines/constants";
-import { Vector2, Vector3, Color4, Matrix } from "../Maths/math";
+import { ISize, Vector2, Vector3, Color4, Matrix } from "../Maths/math";
 import { DirectEffectsManager } from "./directEffectManager";
 
 declare module "../Meshes/mesh" {
@@ -68,6 +68,11 @@ export class Arealight {
 
     public radius: number;
 
+    public size: ISize = {
+        width: 60,
+        height: 180,
+    };
+
     public depthMapSize: {
         width: number,
         height: number
@@ -78,12 +83,12 @@ export class Arealight {
     // Samples world positions
     public samples: Vector3[];
 
-    private _bits = new Uint32Array(1);
+    public sampleIndex: number = 0;
 
-    constructor(position: Vector3, normal: Vector3, radius: number, depthMapSize: { width: number, height: number }, sampleCount: number, scene: Scene) {
+    constructor(position: Vector3, normal: Vector3, size: ISize, depthMapSize: { width: number, height: number }, sampleCount: number, scene: Scene) {
         this.position = position.clone();
         this.normal = normal.clone().normalize();
-        this.radius = radius;
+        this.size = size;
 
         this.depthMapSize = depthMapSize;
 
@@ -118,12 +123,9 @@ export class Arealight {
         viewMatrix.invert();
 
         for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
-            const [u, v] = this._hammersley(sampleIndex, sampleCount);
-            const phi = v * 2.0 * Math.PI;
-            const cosTheta = 1.0 - u;
-            const sinTheta = Math.sqrt(1.0 - cosTheta * cosTheta);
-            const x = Math.cos(phi) * sinTheta * this.radius;
-            const y = Math.sin(phi) * sinTheta * this.radius;
+            const [u, v] = this.sampleRectangle(sampleIndex);
+            const x = u * this.size.width;
+            const y = v * this.size.height;
 
             const localPosition = new Vector3(x, y, 0);
             const worldPosition = Vector3.TransformCoordinates(localPosition, viewMatrix);
@@ -131,21 +133,57 @@ export class Arealight {
         }
     }
 
-    //Van der Corput radical inverse
-    private _radicalInverse_VdC(i: number) {
-        this._bits[0] = i;
-        this._bits[0] = ((this._bits[0] << 16) | (this._bits[0] >> 16)) >>> 0;
-        this._bits[0] = ((this._bits[0] & 0x55555555) << 1) | ((this._bits[0] & 0xAAAAAAAA) >>> 1) >>> 0;
-        this._bits[0] = ((this._bits[0] & 0x33333333) << 2) | ((this._bits[0] & 0xCCCCCCCC) >>> 2) >>> 0;
-        this._bits[0] = ((this._bits[0] & 0x0F0F0F0F) << 4) | ((this._bits[0] & 0xF0F0F0F0) >>> 4) >>> 0;
-        this._bits[0] = ((this._bits[0] & 0x00FF00FF) << 8) | ((this._bits[0] & 0xFF00FF00) >>> 8) >>> 0;
-        return this._bits[0] * 2.3283064365386963e-10; // / 0x100000000 or / 4294967296
+    // Blender approach for arealights samples generation
+    private sampleRectangle(sampleIndex: number) {
+        const htOffset = [0.0, 0.0];
+        const htPrimes = [2, 3];
+
+        let htPoint = this.halton2d(htPrimes, htOffset, sampleIndex);
+
+        /* Decorelate AA and shadow samples. (see T68594) */
+        htPoint[0] = htPoint[0] * 1151.0 % 1.0;
+        htPoint[1] = htPoint[1] * 1069.0 % 1.0;
+
+        /* Change ditribution center to be 0,0 */
+        htPoint[0] = htPoint[0] > 0.5 ? htPoint[0] - 1 : htPoint[0];
+        htPoint[1] = htPoint[1] > 0.5 ? htPoint[1] - 1 : htPoint[1];
+
+        return htPoint;
     }
 
-    private _hammersley(i: number, n: number) {
-        return [i / n, this._radicalInverse_VdC(i)];
+    private haltonEx(invprimes: number, offset: number): number
+    {
+        const e = Math.abs((1.0 - offset) - 1e-10);
+
+      if (invprimes >= e) {
+        let lasth;
+        let h = invprimes;
+
+        do {
+          lasth = h;
+          h *= invprimes;
+        } while (h >= e);
+
+        return offset + ((lasth + h) - 1.0);
+      }
+      else {
+        return offset + invprimes;
+      }
     }
 
+    private halton2d(prime: number[], offset: number[], n: number): number[]
+    {
+        const invprimes = [1.0 / prime[0], 1.0 / prime[1]];
+        const r = [0, 0];
+
+        for (let s = 0; s < n; s++) {
+            for (let i = 0; i < 2; i++) {
+              r[i] = offset[i] = this.haltonEx(invprimes[i], offset[i]);
+            }
+        }
+        
+        return r;
+    }
 }
 
 declare interface DirectRendererOptions {
@@ -267,6 +305,15 @@ export class DirectRenderer {
         }
     }
 
+    public renderNextSample() {
+        const light = this.lights.sort((light1, light2) => light1.sampleIndex - light2.sampleIndex)[0];
+        const sampleIndex = light.sampleIndex;
+
+        this.renderVisibilityMapCubeSample(light, light.samples[sampleIndex]);
+
+        this.renderSampleToShadowMapTexture(light, light.samples[sampleIndex]);
+    }
+
     public render() {
         for (const light of this.lights) {
             for (const sample of light.samples) {
@@ -276,7 +323,10 @@ export class DirectRenderer {
             }
         }
 
-        // Post processes
+        this.postProcesses();
+    }
+
+    public postProcesses() {
         for (const mesh of this.meshes) {
             this.dilate(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
 
@@ -284,13 +334,6 @@ export class DirectRenderer {
             this.blur(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
 
             this.dilate(mesh.directInfo.tempTexture, mesh.directInfo.shadowMap);
-
-            // this.toneMap(mesh.directInfo.shadowMap, mesh.directInfo.tempTexture);
-
-            // Swap temp and shadow texture
-            // const temp = mesh.directInfo.tempTexture._texture;
-            // mesh.directInfo.tempTexture._texture = mesh.directInfo.shadowMap._texture;
-            // mesh.directInfo.shadowMap._texture = temp;
         }
     }
 
@@ -367,6 +410,10 @@ export class DirectRenderer {
      */
     public isReady() {
         return this._directEffectsManager.isReady();
+    }
+
+    public isRenderFinished() {
+        return this.lights.every(light => light.sampleIndex === light.samples.length);
     }
 
     public toneMap(origin: Texture, dest: Texture) {
@@ -524,6 +571,8 @@ export class DirectRenderer {
 
             engine.unBindFramebuffer(<InternalTexture>light.depthMap._texture);
         }
+
+        light.sampleIndex = light.samples.indexOf(samplePosition) + 1;
     }
 
     /**
