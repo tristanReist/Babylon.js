@@ -68129,6 +68129,11 @@ declare module BABYLON {
              */
             getShadowMap(): Texture;
         }
+    interface ArealightOptions {
+        sampleCount: number;
+        bias: number;
+        normalBias: number;
+    }
     export class Arealight {
         position: Vector3;
         normal: Vector3;
@@ -68141,10 +68146,12 @@ declare module BABYLON {
         depthMap: RenderTargetTexture;
         samples: Vector3[];
         sampleIndex: number;
+        bias: number;
+        normalBias: number;
         constructor(position: Vector3, normal: Vector3, size: ISize, depthMapSize: {
             width: number;
             height: number;
-        }, sampleCount: number, scene: Scene);
+        }, lightOptions: ArealightOptions, scene: Scene);
         private _generateSamples;
         private sampleRectangle;
         private haltonEx;
@@ -68153,8 +68160,6 @@ declare module BABYLON {
     interface DirectRendererOptions {
         near?: number;
         far?: number;
-        bias?: number;
-        normalBias?: number;
     }
     /**
      * Radiosity Renderer
@@ -68191,8 +68196,6 @@ declare module BABYLON {
         private _scene;
         private _near;
         private _far;
-        private _bias;
-        private _normalBias;
         private _projectionMatrix;
         private _projectionMatrixPX;
         private _projectionMatrixNX;

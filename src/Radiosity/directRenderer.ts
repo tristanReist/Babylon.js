@@ -200,8 +200,6 @@ export class Arealight {
 declare interface DirectRendererOptions {
     near?: number;
     far?: number;
-    bias?: number;
-    normalBias?: number;
 }
 
 /**
@@ -245,8 +243,6 @@ export class DirectRenderer {
 
     private _near: number;
     private _far: number;
-    private _bias: number;
-    private _normalBias: number;
 
     private _projectionMatrix: Matrix;
     private _projectionMatrixPX: Matrix;
@@ -266,8 +262,6 @@ export class DirectRenderer {
         this._scene = scene;
         this._near = this._options.near || 0.1;
         this._far = this._options.far || 10000;
-        this._bias = this._options.bias || 1e-4;
-        this._normalBias = this._options.normalBias || 1e-4;
         this.meshes = meshes || [];
         this.lights = lights || [];
 
