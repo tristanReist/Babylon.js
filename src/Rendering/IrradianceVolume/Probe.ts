@@ -1,6 +1,5 @@
 import { Mesh } from "../../Meshes/mesh";
 import { Vector3, Matrix } from '../../Maths/math.vector';
-import { SphereBuilder } from '../../Meshes/Builders/sphereBuilder';
 import { Scene } from '../../scene';
 import { Color4 } from '../../Maths/math.color';
 import { InternalTexture } from '../../Materials/Textures/internalTexture';
@@ -11,7 +10,7 @@ import { SmartArray } from '../../Misc/smartArray';
 import { UniversalCamera } from '../../Cameras/universalCamera';
 import { CubeMapToSphericalPolynomialTools } from '../../Misc/HighDynamicRange/cubemapToSphericalPolynomial';
 import { SphericalHarmonics } from '../../Maths/sphericalPolynomial';
-import { ShaderMaterial } from '../../Materials/shaderMaterial';
+// import { ShaderMaterial } from '../../Materials/shaderMaterial';
 import { RenderTargetTexture } from '../../Materials/Textures/renderTargetTexture';
 
 import "../../Shaders/irradianceVolumeProbeEnv.vertex";
@@ -25,6 +24,7 @@ import { PBRMaterial } from '../../Materials/PBR/pbrMaterial';
 import { MeshDictionary } from './meshDictionary';
 import { ProbeIrradianceGradient } from './ProbeIrradianceGradient';
 import { Constants } from '../../Engines/constants';
+import { TransformNode } from '../../Meshes/transformNode';
 
 /**
  * The probe is what is used for irradiance volume
@@ -51,12 +51,6 @@ export class Probe {
     private _resolution : number;
 
     /**
-     * The sphere that we choose to be visible or not,
-     * that keep the information of irradiance
-     */
-    public sphere : Mesh;
-
-    /**
      * The list of camera that are attached to the probe,
      * used to render the cube map
      */
@@ -73,6 +67,10 @@ export class Probe {
     public uvEffect : Effect;
 
     public bounceEffect : Effect;
+
+    public position : Vector3;
+
+    public transformNode : TransformNode;
 
     /**
      * The string representing the path to the texture that is used
@@ -121,8 +119,8 @@ export class Probe {
      */
     constructor(position : Vector3, scene : Scene, resolution : number, inRoom : number) {
         this._scene = scene;
-        this.sphere = SphereBuilder.CreateSphere("probe", { diameter : 30 }, scene);
-        this.sphere.visibility = 0;
+        this.position = position;
+        this.transformNode = new TransformNode("node", this._scene);
         this.probeInHouse = inRoom;
         if (inRoom == Probe.INSIDE_HOUSE_CLOSE_TO_WALL) {
             this.needIrradianceGradient = true;
@@ -161,10 +159,10 @@ export class Probe {
 
         //Change the attributes of all cameras
         for (let camera of this.cameraList) {
-            camera.parent = this.sphere;
+            camera.parent = this.transformNode;
         }
 
-        this.sphere.translate(position, 1);
+        this.transformNode.translate(position, 1);
         this.sphericalHarmonic = new SphericalHarmonics();
         this.sphericalHarmonicChanged = false;
         this._resolution = resolution;
@@ -183,7 +181,7 @@ export class Probe {
      * @param parent The parent to be added
      */
     public setParent(parent : Mesh): void {
-        this.sphere.parent = parent;
+        this.transformNode.parent = parent;
     }
 
     /**
@@ -192,7 +190,7 @@ export class Probe {
      */
     public setVisibility(visisble : number) : void {
         if (this.probeInHouse == Probe.INSIDE_HOUSE || this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL) {
-            this.sphere.visibility = visisble;
+            // this.sphere.visibility = visisble;
         }
     }
 
@@ -221,7 +219,7 @@ export class Probe {
                 }
             }
             effect.setFloat("envMultiplicator", this.envMultiplicator);
-            effect.setVector3("probePosition", this.sphere.position);
+            effect.setVector3("probePosition", this.position);
             let value = this.dictionary.getValue(mesh);
             if (value != null) {
 
@@ -308,7 +306,7 @@ export class Probe {
     public renderBounce(meshes : Array<Mesh>) : void {
         if (this.probeInHouse == Probe.INSIDE_HOUSE) {
             this.tempBounce.renderList = meshes;
-            this.tempBounce.boundingBoxPosition = this.sphere.position;
+            this.tempBounce.boundingBoxPosition = this.position;
 
             let begin = new Date().getTime();
             let end =  new Date().getTime();
@@ -366,9 +364,10 @@ export class Probe {
             this._weightSHCoeff();
             this.sphericalHarmonicChanged = true;
         }
-        this._computeProbeIrradiance();
+        // this._computeProbeIrradiance();
     }
 
+    /*
     private _computeProbeIrradiance() : void {
         //We use a shader to add this texture to the probe
         let shaderMaterial = new ShaderMaterial("irradianceOnSphere", this._scene,  "irradianceVolumeComputeIrradiance", {
@@ -389,6 +388,7 @@ export class Probe {
         this.sphere.material = shaderMaterial;
 
     }
+    */
 
     private _weightSHCoeff() {
         let weight = 0.1;
@@ -419,7 +419,7 @@ export class Probe {
         };
 
         if (this.probeInHouse == Probe.INSIDE_HOUSE_CLOSE_TO_WALL) {
-            d = this.sphere.position.subtract(this.probeForIrradiance.sphere.position);
+            d = this.position.subtract(this.probeForIrradiance.position);
             // L00
             currentShCoef = this.sphericalHarmonic.l00;
             gradientShCoef = this.probeForIrradiance.sphericalHarmonic.l00;
@@ -492,6 +492,6 @@ export class Probe {
              tempb = new Vector3(this.probeForIrradiance.gradientSphericalHarmonics[0].l2_2.z, this.probeForIrradiance.gradientSphericalHarmonics[1].l2_2.z, this.probeForIrradiance.gradientSphericalHarmonics[2].l2_2.z);
              modifCoef();
         }
-        this._computeProbeIrradiance();
+        // this._computeProbeIrradiance();
     }
 }
