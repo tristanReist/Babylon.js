@@ -143,7 +143,7 @@ export class MeshDictionary {
         let vb: any = {};
         vb[VertexBuffer.PositionKind] = this._postProcessManager.screenQuadVB;
         effect.setTexture("inputTexture", mrt.textures[0]);
-        effect.setFloat("exposure", 2.);
+        effect.setFloat("exposure", 1);
         engine.bindBuffers(vb, this._postProcessManager.screenQuadIB, effect);
 
         engine.setDirectViewport(0, 0, dest.getSize().width, dest.getSize().height);
