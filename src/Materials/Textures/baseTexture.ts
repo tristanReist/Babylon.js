@@ -89,7 +89,7 @@ export class BaseTexture implements IAnimatable {
     public coordinatesIndex = 0;
 
     @serialize("coordinatesMode")
-    public _coordinatesMode = Constants.TEXTURE_EXPLICIT_MODE;
+    private _coordinatesMode = Constants.TEXTURE_EXPLICIT_MODE;
 
     /**
     * How a texture is mapped.
