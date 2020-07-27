@@ -61,6 +61,12 @@ Mesh.prototype.getShadowMap = function() {
     return this.directInfo.shadowMap;
 };
 
+declare interface ArealightOptions {
+    sampleCount: number;
+    bias: number;
+    normalBias: number;
+}
+
 export class Arealight {
     public position: Vector3;
 
@@ -85,11 +91,16 @@ export class Arealight {
 
     public sampleIndex: number = 0;
 
-    constructor(position: Vector3, normal: Vector3, size: ISize, depthMapSize: { width: number, height: number }, sampleCount: number, scene: Scene) {
+    public bias: number;
+
+    public normalBias: number;
+
+    constructor(position: Vector3, normal: Vector3, size: ISize, depthMapSize: { width: number, height: number }, lightOptions: ArealightOptions, scene: Scene) {
         this.position = position.clone();
         this.normal = normal.clone().normalize();
         this.size = size;
-
+        this.bias = lightOptions.bias;
+        this.normalBias = lightOptions.normalBias;
         this.depthMapSize = depthMapSize;
 
         this.depthMap = new RenderTargetTexture(
@@ -105,7 +116,7 @@ export class Arealight {
             false
         );
 
-        this._generateSamples(sampleCount);
+        this._generateSamples(lightOptions.sampleCount);
 
         // for (const sample of this.samples) {
         //     const mat = new StandardMaterial("", scene);
@@ -189,8 +200,6 @@ export class Arealight {
 declare interface DirectRendererOptions {
     near?: number;
     far?: number;
-    bias?: number;
-    normalBias?: number;
 }
 
 /**
@@ -234,8 +243,6 @@ export class DirectRenderer {
 
     private _near: number;
     private _far: number;
-    private _bias: number;
-    private _normalBias: number;
 
     private _projectionMatrix: Matrix;
     private _projectionMatrixPX: Matrix;
@@ -255,8 +262,6 @@ export class DirectRenderer {
         this._scene = scene;
         this._near = this._options.near || 0.1;
         this._far = this._options.far || 10000;
-        this._bias = this._options.bias || 1e-4;
-        this._normalBias = this._options.normalBias || 1e-4;
         this.meshes = meshes || [];
         this.lights = lights || [];
 
@@ -306,7 +311,20 @@ export class DirectRenderer {
     }
 
     public renderNextSample() {
-        const light = this.lights.sort((light1, light2) => light1.sampleIndex - light2.sampleIndex)[0];
+        const light = this.lights.slice().sort((light1, light2) => {
+            if (light1.sampleIndex === light1.samples.length - 1
+                && light2.sampleIndex === light2.samples.length - 1) {
+                return 0;
+            }
+            else if (light1.sampleIndex === light1.samples.length - 1) {
+                return -1;
+            }
+            else if (light2.sampleIndex === light2.samples.length - 1) {
+                return -1;
+            }
+
+            return light1.sampleIndex - light2.sampleIndex;
+        })[0];
         const sampleIndex = light.sampleIndex;
 
         this.renderVisibilityMapCubeSample(light, light.samples[sampleIndex]);
@@ -350,7 +368,6 @@ export class DirectRenderer {
             effect.setFloat2("nearFar", this._near, this._far);
             effect.setVector3("lightPos", samplePosition);
             effect.setFloat("sampleCount", light.samples.length);
-            effect.setFloat("normalBias", this._normalBias);
             effect.setTexture("gatherTexture", mesh.directInfo.shadowMap);
 
             // Rendering shadow to tempTexture
@@ -485,7 +502,6 @@ export class DirectRenderer {
         effect.setMatrix("view", view);
         effect.setMatrix("projection", projection);
         effect.setFloat2("nearFar", this._near, this._far);
-        effect.setFloat("bias", this._bias);
     }
 
     private renderVisibilityMapCubeSample(light: Arealight, samplePosition: Vector3) {
@@ -561,7 +577,8 @@ export class DirectRenderer {
 
             this._setCubeVisibilityUniforms(this._directEffectsManager.visibilityEffect, viewMatrices[viewIndex], projectionMatrices[viewIndex]);
             this._directEffectsManager.visibilityEffect.setVector3("lightPos", samplePosition);
-            this._directEffectsManager.visibilityEffect.setFloat("normalBias", this._normalBias);
+            this._directEffectsManager.visibilityEffect.setFloat("bias", light.bias);
+            this._directEffectsManager.visibilityEffect.setFloat("normalBias", light.normalBias);
 
             for (const mesh of this.meshes) {
                 for (const subMesh of mesh.subMeshes) {

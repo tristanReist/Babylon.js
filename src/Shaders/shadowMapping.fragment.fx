@@ -13,7 +13,6 @@ uniform sampler2D gatherTexture;
 
 uniform vec3 lightPos;
 uniform vec2 nearFar;
-uniform float normalBias;
 uniform float sampleCount;
 
 uniform mat4 view;
@@ -24,14 +23,6 @@ void main(void) {
     worldNormal = normalize(vWorldNormal);
 
     vec3 directionToLight = vec3(view * vec4(vWorldPos, 1.0)).xyz * vec3(1.0, -1.0, 1.0);
-
-    // Bias
-    vec3 r2 = lightPos - vWorldPos;
-    vec3 worldLightDir = normalize(r2);
-
-    float ndl = dot(worldNormal, worldLightDir);
-    float sinNL = sqrt(1.0 - ndl * ndl);
-    float nBias = normalBias * sinNL;
 
     float sampledDepth = texture(depthMap, directionToLight).x;
 

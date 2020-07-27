@@ -225,7 +225,7 @@ export class DirectEffectsManager {
      */
     public isShadowMappingEffectReady(): boolean {
         const attribs: string[] = [VertexBuffer.PositionKind, VertexBuffer.NormalKind, VertexBuffer.UV2Kind];
-        const uniforms: string[] = ["world", "view", "nearFar", "lightPos", "sampleCount", "normalBias"];
+        const uniforms: string[] = ["world", "view", "nearFar", "lightPos", "sampleCount"];
         const samplers: string[] = ["depthMap", "gatherTexture"];
 
         this.shadowMappingEffect = this._scene.getEngine().createEffect("shadowMapping",
